@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BauScout – KI-gestützter Bauprojekt-Scout</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --schwarz: #0a0a0a;
+    --dunkel: #111418;
+    --karte: #161b22;
+    --rand: #21262d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --gold: #d4a017;
+    --gold-hell: #f0c040;
+    --blau: #1f6feb;
+    --gruen: #238636;
+    --rot: #da3633;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--schwarz);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HINTERGRUND */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(212,160,23,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(212,160,23,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bg-glow {
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(212,160,23,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 0 40px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--rand);
+    background: rgba(10,10,10,0.8);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--gold);
+  }
+
+  .logo span { color: var(--text-dim); font-size: 14px; font-family: 'DM Mono', monospace; letter-spacing: 1px; margin-left: 12px; }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    z-index: 5;
+    text-align: center;
+    padding: 80px 40px 60px;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(212,160,23,0.1);
+    border: 1px solid rgba(212,160,23,0.3);
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 6px 16px;
+    border-radius: 2px;
+    margin-bottom: 28px;
+    text-transform: uppercase;
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 8vw, 96px);
+    letter-spacing: 6px;
+    line-height: 0.95;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    color: var(--gold);
+    display: block;
+  }
+
+  .hero p {
+    font-size: 17px;
+    color: var(--text-dim);
+    max-width: 540px;
+    margin: 0 auto 48px;
+    line-height: 1.7;
+  }
+
+  /* FORMULAR-CONTAINER */
+  .container {
+    position: relative;
+    z-index: 5;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* SCHRITTE */
+  .schritt {
+    background: var(--karte);
+    border: 1px solid var(--rand);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .schritt.aktiv { border-color: var(--gold); }
+
+  .schritt-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 28px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .schritt-nr {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--rand);
+    border: 1px solid var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .schritt.aktiv .schritt-nr {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--schwarz);
+    font-weight: 700;
+  }
+
+  .schritt.erledigt .schritt-nr {
+    background: var(--gruen);
+    border-color: var(--gruen);
+    color: white;
+  }
+
+  .schritt-titel {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .schritt-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .schritt.erledigt .schritt-status { color: var(--gruen); }
+
+  .schritt-inhalt {
+    display: none;
+    padding: 0 28px 28px;
+    border-top: 1px solid var(--rand);
+  }
+
+  .schritt.aktiv .schritt-inhalt { display: block; }
+
+  /* FORM ELEMENTE */
+  label {
+    display: block;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    margin-top: 20px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="url"] {
+    width: 100%;
+    background: var(--dunkel);
+    border: 1px solid var(--rand);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    padding: 12px 16px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus { border-color: var(--gold); }
+
+  /* GEWERKE GRID */
+  .gewerke-kategorien { margin-top: 8px; }
+
+  .kategorie-titel {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(212,160,23,0.2);
+  }
+
+  .gewerke-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .gewerk-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: var(--dunkel);
+    border: 1px solid var(--rand);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .gewerk-check:hover { border-color: var(--text-dim); color: var(--text); }
+
+  .gewerk-check.ausgewaehlt {
+    border-color: var(--gold);
+    background: rgba(212,160,23,0.08);
+    color: var(--gold);
+  }
+
+  .gewerk-check input { display: none; }
+
+  .gewerk-check .check-box {
+    width: 16px;
+    height: 16px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 10px;
+  }
+
+  /* ALLE AUSWÄHLEN */
+  .alle-btn {
+    background: none;
+    border: 1px solid var(--rand);
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 16px;
+    margin-right: 8px;
+  }
+
+  .alle-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+  /* GEBIET */
+  .gebiet-optionen {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .gebiet-karte {
+    background: var(--dunkel);
+    border: 1px solid var(--rand);
+    border-radius: 3px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .gebiet-karte:hover { border-color: var(--text-dim); }
+  .gebiet-karte.ausgewaehlt { border-color: var(--gold); background: rgba(212,160,23,0.06); }
+
+  .gebiet-karte-titel {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .gebiet-karte-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .ganz-oe {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  select {
+    width: 100%;
+    background: var(--dunkel);
+    border: 1px solid var(--rand);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+
+  select:focus { border-color: var(--gold); }
+
+  select[multiple] { height: 160px; }
+
+  select option { padding: 6px; }
+
+  /* CHAT */
+  .chat-box {
+    background: var(--dunkel);
+    border: 1px solid var(--rand);
+    border-radius: 3px;
+    padding: 20px;
+    margin-top: 8px;
+    min-height: 200px;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  .chat-nachricht {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .chat-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .chat-avatar.ki { background: rgba(212,160,23,0.2); color: var(--gold); }
+  .chat-avatar.user { background: rgba(31,111,235,0.2); color: var(--blau); }
+
+  .chat-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--karte);
+    padding: 10px 14px;
+    border-radius: 3px;
+    flex: 1;
+  }
+
+  .chat-eingabe-wrapper {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .chat-eingabe {
+    flex: 1;
+    background: var(--dunkel);
+    border: 1px solid var(--rand);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .chat-eingabe:focus { border-color: var(--gold); }
+
+  /* BUTTONS */
+  .btn-gold {
+    background: var(--gold);
+    color: var(--schwarz);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-gold:hover { background: var(--gold-hell); transform: translateY(-1px); }
+
+  .btn-outline {
+    background: none;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 12px 24px;
+    border: 1px solid var(--rand);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-outline:hover { border-color: var(--text-dim); color: var(--text); }
+
+  .btn-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  /* PREIS-ANZEIGE */
+  .preis-box {
+    background: var(--dunkel);
+    border: 1px solid rgba(212,160,23,0.3);
+    border-radius: 3px;
+    padding: 20px 24px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .preis-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .preis-wert {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    color: var(--gold);
+    letter-spacing: 2px;
+  }
+
+  .preis-details {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* HINWEIS */
+  .hinweis {
+    background: rgba(31,111,235,0.08);
+    border: 1px solid rgba(31,111,235,0.2);
+    border-radius: 3px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  .hinweis strong { color: var(--blau); }
+
+  /* TAGS */
+  .tag-liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .tag {
+    background: rgba(212,160,23,0.1);
+    border: 1px solid rgba(212,160,23,0.25);
+    color: var(--gold);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+
+  /* TYPING INDICATOR */
+  .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    animation: typing 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%,60%,100% { opacity: 0.3; transform: scale(1); } 30% { opacity: 1; transform: scale(1.3); } }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    header { padding: 0 20px; }
+    .hero { padding: 50px 20px 40px; }
+    .gebiet-optionen { grid-template-columns: 1fr; }
+    .container { padding: 0 16px 60px; }
+    .schritt-header { padding: 16px 20px; }
+    .schritt-inhalt { padding: 0 20px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<header>
+  <div class="logo">BauScout <span>// KI-BAUPROJEKT-SCOUT</span></div>
+</header>
+
+<div class="hero">
+  <div class="hero-badge">⚡ Vollautomatisch · KI-gestützt · Österreichweit</div>
+  <h1>Bauprojekte<em>finden lassen.</em></h1>
+  <p>Der KI-Agent durchsucht Zeitungen, Vergabeportale und Gemeinderatsprotokolle – und liefert dir relevante Projekte direkt ins Postfach.</p>
+</div>
+
+<div class="container">
+
+  <!-- SCHRITT 1: KONTAKT -->
+  <div class="schritt aktiv" id="s1">
+    <div class="schritt-header" onclick="toggleSchritt(1)">
+      <div class="schritt-nr">1</div>
+      <div class="schritt-titel">Ihre Kontaktdaten</div>
+      <div class="schritt-status" id="s1-status">ausstehend</div>
+    </div>
+    <div class="schritt-inhalt">
+      <label>Firmenname *</label>
+      <input type="text" id="firma" placeholder="z.B. Musterbau GmbH">
+
+      <label>E-Mail-Adresse *</label>
+      <input type="email" id="email" placeholder="ihr@unternehmen.at">
+
+      <label>Homepage (optional)</label>
+      <input type="url" id="homepage" placeholder="https://www.ihre-firma.at">
+      <div class="hinweis">
+        <strong>Tipp:</strong> Wenn Sie Ihre Homepage angeben, liest der KI-Agent Ihre Referenzen und erkennt automatisch Ihre Gewerke.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-gold" onclick="weiter(1)">Weiter →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHRITT 2: GEWERKE -->
+  <div class="schritt" id="s2">
+    <div class="schritt-header" onclick="toggleSchritt(2)">
+      <div class="schritt-nr">2</div>
+      <div class="schritt-titel">Gewerke auswählen</div>
+      <div class="schritt-status" id="s2-status">ausstehend</div>
+    </div>
+    <div class="schritt-inhalt">
+      <p style="color:var(--text-dim); font-size:14px; margin-top:8px;">Wählen Sie alle Gewerke für die der Scout nach Projekten suchen soll.</p>
+
+      <div class="gewerke-kategorien" id="gewerke-container"></div>
+
+      <div>
+        <button class="alle-btn" onclick="alleGewerkeAuswaehlen()">Alle auswählen</button>
+        <button class="alle-btn" onclick="alleGewerkeAbwaehlen()">Alle abwählen</button>
+      </div>
+
+      <div style="margin-top:16px;">
+        <span style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text-dim);">AUSGEWÄHLT:</span>
+        <div class="tag-liste" id="gewerke-tags"><span style="color:var(--text-dim); font-size:13px;">Noch nichts ausgewählt</span></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-outline" onclick="zurueck(2)">← Zurück</button>
+        <button class="btn-gold" onclick="weiter(2)">Weiter →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHRITT 3: GEBIET -->
+  <div class="schritt" id="s3">
+    <div class="schritt-header" onclick="toggleSchritt(3)">
+      <div class="schritt-nr">3</div>
+      <div class="schritt-titel">Suchgebiet festlegen</div>
+      <div class="schritt-status" id="s3-status">ausstehend</div>
+    </div>
+    <div class="schritt-inhalt">
+
+      <!-- GANZ ÖSTERREICH -->
+      <label>Schnellauswahl</label>
+      <div class="gewerk-check ausgewaehlt" id="ganz-oe-btn" onclick="toggleGanzOe()" style="display:inline-flex; padding:12px 20px; font-size:14px; margin-bottom:20px;">
+        <div class="check-box" id="ganz-oe-check">✓</div>
+        🇦🇹 &nbsp;Ganz Österreich (alle 9 Bundesländer)
+      </div>
+
+      <!-- BUNDESLÄNDER KACHELN -->
+      <label>Bundesländer <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0;">– einfach anklicken</span></label>
+      <div class="gewerke-grid" id="bl-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+
+      <!-- BEZIRKE KACHELN -->
+      <div id="bezirke-wrapper" style="display:none; margin-top:20px;">
+        <label>Bezirke <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0;">– leer lassen = alle Bezirke</span></label>
+        <div class="gewerke-grid" id="bez-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));"></div>
+      </div>
+
+      <!-- GEMEINDEN KACHELN -->
+      <div id="gemeinden-wrapper" style="display:none; margin-top:20px;">
+        <label>Gemeinden <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0;">– leer lassen = alle Gemeinden</span></label>
+        <div class="gewerke-grid" id="gem-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+      </div>
+
+      <!-- ZUSAMMENFASSUNG -->
+      <div id="gebiet-zusammenfassung" style="margin-top:16px;"></div>
+
+      <div class="btn-row">
+        <button class="btn-outline" onclick="zurueck(3)">← Zurück</button>
+        <button class="btn-gold" onclick="weiter(3)">Weiter →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHRITT 4: KI-CHAT -->
+  <div class="schritt" id="s4">
+    <div class="schritt-header" onclick="toggleSchritt(4)">
+      <div class="schritt-nr">4</div>
+      <div class="schritt-titel">Suche verfeinern (KI-Chat)</div>
+      <div class="schritt-status" id="s4-status">optional</div>
+    </div>
+    <div class="schritt-inhalt">
+      <p style="color:var(--text-dim); font-size:14px; margin-top:8px; margin-bottom:16px;">
+        Beschreiben Sie dem KI-Assistenten in eigenen Worten was Sie suchen – er passt die Suche entsprechend an.
+      </p>
+
+      <div class="chat-box" id="chat-box">
+        <div class="chat-nachricht">
+          <div class="chat-avatar ki">K</div>
+          <div class="chat-text" id="ki-begruessung">Ich lade Ihre Konfiguration...</div>
+        </div>
+      </div>
+
+      <div class="chat-eingabe-wrapper">
+        <input type="text" class="chat-eingabe" id="chat-input" placeholder="Ihre Antwort..." onkeypress="chatEnter(event)">
+        <button class="btn-gold" onclick="chatSenden()">Senden</button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-outline" onclick="zurueck(4)">← Zurück</button>
+        <button class="btn-gold" onclick="weiter(4)">Weiter →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHRITT 5: ZUSAMMENFASSUNG & PREIS -->
+  <div class="schritt" id="s5">
+    <div class="schritt-header" onclick="toggleSchritt(5)">
+      <div class="schritt-nr">5</div>
+      <div class="schritt-titel">Zusammenfassung & Bezahlung</div>
+      <div class="schritt-status" id="s5-status">ausstehend</div>
+    </div>
+    <div class="schritt-inhalt">
+
+      <div id="zusammenfassung" style="margin-top:8px;"></div>
+
+      <div class="preis-box">
+        <div>
+          <div class="preis-label">Einmaliger Scout-Lauf</div>
+          <div class="preis-wert" id="preis-anzeige">€ --</div>
+          <div class="preis-details" id="preis-details">Bitte Konfiguration abschließen</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:12px; color:var(--text-dim); margin-bottom:8px; font-family:'DM Mono',monospace;">INKLUDIERT</div>
+          <div style="font-size:13px; color:var(--text); line-height:1.8;">✓ HTML Newsletter<br>✓ Persönliches Dashboard<br>✓ Excel Export</div>
+        </div>
+      </div>
+
+      <div class="hinweis" style="margin-top:16px;">
+        <strong>Sicher bezahlen:</strong> Die Abwicklung erfolgt über Stripe – Ihre Kreditkartendaten werden nicht auf unseren Servern gespeichert. Nach erfolgreicher Zahlung startet der Scout-Lauf automatisch.
+      </div>
+
+      <div class="btn-row" style="margin-top:24px;">
+        <button class="btn-outline" onclick="zurueck(5)">← Zurück</button>
+        <button class="btn-gold" onclick="bezahlen()" style="padding:14px 36px; font-size:16px;">
+          💳 Jetzt bezahlen & starten
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// GEWERKE DATEN
+// ═══════════════════════════════════════════════
+const GEWERKE = {
+  "Rohbau & Tiefbau": [
+    "Erdbau / Aushub", "Spezialtiefbau", "Betonbau / Stahlbeton",
+    "Maurerarbeiten", "Abbruch / Demontage", "Sprengungen",
+    "Bohrpfähle / Baugrubensicherung", "Dichtwände", "Bodenverbesserung",
+    "Hangsicherungen", "Hochwasserschutz"
+  ],
+  "Straße & Infrastruktur": [
+    "Straßenbau", "Bahnbau / Gleisbau", "Leitungsbau",
+    "Brückenbau", "Tunnelbau", "Kraftwerksbau",
+    "Kanal / Abwasser", "Wasserversorgung"
+  ],
+  "Rohstoffe & Material": [
+    "Transportbeton / Lieferbeton", "Spritzbeton",
+    "Kies / Sand / Schotter", "Splitt / Kalk",
+    "Recycling / Recyclingbaustoffe", "Deponie / Entsorgung",
+    "Altlastensanierung", "Brunnen- / Erdwärmebohrungen"
+  ],
+  "Hochbau & Ausbau": [
+    "Zimmerei / Holzbau", "Trockenbau", "Estrich / Boden",
+    "Fliesen / Naturstein", "Maler / Anstreicher", "Schlosser / Metallbau",
+    "Fenster / Türen / Verglasungen", "Innenausbau"
+  ],
+  "Dach & Fassade": [
+    "Dachdecker", "Spengler / Klempner",
+    "Fassadenbau / WDVS", "Gerüstbau"
+  ],
+  "Gebäudetechnik": [
+    "Elektriker / Elektrotechnik", "Installateur / Sanitär",
+    "Heizung / Lüftung / Klima (HVAC)", "PV-Anlagen / Photovoltaik",
+    "Wärmepumpen", "Aufzüge / Lifte", "Brandschutz / Sprinkler",
+    "Gebäudeautomation / Smart Building"
+  ],
+  "Maschinen & Sonstiges": [
+    "Baumaschinenverleih", "Krantechnik / Hebetechnik",
+    "Vermessung / Geodäsie", "Bauplanung / Architektur",
+    "Statik / Tragwerksplanung"
+  ]
+};
+
+let ausgewaehlteGewerke = new Set();
+let ganzOe = true;
+let chatVerlauf = [];
+let chatVerfeinerung = "";
+
+// ═══════════════════════════════════════════════
+// GEWERKE RENDERN
+// ═══════════════════════════════════════════════
+function renderGewerke() {
+  const container = document.getElementById('gewerke-container');
+  container.innerHTML = '';
+  for (const [kat, gewerke] of Object.entries(GEWERKE)) {
+    const katDiv = document.createElement('div');
+    katDiv.innerHTML = `<div class="kategorie-titel">${kat}</div>`;
+    const grid = document.createElement('div');
+    grid.className = 'gewerke-grid';
+    gewerke.forEach(g => {
+      const label = document.createElement('div');
+      label.className = 'gewerk-check' + (ausgewaehlteGewerke.has(g) ? ' ausgewaehlt' : '');
+      label.innerHTML = `<div class="check-box">${ausgewaehlteGewerke.has(g) ? '✓' : ''}</div>${g}`;
+      label.addEventListener('click', () => toggleGewerk(g, label));
+      grid.appendChild(label);
+    });
+    katDiv.appendChild(grid);
+    container.appendChild(katDiv);
+  }
+}
+
+function toggleGewerk(g, el) {
+  if (ausgewaehlteGewerke.has(g)) {
+    ausgewaehlteGewerke.delete(g);
+    el.classList.remove('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '';
+  } else {
+    ausgewaehlteGewerke.add(g);
+    el.classList.add('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '✓';
+  }
+  updateGewerkeTags();
+}
+
+function updateGewerkeTags() {
+  const container = document.getElementById('gewerke-tags');
+  if (ausgewaehlteGewerke.size === 0) {
+    container.innerHTML = '<span style="color:var(--text-dim); font-size:13px;">Noch nichts ausgewählt</span>';
+  } else {
+    container.innerHTML = [...ausgewaehlteGewerke].map(g => `<span class="tag">${g}</span>`).join('');
+  }
+}
+
+function alleGewerkeAuswaehlen() {
+  Object.values(GEWERKE).flat().forEach(g => ausgewaehlteGewerke.add(g));
+  renderGewerke(); updateGewerkeTags();
+}
+
+function alleGewerkeAbwaehlen() {
+  ausgewaehlteGewerke.clear();
+  renderGewerke(); updateGewerkeTags();
+}
+
+// ═══════════════════════════════════════════════
+// ÖSTERREICH DATEN: BEZIRKE & GEMEINDEN
+// ═══════════════════════════════════════════════
+const OESTERREICH = {
+  "Burgenland": {
+    "Eisenstadt (Stadt)": ["Eisenstadt"],
+    "Rust (Stadt)": ["Rust"],
+    "Eisenstadt-Umgebung": ["Breitenbrunn","Donnerskirchen","Großhöflein","Hornstein","Kleinhöflein","Leithaprodersdorf","Mörbisch","Müllendorf","Neufeld an der Leitha","Oggau","Oslip","Purbach","Schützen","St. Margarethen","Steinbrunn","Trausdorf","Wimpassing","Zagersdorf"],
+    "Güssing": ["Bildein","Deutsch Kaltenbrunn","Gerersdorf","Großmürbisch","Güssing","Hackerberg","Heiligenbrunn","Kukmirn","Mickenschlagl","Neustift","Olbendorf","Rauchwart","Sankt Michael","Stinatz","Strem","Tobaj","Tschanigraben","Urbersdorf"],
+    "Jennersdorf": ["Deutsch Minihof","Eltendorf","Jennersdorf","Minihof-Liebau","Mogersdorf","Neuhaus","Rax","Sankt Martin","Weichselbaum"],
+    "Mattersburg": ["Bad Sauerbrunn","Baumgarten","Draßburg","Forchtenstein","Mattersburg","Neutal","Pöttelsdorf","Rohrbach","Schattendorf","Sieggraben","Wiesen","Zemendorf"],
+    "Neusiedl am See": ["Andau","Apetlon","Bruckneudorf","Gols","Halbturn","Illmitz","Jois","Kittsee","Mönchhof","Neusiedl am See","Pamhagen","Parndorf","Podersdorf","Rust","Tadten","Wallern","Weiden","Zurndorf"],
+    "Oberpullendorf": ["Deutschkreutz","Frankenau","Großwarasdorf","Horitschon","Kaisersdorf","Kleinwarasdorf","Lackenbach","Lackendorf","Lockenhaus","Lutzmannsburg","Mannersdorf","Markt St. Martin","Mitterpullendorf","Neutal","Nikitsch","Oberpullendorf","Oberrabnitz","Piringsdorf","Raiding","Steinberg","Stoob","Strebersdorf","Unterfrauenhaid","Unterrabnitz","Weppersdorf"],
+    "Oberwart": ["Bad Tatzmannsdorf","Bernstein","Bocksdorf","Dt. Schützen","Grafenschachen","Großpetersdorf","Kemeten","Kohfidisch","Litzelsdorf","Loipersdorf","Markt Allhau","Markt Neuhodis","Mischendorf","Oberdorf","Oberwart","Pinkafeld","Riedlingsdorf","Rotenturm","Schandorf","Stadtschlaining","Unterwart","Wiesfleck","Wolfau"]
+  },
+  "Kärnten": {
+    "Klagenfurt (Stadt)": ["Klagenfurt am Wörthersee"],
+    "Villach (Stadt)": ["Villach"],
+    "Feldkirchen": ["Albeck","Arriach","Feldkirchen","Glanegg","Gnesau","Himmelberg","Ossiach","Steindorf","Steuerberg","Weizelsdorf"],
+    "Hermagor": ["Dellach","Gitschtal","Hermagor","Kötschach-Mauthen","Lesachtal","Möderndorf","Nampolach","Kirchbach","St. Stefan"],
+    "Klagenfurt-Land": ["Feistritz","Grafenstein","Hörtendorf","Keutschach","Köttmannsdorf","Krumpendorf","Ludmannsdorf","Magdalensberg","Maria Rain","Maria Saal","Maria Wörth","Moosburg","Poggersdorf","Pörtschach","Schiefling","Techelsberg","Töltschach","Velden","Viktring","Wernberg"],
+    "Sankt Veit an der Glan": ["Brückl","Eberstein","Frauenstein","Guttaring","Klein St. Paul","Liebenfels","Micheldorf","Mölbling","Neumarkt","Pulst","Sittenberg","St. Georgen","St. Veit an der Glan","Straßburg","Weitensfeld","Wieting"],
+    "Spittal an der Drau": ["Baldramsdorf","Berg im Drautal","Dellach im Drautal","Flattach","Gmünd","Greifenburg","Großkirchheim","Heiligenblut","Hermagor","Lendorf","Lieserhofen","Mallnitz","Matrei","Millstatt","Möllbrücke","Obervellach","Radenthein","Rangersdorf","Rennweg","Sachsenburg","Seeboden","Spittal","Steinfeld","Stall","Trebesing","Winklern"],
+    "Villach-Land": ["Afritz","Arnoldstein","Arriach","Bad Bleiberg","Feld am See","Finkenstein","Fresach","Hohenthurn","Nötsch","Paternion","Rosegg","Stockenboi","Treffen","Velden","Weißensee"],
+    "Völkermarkt": ["Bleiburg","Diex","Eisenkappel","Ettendorf","Feistritz","Gallizien","Griffen","Kühnsdorf","Neuhaus","Ruden","St. Kanzian","Sittersdorf","Völkermarkt"],
+    "Wolfsberg": ["Bad St. Leonhard","Frantschach","Lavamünd","Reichenfels","Preitenegg","Roßbach","St. Andrä","St. Georgen","St. Paul","Wolfsberg"],
+    "Weißensee": ["Weißensee"]
+  },
+  "Niederösterreich": {
+    "Amstetten": ["Allhartsberg","Amstetten","Ardagger","Aschbach","Behamberg","Ertl","Euratsfeld","Ferschnitz","Haag","Hollenstein","Kematen","Krenstetten","Kürnberg","Neuhofen","Niederweidling","Oeynhausen","Opponitz","Perg","Pierbach","Pochlarn","Ravelsbach","Seitenstetten","St. Georgen","St. Peter","Steinakirchen","Strengberg","Ulmerfeld","Viehdorf","Wallsee","Wang","Weistrach","Winklarn","Wolfsbach","Ybbsitz"],
+    "Baden": ["Alland","Altenmarkt","Bad Fischau","Bad Vöslau","Baden","Berndorf","Ebreichsdorf","Enzesfeld","Furth","Günselsdorf","Heiligenkreuz","Hernstein","Hirtenberg","Klausen-Leopoldsdorf","Leobersdorf","Mitterndorf","Oberwaltersdorf","Pfaffstätten","Pottendorf","Pottenstein","Schönau","Sooss","Tattendorf","Teesdorf","Traiskirchen","Trumau","Weissenbach"],
+    "Bruck an der Leitha": ["Au am Leithaberge","Bruck an der Leitha","Enzersdorf","Fischamend","Göttlesbrunn","Hainburg","Haslau","Höflein","Klein-Neusiedl","Mannersdorf","Moosbrunn","Pachfurth","Petronell","Prellenkirchen","Rohrau","Schwadorf","Siebenbrunn","Sommerein","Wildungsmauer"],
+    "Gänserndorf": ["Angern","Breitenlee","Deutsch-Wagram","Drösing","Eckartsdorf","Engelhartstetten","Gänserndorf","Groißenbrunn","Groß-Enzersdorf","Groß-Schweinbarth","Großhofen","Jedenspeigen","Leopoldsdorf","Loidesthal","Mannsdorf","Marchegg","Markgrafneusiedl","Matzen","Neusiedl an der Zaya","Ollersdorf","Orth an der Donau","Palterndorf","Prottes","Raasdorf","Schönkirchen","Seyring","Silberwald","Strasshof","Velm-Götzendorf","Weiden","Weikendorf","Zistersdorf"],
+    "Gmünd": ["Amaliendorf","Brandnähe","Gmünd","Groß Gerungs","Hirschbach","Hoheneich","Kirchberg am Walde","Langschlag","Moorbad Harbach","Reingers","Schrems","St. Martin","Waldenstein","Weitra","Zwettl"],
+    "Hollabrunn": ["Grabern","Göllersdorf","Hadres","Hardegg","Haugsdorf","Hollabrunn","Hohenwarth","Mailberg","Nappersdorf","Ravelsbach","Retz","Retzerland","Röschitz","Schrattenthal","Seefeld","Watzelsdorf","Wullersdorf","Zellerndorf","Ziersdorf"],
+    "Horn": ["Altenburg","Burgschleinitz","Drosendorf","Eggenburg","Gars am Kamp","Horn","Irnfritz","Maissau","Meiseldorf","Pernegg","Rosenburg","Röhrenbach","Sigmundsherberg","St. Bernhard","Straning","Weitersfeld"],
+    "Korneuburg": ["Bisamberg","Enzersfeld","Ernstbrunn","Großmugl","Hausleiten","Langenzersdorf","Leitzersdorf","Leobendorf","Niederhollabrunn","Rußbach","Spillern","Stockerau","Stetteldorf","Straßhof","Ulrichskirchen","Weinsteig"],
+    "Krems an der Donau (Stadt)": ["Krems an der Donau"],
+    "Krems (Land)": ["Aggsbach","Dürnstein","Furth","Gedersdorf","Getzersdorf","Hadersdorf","Herzogenburg","Kammern","Krems","Langenlois","Lengenfeld","Mautern","Mauternbach","Michelhausen","Mitterskirchen","Nußdorf","Oberstockstall","Paudorf","Pöggstall","Rohrendorf","Rossatz","Schiltern","Senftenberg","Spitz","St. Pölten","Stratzing","Traismauer","Wagram","Walkersdorf","Weißenkirchen","Weitenegg"],
+    "Lilienfeld": ["Eschenau","Hainfeld","Hohenberg","Kleinzell","Lilienfeld","Mitterbach","Ramsau","Rohrbach","St. Aegyd","St. Veit","Traisen","Türnitz"],
+    "Melk": ["Aggsbach","Artstetten","Bergern","Blindenmarkt","Dorfstetten","Dunkelsteinerwald","Emmersdorf","Erlauf","Gaming","Golling","Gross","Großpriel","Grünau","Hafnerbach","Kilb","Klein-Pöchlarn","Krummnussbaum","Leiben","Loosdorf","Marbach","Maria Taferl","Melk","Münichreith","Nöchling","Ober-Grafendorf","Oberndorf","Persenbeug","Petzenkirchen","Pöggstall","Pölla","Purgstall","Rabenstein","Schollach","Schrattenthal","Schwarzenbach","St. Georgen","St. Gotthard","St. Leonhard","St. Martin","Steinakirchen","Texing","Wang","Weiten","Weitenegg","Wieselburg","Wolfsbach","Ybbs","Ybbsitz"],
+    "Mistelbach": ["Asparn","Drasenhofen","Dürnkrut","Fallbach","Falkenstein","Gaweinstal","Großkrut","Herrnbaumgarten","Hohenruppersdorf","Kettlasbrunn","Laa an der Thaya","Ladendorf","Loosdorf","Michelstetten","Mistelbach","Nexing","Niederkreuzstetten","Paasdorf","Palterndorf","Poysdorf","Schrattenberg","Staatz","Stronsdorf","Sulz im Weinviertel","Velm","Wulzeshofen","Zistersdorf"],
+    "Mödling": ["Biedermannsdorf","Brühl","Giesshübl","Gumpoldskirchen","Guntramsdorf","Hinterbrühl","Kaltenleutgeben","Laxenburg","Maria Enzersdorf","Mödling","Münchendorf","Perchtoldsdorf","Vösendorf","Wiener Neudorf"],
+    "Neunkirchen": ["Aspang","Aspangberg","Breitenau","Bromberg","Edlitz","Enzenreith","Gloggnitz","Grafenbach","Grünbach","Höflein","Hohe Wand","Kirchberg am Wechsel","Lichtenegg","Natschbach","Neunkirchen","Otterthal","Payerbach","Prigglitz","Reichenau","Rohr","Scheiblingkirchen","Schottwien","Schwarzau","Semmering","Ternitz","Thomasberg","Wartmannstetten","Wimpassing","Wolfsbach"],
+    "Sankt Pölten (Stadt)": ["Sankt Pölten"],
+    "Sankt Pölten (Land)": ["Böheimkirchen","Eichgraben","Gerersdorf","Hafnerbach","Haunoldstein","Herzogenburg","Kapelln","Karlstetten","Kilb","Kirchberg","Laaben","Loosdorf","Maria-Anzbach","Mautern","Michelbach","Neidling","Ober-Grafendorf","Obritzberg","Prinzersdorf","Pyhra","Rabenstein","Ried","Rott","Schwarzenbach","St. Margarethen","St. Pölten","Statzendorf","Texing","Traismauer","Wagram","Weißenburg","Wilhelmsburg","Wölbling","Würmla"],
+    "Scheibbs": ["Annaberg","Bürg","Frankenfels","Gaming","Göstling","Gresten","Gresten-Land","Kienberg","Lackenhof","Lunz am See","Pöchlarn","Purgstall","Randegg","Reinsberg","Scheibbs","St. Anton","St. Georgen","Wang","Wang","Wieselburg","Wolfpassing","Ybbsitz"],
+    "Tulln": ["Atzenbrugg","Bierbaum","Columns","Dürnrohr","Engelmannsbrunn","Fels","Grafenwörth","Großweikersdorf","Guttenbrunn","Heiligeneich","Judenau","Klosterneuburg","Königstetten","Langenlebarn","Muckendorf","Niederhollabrunn","Nußdorf","Pixendorf","Sieghartskirchen","Sierndorf","Spaczenbach","St. Andrä","Stetteldorf","Straß","Tulbing","Tulln","Wördern","Zeiselmauer"],
+    "Waidhofen an der Thaya": ["Dietmanns","Dobersberg","Gastern","Groß-Siegharts","Kautzen","Karlstein","Ludweis","Pfaffenschlag","Raabs","Thaya","Vitis","Waidhofen an der Thaya","Waldkirchen","Windigsteig"],
+    "Waidhofen an der Ybbs (Stadt)": ["Waidhofen an der Ybbs"],
+    "Wiener Neustadt (Stadt)": ["Wiener Neustadt"],
+    "Wiener Neustadt (Land)": ["Bad Erlach","Bad Fischau","Bromberg","Hochwolkersdorf","Hollenthon","Katzelsdorf","Lanzenkirchen","Lichtenwörth","Markt Piesting","Muggendorf","Rohrbach","Seebenstein","Sollenau","Theresienfeld","Walpersbach","Winzendorf","Wöllersdorf","Zöbern"],
+    "Wien-Umgebung": ["Gablitz","Klosterneuburg","Mauerbach","Pressbaum","Purkersdorf","Wolfsgraben"],
+    "Zwettl": ["Allentsteig","Arbesbach","Bad Traunstein","Bärnkopf","Friedersbach","Grafenschlag","Groß Gerungs","Gutenbrunn","Kirchschlag","Langschlag","Lichtenau","Martinsberg","Ottenschlag","Pölla","Rappottenstein","Sallingberg","Schönbach","Schwarzenau","St. Martin","Traunstein","Waldhausen","Weitra","Zwettl"]
+  },
+  "Oberösterreich": {
+    "Braunau am Inn": ["Altheim","Burgkirchen","Eggelsberg","Geretsberg","Gilgenberg","Handenberg","Haigermoos","Helpfau","Hochburg","Höhnhart","Jeging","Kirchberg","Lengau","Lochen","Mauerkirchen","Mining","Moosbach","Munderfing","Neukirchen","Ostermiething","Palting","Perwang","Polling","Reichersberg","Roßbach","Schwand","Schalchen","St. Georgen","St. Johann","St. Pantaleon","St. Peter","St. Radegund","Tarsdorf","Trimmelkam","Überackern","Weng"],
+    "Eferding": ["Aschach an der Donau","Eferding","Fraham","Haibach ob der Donau","Hartkirchen","Hinzenbach","Kematen an der Krems","Michaelnbach","Natternbach","Nebelberg","Prambachkirchen","Pupping","Scharten","St. Marienkirchen","St. Thomas","Stroheim","Waldhausen","Wesenufer"],
+    "Freistadt": ["Frei-Stadt","Freistadt","Gutau","Hagenberg","Kefermarkt","Lasberg","Leopoldschlag","Losenstein","Neumarkt","Niederwaldkirchen","Pierbach","Pregarten","Rainbach","Reichenthal","Sandl","St. Georgen","St. Leonhard","Tragwein","Unterweitersdorf","Waldburg","Wartberg","Weitersfelden","Windhaag","Zell"],
+    "Gmunden": ["Altmünster","Ebensee","Gmunden","Grünau im Almtal","Gschwandt","Kirchham","Langwies","Laakirchen","Neukirchen","Ohlsdorf","Pinsdorf","Roitham","Scharnstein","St. Konrad","St. Ludwig","Steinbach am Attersee","Traunkirchen","Vorchdorf","Weißenbach","Weyregg"],
+    "Grieskirchen": ["Aistersheim","Bad Schallerbach","Gallspach","Gaspoltshofen","Grieskirchen","Haag am Hausruck","Heiligenberg","Hofkirchen","Kallham","Kematen","Krenglbach","Meggenhofen","Michaelnbach","Natternbach","Neukirchen","Offenhausen","Peuerbach","Pollham","Pram","Rottenbach","Schlüßlberg","St. Agatha","St. Georgen","St. Thomas","Steegen","Taufkirchen","Tollot","Weibern","Wels","Weißkirchen"],
+    "Kirchdorf an der Krems": ["Grünburg","Hinterstoder","Inzersdorf","Kirchdorf an der Krems","Klaus","Kremsmünster","Leonstein","Micheldorf","Molln","Nußbach","Oberschlierbach","Pettenbach","Rosenau","Roßleithen","Schlierbach","Sipbachzell","Spital am Pyhrn","St. Pankraz","Steinbach an der Steyr","Steinbach am Ziehberg","Viechtwang","Waldneukirchen","Wartberg an der Krems","Windischgarsten"],
+    "Linz (Stadt)": ["Linz"],
+    "Linz-Land": ["Allhaming","Ansfelden","Asten","Enns","Hargelsberg","Hofstetten","Hörsching","Kematen","Kirchberg","Kronstorf","Langenstein","Leonding","Neuhofen an der Krems","Niederneukirchen","Pasching","Piberbach","Pucking","Raffelstetten","Siegharting","Sipbachzell","St. Florian","St. Marien","Traun","Weißkirchen","Wilhering"],
+    "Perg": ["Allerheiligen","Arbing","Bad Zell","Baumgartenberg","Dimbach","Grein","Klam","Langenstein","Luftenberg","Mauthausen","Mitterkirchen","Münzbach","Naarn","Perg","Rechberg","Schwertberg","St. Georgen","St. Nikola","St. Thomas","Windhaag","Zell"],
+    "Ried im Innkreis": ["Antiesenhofen","Aurolzmünster","Eberschwang","Eitzing","Geiersberg","Gurten","Hohenzell","Kirchdorf am Inn","Lohnsburg","Mehrnbach","Mettmach","Mörschwang","Neuhofen im Innkreis","Obernberg am Inn","Ort im Innkreis","Pattigham","Peterskirchen","Polling","Pramet","Reichersberg","Ried im Innkreis","Schildorn","Schwand","Seekirchen","Senftenbach","Stelzen","St. Georgen","St. Marienkirchen","Tumeltsham","Utzenaich","Waldzell","Weilbach"],
+    "Rohrbach": ["Ahorn","Altenfelden","Arnreit","Aschach","Atzesberg","Auberg","Bad Leonfelden","Berg","Brunnenthal","Dorf an der Pram","Feldkirchen","Freistadtl","Gallneukirchen","Glasau","Gramastetten","Haslach","Helfenberg","Herzogsdorf","Hofkirchen","Kleinzell","Kollerschlag","Königswiesen","Klaffer","Lembach","Lichtenau","Münzbach","Neufelden","Niederwaldkirchen","Oberneukirchen","Oepping","Peilstein","Pürnstein","Rainbach","Rohrbach","Sarleinsbach","Schwarzenberg","Senftenberg","St. Johann","St. Martin","St. Oswald","St. Peter","St. Stefan","St. Ulrich","Ulrichsberg","Vorderweißenbach","Waldburg","Waxenberg","Weitersfelden"],
+    "Schärding": ["Andorf","Brunnenthal","Dorf an der Pram","Eggerding","Engelhartszell","Esternberg","Freinberg","Kopfing","Münzkirchen","Neuhaus am Inn","Raab","Rainbach","Riedau","Schärding","Schwand","St. Aegidi","St. Florian","St. Marienkirchen","St. Roman","St. Willibald","Suben","Taufkirchen","Vichtenstein","Waldkirchen","Wernstein","Zell"],
+    "Steyr (Stadt)": ["Steyr"],
+    "Steyr-Land": ["Aschach an der Steyr","Bad Hall","Dietach","Gaflenz","Garsten","Gleiß","Großraming","Haidershofen","Kleinreifling","Laussa","Losenstein","Magdalena","Maria Neustift","Molln","Nußbach","Pfarrkirchen","Reichraming","Rosenau","Schiedlberg","Sierning","Sipbachzell","St. Florian","St. Georgen","St. Peter","St. Ulrich","Ternberg","Waldneukirchen","Weißkirchen","Wolfsberg","Wolfern"],
+    "Urfahr-Umgebung": ["Altenberg","Altenstadt","Aspach","Bad Leonfelden","Bennewitz","Engerwitzdorf","Feldkirchen","Gallneukirchen","Gramastetten","Hellmonsödt","Herzogsdorf","Hinterberg","Kirchschlag","Lichtenberg","Lichtenau","Neustift","Oberndorf","Oberneukirchen","Ottenschlag","Ottensheim","Puchenau","Reichenthal","Reichenau","Rohrbach","Schenkenfelden","Sonnberg","St. Gotthard","Steyregg","Unterweißenbach","Vorderweißenbach","Waldburg","Walding","Wartberg","Waxenberg","Zwettl"],
+    "Vöcklabruck": ["Altenhof","Ampflwang","Attersee","Attnang-Puchheim","Aurach","Berg","Desselbrunn","Döbernach","Fornach","Frankenmarkt","Gampern","Innerschwand","Kirchham","Kogl","Lenzing","Loibichl","Mondsee","Neukirchen","Nußdorf","Oberhofen","Oberwang","Ottnang","Pfaffing","Pilsbach","Pitzenberg","Pöndorf","Puchkirchen","Redleiten","Regau","Roitham","Rüstorf","Schlatt","Schörfling","Schwanenstadt","Seewalchen","St. Georgen","St. Gilgen","St. Lorenz","Steindorf","Straß","Timelkam","Ungenach","Vöcklabruck","Vöcklamarkt","Weißenkirchen","Weyregg","Zell am Moos","Zell am Pettenfirst"],
+    "Wels (Stadt)": ["Wels"],
+    "Wels-Land": ["Aichkirchen","Bachmanning","Buchkirchen","Desselbrunn","Edt","Fischlham","Gunskirchen","Holzhausen","Krenglbach","Lambach","Lichtenegg","Marchtrenk","Neukirchen","Pennewang","Pichl","Puchberg","Raab","Redlham","Roitham","Schleißheim","Sipbachzell","Steinhaus","St. Agatha","St. Georgen","Thalheim","Tollet","Weißkirchen"]
+  },
+  "Salzburg": {
+    "Salzburg (Stadt)": ["Salzburg"],
+    "Hallein": ["Abtenau","Adnet","Annaberg-Lungötz","Bad Dürrnberg","Ebenau","Golling","Hallein","Hintersee","Krispl","Kuchl","Lamprechtshausen","Oberalm","Puch","Rußbach","St. Koloman","Scheffau","Schwarzach","Tarsdorf"],
+    "Salzburg-Umgebung": ["Anif","Bergheim","Bürmoos","Elixhausen","Elsbethen","Eugendorf","Faistenau","Fuschl am See","Großgmain","Hallwang","Henndorf","Hof bei Salzburg","Koppl","Lamprechtshausen","Mattsee","Neumarkt","Nußdorf","Obertrum","Plainfeld","Puch","Salzburg","Schleedorf","Seekirchen","Siezenheim","St. Georgen","Strobl","Thalgau","Wals-Siezenheim"],
+    "St. Johann im Pongau": ["Altenmarkt","Annaberg","Bischofshofen","Eben","Flachau","Forstau","Goldegg","Großarl","Hüttau","Kleinarl","Mühlbach","Pfarrwerfen","Radstadt","Schwarzach","St. Johann","St. Martin","St. Veit","Untertauern","Wagrain","Werfen","Werfenweng"],
+    "Tamsweg": ["Göriach","Lessach","Mariapfarr","Mauterndorf","Muhr","Ramingstein","St. Andrä","St. Margarethen","St. Michael","Tamsweg","Thomatal","Tweng","Unternberg","Weißpriach"],
+    "Zell am See": ["Bramberg","Bruck","Dienten","Fusch","Hollersbach","Kaprun","Kirchberg","Krimml","Lend","Lofer","Maishofen","Maria Alm","Mittersill","Niedernsill","Piesendorf","Rauris","Saalbach-Hinterglemm","Saalfelden","St. Martin","St. Veit","Stuhlfelden","Taxenbach","Unken","Uttendorf","Viehhofen","Wald","Zell am See"]
+  },
+  "Steiermark": {
+    "Bruck-Mürzzuschlag": ["Aflenz","Breitenau","Bruck an der Mur","Frohnleiten","Kapfenberg","Kindberg","Krieglach","Langenwang","Mariazell","Mürzzuschlag","Neuberg","Pernegg","Schwadorf","St. Barbara","St. Lorenzen","St. Marein","Thörl","Turnau","Veitsch","Wartberg"],
+    "Deutschlandsberg": ["Bad Gams","Deutschlandsberg","Eibiswald","Frauental","Groß St. Florian","Grötsch","Hollenegg","Kitzeck","Lannach","Leibnitz","Limberg","Osterwitz","Preding","Schwanberg","Stainz","Stein","Wettmannstätten"],
+    "Feldbach": ["Bad Gleichenberg","Bad Radkersburg","Fehring","Feldbach","Fürstenfeld","Gnas","Goritz","Großsteinbach","Halbenrain","Kirchbach","Klöch","Mettersdorf","Mureck","Murfeld","Oberhaag","Pengg","Poppendorf","Radkersburg","Raning","Riegersburg","Rottenmann","St. Anna","St. Peter","Straden","Tieschen"],
+    "Graz (Stadt)": ["Graz"],
+    "Graz-Umgebung": ["Dobl","Feldkirchen","Fernitz","Gössendorf","Gratwein","Gratkorn","Hart","Hitzendorf","Kalsdorf","Kainbach","Laßnitzhöhe","Lieboch","Nestelbach","Pirka","Raaba","Seiersberg","Stattegg","Stengg","Straßgang","Thal","Übelbach","Vasoldsberg","Vordersdorf","Weinitzen"],
+    "Hartberg-Fürstenfeld": ["Bad Blumau","Birkfeld","Friedberg","Fürstenfeld","Grafendorf","Großsteinbach","Hartberg","Kaindorf","Kirchberg an der Raab","Lafnitz","Loipersdorf","Mönichwald","Neudau","Pöllau","Pöllauberg","Riegersburg","Rohrbach","Rohrbach an der Lafnitz","St. Johann","Vorau","Waldbach","Wörth an der Lafnitz"],
+    "Leibnitz": ["Ehrenhausen","Gamlitz","Gleinstätten","Groß Wilfersdorf","Heimschuh","Kaindorf","Kitzeck","Leutschach","Lipsch","Lollberg","Maggau","Merkendorf","Mureck","Murfeld","Oberhaag","Pölfing-Brunn","Retznei","Schwarzautal","Spielfeld","St. Andrä","St. Johann","St. Marein","St. Nikolai","Stainz","Straß","Tillmitsch","Wagna","Wildon"],
+    "Leoben": ["Breitenau","Eisenerz","Kalwang","Kammern","Kraubath","Leoben","Mautern","Niklasdorf","Proleb","Radmer","Rötz","Sei","St. Michael","St. Stefan","Traboch","Trofaiach","Vordernberg"],
+    "Liezen": ["Admont","Aich","Aigen","Altaussee","Ardning","Bad Aussee","Bad Mitterndorf","Donnersbach","Gröbming","Grundlsee","Gstatterboden","Hall","Haus im Ennstal","Irdning","Kleinsölk","Landl","Lassing","Liezen","Michaelerberg","Mitterberg","Natterriegel","Niederöblarn","Öblarn","Oppenberg","Paltental","Pichl","Pruggern","Pürgschachen","Radmer","Ramsau","Rohrmoos","Rottenmann","Schladming","Selzthal","Sölk","Stainach","Steinach","Trieben","Weißenbach","Wörschach","Weng","Ydria"],
+    "Murau": ["Frojach","Görtschach","Greisdorf","Hohentauern","Katsch","Krakau","Murau","Niederwölz","Oberwölz","Ranten","Reckendorf","Rothenfels","Schöder","Seetal","Stadl","St. Blasen","St. Georgen","St. Lambrecht","St. Lorenzen","St. Marein","St. Margarethen","St. Peter","Teufenbach","Unzmarkt","Zeutschach"],
+    "Murtal": ["Fohnsdorf","Judenburg","Knittelfeld","Kobenz","Mariahof","Obdach","Oberkurzheim","Pöls","Rachau","Reifling","Seckau","Spielberg","St. Georgen","St. Margarethen","Weißkirchen","Zeltweg"],
+    "Südoststeiermark": ["Anger","Bairisch Kölldorf","Buch-St. Magdalena","Eichberg","Fehring","Feldbach","Gnas","Grabersdorf","Großsteinbach","Halbenrain","Kirchbach","Klöch","Mureck","Murfeld","Oberhaag","Poppendorf","Radkersburg","Riegersburg","Rottenstein","St. Anna","St. Peter","Straden","Tieschen"]
+  },
+  "Tirol": {
+    "Innsbruck (Stadt)": ["Innsbruck"],
+    "Imst": ["Arzl im Pitztal","Auer","Dormitz","Haiming","Imst","Imsterberg","Karres","Karrösten","Längenfeld","Latschburg","Leins","Mieming","Mils","Mötz","Nassereith","Obsteig","Rietz","Roppen","Sautens","Silz","Sölden","Stams","Tarrenz","Umhausen","Wenns"],
+    "Innsbruck-Land": ["Absam","Aldrans","Ampass","Axams","Baumkirchen","Birgitz","Ellbögen","Flaurling","Fritzens","Gnadenwald","Götzens","Grinzens","Hall in Tirol","Hatting","Hochzirl","Innsbruck","Kematen","Kolsass","Kolsassberg","Lans","Lans","Mils","Mühlbachl","Mutters","Natters","Nößlach","Oberhofen","Patsch","Pfaffenhofen","Ranggen","Rum","Rinn","Schönberg","Sellrain","Sistrans","Tulfes","Thaur","Tratzberg","Volders","Völs","Wattens","Wattenberg","Zirl"],
+    "Kitzbühel": ["Aurach","Brixen im Thale","Ellmau","Going","Hopfgarten","Itter","Jochberg","Kelchsau","Kirchberg","Kirchdorf","Kitzbühel","Kössen","Reith","Scheffau","Söll","St. Johann","St. Ulrich","Westendorf"],
+    "Kufstein": ["Angath","Angerberg","Breitenbach","Brixlegg","Erl","Kirchbichl","Kramsach","Kufstein","Langkampfen","Mariastein","Münster","Niederndorf","Niederndorferberg","Radfeld","Rattenberg","Reith","Schwoich","Thiersee","Wörgl"],
+    "Landeck": ["Fendels","Fiss","Flirsch","Grins","Imsterberg","Ischgl","Kauns","Kaunertal","Kaunerberg","Ladis","Landeck","Nauders","Path","Pfunds","Prutz","Ried im Oberinntal","Serfaus","See","Spiss","St. Anton am Arlberg","Stanzach","Tobadill","Tösens","Zams"],
+    "Lienz": ["Abfaltersbach","Ainet","Amlach","Anras","Assling","Außervillgraten","Dölsach","Gaimberg","Heinfels","Hopfgarten im Defereggen","Innervillgraten","Iselsberg-Stronach","Kals am Großglockner","Kartitsch","Lavant","Leisach","Lienz","Lienzer Dolomiten","Matrei in Osttirol","Nikolsdorf","Nußdorf-Debant","Oberlienz","Obertilliach","Prägraten","Sillian","St. Jakob","St. Johann","St. Veit","Strassen","Thurn","Tristach","Untertilliach","Virgen","Winklern"],
+    "Reutte": ["Biberwier","Bichlbach","Breitenwang","Ehrwald","Elbigenalp","Elmen","Forchach","Grän","Häselgehr","Heiterwang","Höfen","Holzgau","Jungholz","Kaisers","Lechaschau","Lermoos","Musau","Namlos","Nesselwängle","Pflach","Pinswang","Reutte","Rinnen","Schattwald","Stanzach","Steeg","Tannheim","Vils","Wängle","Weißenbach","Zöblen"],
+    "Schwaz": ["Achenkirch","Buch in Tirol","Eben am Achensee","Fügenberg","Fügen","Gerlos","Hart im Zillertal","Hippach","Jenbach","Kaltenbach","Kolsassberg","Mayrhofen","Münster","Neukirchen","Pill","Rattenberg","Rohrberg","Schwaz","Stans","Stumm","Stummerberg","Terfens","Uderns","Vomp","Weer","Weerberg","Wiesing","Zell am Ziller","Zellberg"]
+  },
+  "Vorarlberg": {
+    "Bludenz": ["Bartholomäberg","Bludenz","Brand","Bürs","Bürserberg","Dalaas","Fontanella","Gaschurn","Klösterle","Lech","Lorüns","Ludesch","Nüziders","Raggal","St. Anton im Montafon","St. Gallenkirch","St. Gerold","Schruns","Silbertal","Stallehr","Thüringen","Thüringerberg","Vandans"],
+    "Bregenz": ["Alberschwende","Andelsbuch","Au","Bezau","Bildstein","Bizau","Bregenz","Buch","Doren","Egg","Eichenberg","Hard","Hittisau","Höchst","Hörbranz","Kennelbach","Krumbach","Langenegg","Langen","Lingenau","Lochau","Mellau","Mittelberg","Möggers","Moos","Reuthe","Riefensberg","Rorschach","Schwarzach","Sibratsgfäll","Sulzberg","Warth","Wolfurt"],
+    "Dornbirn": ["Dornbirn","Hohenems","Lustenau"],
+    "Feldkirch": ["Düns","Dünserberg","Feldkirch","Frastanz","Furx","Göfis","Koblach","Laterns","Meiningen","Muntlix","Rankweil","Röns","Röthis","Schlins","Schnifis","Sulz","Übersaxen","Viktorsberg","Weiler","Zwischenwasser"]
+  },
+  "Wien": {
+    "Wien": ["1. Bezirk (Innere Stadt)","2. Bezirk (Leopoldstadt)","3. Bezirk (Landstraße)","4. Bezirk (Wieden)","5. Bezirk (Margareten)","6. Bezirk (Mariahilf)","7. Bezirk (Neubau)","8. Bezirk (Josefstadt)","9. Bezirk (Alsergrund)","10. Bezirk (Favoriten)","11. Bezirk (Simmering)","12. Bezirk (Meidling)","13. Bezirk (Hietzing)","14. Bezirk (Penzing)","15. Bezirk (Rudolfsheim)","16. Bezirk (Ottakring)","17. Bezirk (Hernals)","18. Bezirk (Währing)","19. Bezirk (Döbling)","20. Bezirk (Brigittenau)","21. Bezirk (Floridsdorf)","22. Bezirk (Donaustadt)","23. Bezirk (Liesing)"]
+  }
+};
+
+// ═══════════════════════════════════════════════
+// GEBIET FUNKTIONEN – KACHEL-SYSTEM
+// ═══════════════════════════════════════════════
+let ausgewaehlteBL = new Set();
+let ausgewaehlteBez = new Set(); // "BL||Bezirk"
+let ausgewaehlteGem = new Set(); // "BL||Bezirk||Gemeinde"
+
+const BUNDESLAENDER = ["Burgenland","Kärnten","Niederösterreich","Oberösterreich","Salzburg","Steiermark","Tirol","Vorarlberg","Wien"];
+
+function renderBundeslaender() {
+  const grid = document.getElementById('bl-grid');
+  grid.innerHTML = '';
+  BUNDESLAENDER.forEach(bl => {
+    const div = document.createElement('div');
+    div.className = 'gewerk-check' + (ausgewaehlteBL.has(bl) ? ' ausgewaehlt' : '');
+    div.innerHTML = `<div class="check-box">${ausgewaehlteBL.has(bl) ? '✓' : ''}</div>${bl}`;
+    div.addEventListener('click', () => toggleBL(bl, div));
+    grid.appendChild(div);
+  });
+}
+
+function toggleBL(bl, el) {
+  if (ausgewaehlteBL.has(bl)) {
+    ausgewaehlteBL.delete(bl);
+    el.classList.remove('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '';
+    // Bezirke + Gemeinden dieses BL abwählen
+    [...ausgewaehlteBez].filter(k => k.startsWith(bl + '||')).forEach(k => ausgewaehlteBez.delete(k));
+    [...ausgewaehlteGem].filter(k => k.startsWith(bl + '||')).forEach(k => ausgewaehlteGem.delete(k));
+  } else {
+    ausgewaehlteBL.add(bl);
+    el.classList.add('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '✓';
+    // Ganz Österreich deaktivieren
+    ganzOe = false;
+    document.getElementById('ganz-oe-btn').classList.remove('ausgewaehlt');
+    document.getElementById('ganz-oe-check').textContent = '';
+  }
+  renderBezirke();
+  updateGebietZusammenfassung();
+}
+
+function renderBezirke() {
+  const wrapper = document.getElementById('bezirke-wrapper');
+  const grid = document.getElementById('bez-grid');
+  grid.innerHTML = '';
+
+  if (ausgewaehlteBL.size === 0) {
+    wrapper.style.display = 'none';
+    document.getElementById('gemeinden-wrapper').style.display = 'none';
+    return;
+  }
+
+  wrapper.style.display = 'block';
+
+  ausgewaehlteBL.forEach(bl => {
+    if (!OESTERREICH[bl]) return;
+
+    // Trennlinie bei mehreren Bundesländern
+    if (ausgewaehlteBL.size > 1) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'grid-column:1/-1; font-family:"DM Mono",monospace; font-size:10px; color:var(--gold); letter-spacing:2px; padding:8px 0 4px; border-bottom:1px solid rgba(212,160,23,0.2); margin-bottom:4px;';
+      sep.textContent = bl.toUpperCase();
+      grid.appendChild(sep);
+    }
+
+    Object.keys(OESTERREICH[bl]).forEach(bez => {
+      const key = bl + '||' + bez;
+      const div = document.createElement('div');
+      div.className = 'gewerk-check' + (ausgewaehlteBez.has(key) ? ' ausgewaehlt' : '');
+      div.innerHTML = `<div class="check-box">${ausgewaehlteBez.has(key) ? '✓' : ''}</div>${bez}`;
+      div.addEventListener('click', () => toggleBez(bl, bez, key, div));
+      grid.appendChild(div);
+    });
+  });
+}
+
+function toggleBez(bl, bez, key, el) {
+  if (ausgewaehlteBez.has(key)) {
+    ausgewaehlteBez.delete(key);
+    el.classList.remove('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '';
+    // Gemeinden dieses Bezirks abwählen
+    [...ausgewaehlteGem].filter(k => k.startsWith(key + '||')).forEach(k => ausgewaehlteGem.delete(k));
+  } else {
+    ausgewaehlteBez.add(key);
+    el.classList.add('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '✓';
+  }
+  renderGemeinden();
+  updateGebietZusammenfassung();
+}
+
+function renderGemeinden() {
+  const wrapper = document.getElementById('gemeinden-wrapper');
+  const grid = document.getElementById('gem-grid');
+  grid.innerHTML = '';
+
+  if (ausgewaehlteBez.size === 0) {
+    wrapper.style.display = 'none';
+    return;
+  }
+
+  wrapper.style.display = 'block';
+
+  ausgewaehlteBez.forEach(key => {
+    const [bl, bez] = key.split('||');
+    if (!OESTERREICH[bl]?.[bez]) return;
+
+    if (ausgewaehlteBez.size > 1) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'grid-column:1/-1; font-family:"DM Mono",monospace; font-size:10px; color:var(--gold); letter-spacing:2px; padding:8px 0 4px; border-bottom:1px solid rgba(212,160,23,0.2); margin-bottom:4px;';
+      sep.textContent = bez.toUpperCase();
+      grid.appendChild(sep);
+    }
+
+    OESTERREICH[bl][bez].forEach(gem => {
+      const gemKey = key + '||' + gem;
+      const div = document.createElement('div');
+      div.className = 'gewerk-check' + (ausgewaehlteGem.has(gemKey) ? ' ausgewaehlt' : '');
+      div.innerHTML = `<div class="check-box">${ausgewaehlteGem.has(gemKey) ? '✓' : ''}</div>${gem}`;
+      div.addEventListener('click', () => toggleGem(gemKey, div));
+      grid.appendChild(div);
+    });
+  });
+}
+
+function toggleGem(key, el) {
+  if (ausgewaehlteGem.has(key)) {
+    ausgewaehlteGem.delete(key);
+    el.classList.remove('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '';
+  } else {
+    ausgewaehlteGem.add(key);
+    el.classList.add('ausgewaehlt');
+    el.querySelector('.check-box').textContent = '✓';
+  }
+  updateGebietZusammenfassung();
+}
+
+function toggleGanzOe() {
+  ganzOe = !ganzOe;
+  document.getElementById('ganz-oe-btn').classList.toggle('ausgewaehlt', ganzOe);
+  document.getElementById('ganz-oe-check').textContent = ganzOe ? '✓' : '';
+  if (ganzOe) {
+    ausgewaehlteBL.clear();
+    ausgewaehlteBez.clear();
+    ausgewaehlteGem.clear();
+    renderBundeslaender();
+    document.getElementById('bezirke-wrapper').style.display = 'none';
+    document.getElementById('gemeinden-wrapper').style.display = 'none';
+  }
+  updateGebietZusammenfassung();
+}
+
+function updateGebietZusammenfassung() {
+  const el = document.getElementById('gebiet-zusammenfassung');
+  if (!el) return;
+
+  if (ganzOe) {
+    el.innerHTML = `<div class="tag-liste"><span class="tag">🇦🇹 Ganz Österreich</span></div>`;
+    return;
+  }
+
+  let tags = '';
+  ausgewaehlteBL.forEach(bl => {
+    const bezImBL = [...ausgewaehlteBez].filter(k => k.startsWith(bl + '||'));
+    if (bezImBL.length === 0) {
+      tags += `<span class="tag">📍 ${bl} (alle Bezirke)</span>`;
+    } else {
+      bezImBL.forEach(bezKey => {
+        const bez = bezKey.split('||')[1];
+        const gemImBez = [...ausgewaehlteGem].filter(k => k.startsWith(bezKey + '||'));
+        if (gemImBez.length === 0) {
+          tags += `<span class="tag">📍 ${bez}</span>`;
+        } else {
+          gemImBez.forEach(gemKey => {
+            tags += `<span class="tag">📍 ${gemKey.split('||')[2]}</span>`;
+          });
+        }
+      });
+    }
+  });
+
+  el.innerHTML = tags
+    ? `<div style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text-dim); margin-bottom:6px;">AUSWAHL:</div><div class="tag-liste">${tags}</div>`
+    : '';
+}
+
+// ═══════════════════════════════════════════════
+// CHAT
+// ═══════════════════════════════════════════════
+async function initChat() {
+  const firma = document.getElementById('firma').value || 'Ihr Unternehmen';
+  const gewerkeList = [...ausgewaehlteGewerke].slice(0, 5).join(', ');
+  const gebiet = ganzOe ? 'ganz Österreich' : 'ausgewählte Regionen';
+
+  const begruessung = `Hallo! Ich habe Ihre Konfiguration geladen:\n\n📍 Gebiet: ${gebiet}\n🔧 Gewerke (${ausgewaehlteGewerke.size}): ${gewerkeList}${ausgewaehlteGewerke.size > 5 ? '...' : ''}\n\nMöchten Sie die Suche noch verfeinern? Sie können mir z.B. sagen:\n• Mindestprojektgröße (z.B. "nur ab 500.000 €")\n• Spezielle Materialien oder Methoden\n• Bestimmte Projekttypen\n• Zeitraum (z.B. "Projekte die 2025 starten")`;
+
+  document.getElementById('ki-begruessung').textContent = begruessung;
+  chatVerlauf = [{ role: 'assistant', content: begruessung }];
+}
+
+function chatNachrichtHinzufuegen(text, istKi) {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'chat-nachricht';
+  div.innerHTML = `
+    <div class="chat-avatar ${istKi ? 'ki' : 'user'}">${istKi ? 'K' : 'S'}</div>
+    <div class="chat-text">${text.replace(/\n/g, '<br>')}</div>
+  `;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function typingAnzeigen() {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'chat-nachricht';
+  div.id = 'typing-indicator';
+  div.innerHTML = `
+    <div class="chat-avatar ki">K</div>
+    <div class="chat-text"><div class="typing"><span></span><span></span><span></span></div></div>
+  `;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function typingEntfernen() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function chatSenden() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  chatNachrichtHinzufuegen(text, false);
+  chatVerlauf.push({ role: 'user', content: text });
+  typingAnzeigen();
+
+  try {
+    const gewerkeList = [...ausgewaehlteGewerke].join(', ');
+    const gebiet = ganzOe ? 'ganz Österreich' : 'ausgewählte Regionen';
+
+    const systemPrompt = `Du bist ein hilfreicher KI-Assistent für BauScout, einen österreichischen Bauprojekt-Scout.
+Der Nutzer hat folgende Konfiguration:
+- Gewerke: ${gewerkeList}
+- Gebiet: ${gebiet}
+
+Deine Aufgabe: Verstehe was der Nutzer sucht und extrahiere daraus konkrete Suchparameter.
+Antworte auf Deutsch, kurz und professionell.
+Am Ende jeder Antwort fasse die Suchverfeinerung als JSON zusammen im Format:
+<params>{"keywords":[],"ausschluss":[],"mindestvolumen":"","zeitraum":""}</params>`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: chatVerlauf
+      })
+    });
+
+    const data = await response.json();
+    const antwort = data.content?.[0]?.text || 'Entschuldigung, ein Fehler ist aufgetreten.';
+
+    // JSON extrahieren
+    const paramMatch = antwort.match(/<params>(.*?)<\/params>/s);
+    if (paramMatch) {
+      try {
+        chatVerfeinerung = paramMatch[1];
+      } catch(e) {}
+    }
+
+    const saubereAntwort = antwort.replace(/<params>.*?<\/params>/s, '').trim();
+    typingEntfernen();
+    chatNachrichtHinzufuegen(saubereAntwort, true);
+    chatVerlauf.push({ role: 'assistant', content: antwort });
+
+  } catch(e) {
+    typingEntfernen();
+    chatNachrichtHinzufuegen('Entschuldigung, der Chat ist momentan nicht verfügbar. Sie können trotzdem fortfahren.', true);
+  }
+}
+
+function chatEnter(e) {
+  if (e.key === 'Enter') chatSenden();
+}
+
+// ═══════════════════════════════════════════════
+// PREIS BERECHNUNG
+// ═══════════════════════════════════════════════
+function berechnePreis() {
+  let basis = 19;
+
+  // Gebiet
+  if (ganzOe) {
+    basis = 179;
+  } else {
+    const bl = document.getElementById('bundeslaender');
+    const anzahlBL = bl ? [...bl.options].filter(o => o.selected).length : 0;
+    if (anzahlBL === 0) basis = 29;
+    else if (anzahlBL === 1) basis = 39;
+    else if (anzahlBL <= 3) basis = 69;
+    else basis = 99;
+  }
+
+  // Gewerke Aufschlag
+  const anzahlGew = ausgewaehlteGewerke.size;
+  if (anzahlGew > 20) basis = Math.round(basis * 1.3);
+  else if (anzahlGew > 10) basis = Math.round(basis * 1.15);
+
+  return basis;
+}
+
+function updatePreis() {
+  const preis = berechnePreis();
+  document.getElementById('preis-anzeige').textContent = `€ ${preis}`;
+  const gebiet = ganzOe ? 'Ganz Österreich' : 'Ausgewählte Regionen';
+  document.getElementById('preis-details').textContent =
+    `${gebiet} · ${ausgewaehlteGewerke.size} Gewerke · Einmaliger Scout-Lauf`;
+}
+
+// ═══════════════════════════════════════════════
+// ZUSAMMENFASSUNG
+// ═══════════════════════════════════════════════
+function renderZusammenfassung() {
+  const firma = document.getElementById('firma').value;
+  const email = document.getElementById('email').value;
+  const gebiet = ganzOe ? '🇦🇹 Ganz Österreich' : 'Ausgewählte Regionen';
+
+  document.getElementById('zusammenfassung').innerHTML = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+      <div style="background:var(--dunkel); border:1px solid var(--rand); border-radius:3px; padding:14px;">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); margin-bottom:6px;">FIRMA</div>
+        <div style="font-size:14px;">${firma}</div>
+      </div>
+      <div style="background:var(--dunkel); border:1px solid var(--rand); border-radius:3px; padding:14px;">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); margin-bottom:6px;">E-MAIL</div>
+        <div style="font-size:14px;">${email}</div>
+      </div>
+      <div style="background:var(--dunkel); border:1px solid var(--rand); border-radius:3px; padding:14px;">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); margin-bottom:6px;">GEBIET</div>
+        <div style="font-size:14px;">${gebiet}</div>
+      </div>
+      <div style="background:var(--dunkel); border:1px solid var(--rand); border-radius:3px; padding:14px;">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); margin-bottom:6px;">GEWERKE</div>
+        <div style="font-size:14px;">${ausgewaehlteGewerke.size} ausgewählt</div>
+      </div>
+    </div>
+    <div class="tag-liste">${[...ausgewaehlteGewerke].map(g => `<span class="tag">${g}</span>`).join('')}</div>
+  `;
+
+  updatePreis();
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function toggleSchritt(nr) {
+  const schritt = document.getElementById(`s${nr}`);
+  if (schritt.classList.contains('aktiv')) return;
+  // Nur öffnen wenn vorherige erledigt
+}
+
+function weiter(nr) {
+  // Validierung
+  if (nr === 1) {
+    const email = document.getElementById('email').value;
+    const firma = document.getElementById('firma').value;
+    if (!email || !firma) { alert('Bitte Firmenname und E-Mail ausfüllen.'); return; }
+    if (!email.includes('@')) { alert('Bitte gültige E-Mail eingeben.'); return; }
+  }
+  if (nr === 2) {
+    if (ausgewaehlteGewerke.size === 0) { alert('Bitte mindestens ein Gewerk auswählen.'); return; }
+  }
+
+  // Aktuellen als erledigt markieren
+  const aktuell = document.getElementById(`s${nr}`);
+  aktuell.classList.remove('aktiv');
+  aktuell.classList.add('erledigt');
+  document.getElementById(`s${nr}-status`).textContent = '✓ erledigt';
+
+  // Nächsten aktivieren
+  const naechster = document.getElementById(`s${nr + 1}`);
+  if (naechster) {
+    naechster.classList.add('aktiv');
+
+    // Chat initialisieren
+    if (nr + 1 === 4) initChat();
+
+    // Zusammenfassung
+    if (nr + 1 === 5) renderZusammenfassung();
+  }
+
+  // Scrollen
+  naechster?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function zurueck(nr) {
+  const aktuell = document.getElementById(`s${nr}`);
+  aktuell.classList.remove('aktiv');
+  document.getElementById(`s${nr}-status`).textContent = nr === 4 ? 'optional' : 'ausstehend';
+
+  const vorheriger = document.getElementById(`s${nr - 1}`);
+  if (vorheriger) {
+    vorheriger.classList.remove('erledigt');
+    vorheriger.classList.add('aktiv');
+    document.getElementById(`s${nr - 1}-status`).textContent = 'ausstehend';
+    vorheriger.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function bezahlen() {
+  alert('Stripe-Integration folgt in Kürze.\n\nIhre Konfiguration wurde gespeichert.');
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+renderGewerke();
+renderBundeslaender();
+</script>
+</body>
+</html>
