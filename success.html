@@ -60,12 +60,10 @@
 </div>
 
 <script type="module">
-  // Session ID und Suchanfrage ID aus URL lesen
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get('session_id');
   const suchanfrageId = params.get('suchanfrage_id') || sessionStorage.getItem('bs_suchanfrage_id');
 
-  // Supabase Status aktualisieren
   if (suchanfrageId) {
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     const supabase = createClient(
@@ -73,40 +71,16 @@
       'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt'
     );
 
-    // Status auf bezahlt setzen
+    // Status auf 'bezahlt' setzen – GitHub Actions Workflow
+    // prüft Supabase alle 15 Minuten auf neue bezahlte Aufträge
     await supabase.from('suchanfragen').update({
       status: 'bezahlt',
       bezahlt_am: new Date().toISOString(),
       stripe_session_id: sessionId || null,
     }).eq('id', suchanfrageId);
 
-    // GitHub Actions Workflow auslösen (Agent starten)
-    // Das passiert normalerweise via Stripe Webhook
-    // Für jetzt: direkt via GitHub API (Repository Dispatch)
-    const email = sessionStorage.getItem('bs_email') || '';
-    
-    try {
-      await fetch('https://api.github.com/repos/romanbaumschlager-netizen/bauscout/dispatches', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          // GitHub Token wird als Secret gespeichert – hier Platzhalter
-          'Authorization': 'Bearer GITHUB_TOKEN_PLATZHALTER',
-        },
-        body: JSON.stringify({
-          event_type: 'scout_starten',
-          client_payload: {
-            suchanfrage_id: suchanfrageId,
-            email: email,
-          }
-        })
-      });
-    } catch(e) {
-      console.log('Webhook folgt via Stripe');
-    }
-
-    document.getElementById('status-text').textContent = '✓ Agent wurde gestartet';
+    document.getElementById('status-text').textContent = '✓ Zahlung bestätigt – Agent startet in Kürze';
+    console.log('✅ Status auf bezahlt gesetzt:', suchanfrageId);
   }
 </script>
 </body>
