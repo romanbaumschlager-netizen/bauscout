@@ -1,0 +1,148 @@
+# =============================================================================
+# BauScout – Stripe Webhook Empfänger
+# Datei: .github/workflows/stripe-webhook.yml
+#
+# Dieser Workflow läuft wenn Stripe eine Zahlung bestätigt.
+# GitHub kann leider keine HTTP-Webhooks direkt empfangen –
+# daher nutzen wir einen Umweg via Supabase Database Webhook.
+#
+# ABLAUF:
+# Stripe Zahlung → Stripe sendet Webhook → Supabase empfängt →
+# Supabase Database Trigger → GitHub Actions startet
+# =============================================================================
+
+name: Stripe Zahlung empfangen
+
+on:
+  # Wird manuell oder via Repository Dispatch ausgelöst
+  repository_dispatch:
+    types: [scout_starten, zahlung_bestaetigt]
+  
+  # Auch manuell testbar
+  workflow_dispatch:
+    inputs:
+      suchanfrage_id:
+        description: 'Suchanfrage ID aus Supabase'
+        required: true
+        type: string
+      email:
+        description: 'E-Mail des Kunden'
+        required: false
+        type: string
+
+jobs:
+  zahlung-verarbeiten:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Abhängigkeiten installieren
+        run: |
+          pip install supabase anthropic requests
+
+      - name: Suchanfrage-ID bestimmen
+        id: params
+        run: |
+          # Von repository_dispatch oder workflow_dispatch
+          SUCHANFRAGE_ID="${{ github.event.client_payload.suchanfrage_id || github.event.inputs.suchanfrage_id }}"
+          EMAIL="${{ github.event.client_payload.email || github.event.inputs.email }}"
+          echo "suchanfrage_id=${SUCHANFRAGE_ID}" >> $GITHUB_OUTPUT
+          echo "email=${EMAIL}" >> $GITHUB_OUTPUT
+          echo "Suchanfrage ID: ${SUCHANFRAGE_ID}"
+
+      - name: Status auf 'bezahlt' setzen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python3 << 'PYTHON'
+          import os, requests, json
+          from datetime import datetime
+
+          url = os.environ['SUPABASE_URL']
+          key = os.environ['SUPABASE_SECRET_KEY']
+          suchanfrage_id = "${{ steps.params.outputs.suchanfrage_id }}"
+
+          headers = {
+              'apikey': key,
+              'Authorization': f'Bearer {key}',
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+          }
+
+          resp = requests.patch(
+              f"{url}/rest/v1/suchanfragen?id=eq.{suchanfrage_id}",
+              headers=headers,
+              json={
+                  'status': 'bezahlt',
+                  'bezahlt_am': datetime.utcnow().isoformat()
+              }
+          )
+          print(f"Status Update: {resp.status_code}")
+          PYTHON
+
+      - name: Scout-Agent starten
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          python3 << 'PYTHON'
+          import os, requests, json
+          from datetime import datetime
+
+          url = os.environ['SUPABASE_URL']
+          key = os.environ['SUPABASE_SECRET_KEY']
+          suchanfrage_id = "${{ steps.params.outputs.suchanfrage_id }}"
+
+          headers = {
+              'apikey': key,
+              'Authorization': f'Bearer {key}',
+              'Content-Type': 'application/json',
+          }
+
+          # Suchanfrage laden
+          resp = requests.get(
+              f"{url}/rest/v1/suchanfragen?id=eq.{suchanfrage_id}&select=*",
+              headers=headers
+          )
+          suchanfragen = resp.json()
+          
+          if not suchanfragen:
+              print(f"FEHLER: Suchanfrage {suchanfrage_id} nicht gefunden!")
+              exit(1)
+          
+          suchanfrage = suchanfragen[0]
+          print(f"Suchanfrage geladen: {json.dumps(suchanfrage, indent=2, ensure_ascii=False)}")
+
+          # Status auf 'agent_laeuft' setzen
+          requests.patch(
+              f"{url}/rest/v1/suchanfragen?id=eq.{suchanfrage_id}",
+              headers={**headers, 'Prefer': 'return=minimal'},
+              json={'status': 'agent_laeuft'}
+          )
+
+          print("✅ Suchanfrage erfolgreich geladen – Agent-Start vorbereitet")
+          print(f"Gewerke: {suchanfrage.get('gewerke', [])}")
+          print(f"Bundesländer: {suchanfrage.get('bundeslaender', [])}")
+          print(f"Zeitraum: {suchanfrage.get('zeitraum_tage', 30)} Tage")
+          print("→ Nächster Schritt: agent.py wird in einem späteren Sprint eingebaut")
+          PYTHON
+
+      - name: Zusammenfassung
+        run: |
+          echo "## ✅ Zahlung verarbeitet" >> $GITHUB_STEP_SUMMARY
+          echo "**Suchanfrage ID:** ${{ steps.params.outputs.suchanfrage_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** bezahlt → agent_laeuft" >> $GITHUB_STEP_SUMMARY
+          echo "**Zeitpunkt:** $(date)" >> $GITHUB_STEP_SUMMARY
