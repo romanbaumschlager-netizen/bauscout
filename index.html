@@ -658,8 +658,10 @@ function renderZusammenfassung() {
 }
 
 // ═══════════════════════════════════════════════
-// BEZAHLEN + SUPABASE SPEICHERN
+// BEZAHLEN + STRIPE PAYMENT LINK
 // ═══════════════════════════════════════════════
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_00w9AT00Jd5A8vH9CDfUQ00';
+
 async function bezahlen() {
   const firma = document.getElementById('firma').value.trim();
   const email = document.getElementById('email').value.trim();
@@ -669,7 +671,7 @@ async function bezahlen() {
   const btn = document.getElementById('bezahl-btn');
   btn.disabled = true;
   btn.textContent = '⏳ Wird gespeichert...';
-  zeigeStatus('Daten werden in der Datenbank gespeichert...', 'laden');
+  zeigeStatus('Daten werden gespeichert...', 'laden');
 
   try {
     const db = await getSupabase();
@@ -683,7 +685,7 @@ async function bezahlen() {
       const { data: neuer, error: kFehler } = await db.from('kunden')
         .insert({ email, firmenname: firma, homepage: homepage || null })
         .select('id').single();
-      if (kFehler) throw new Error('Kunde konnte nicht gespeichert werden: ' + kFehler.message);
+      if (kFehler) throw new Error('Kunde: ' + kFehler.message);
       kundenId = neuer.id;
     }
 
@@ -691,44 +693,49 @@ async function bezahlen() {
     const heute = new Date();
     const von = new Date(heute);
     von.setDate(heute.getDate() - gewaehlterZeitraum);
-
-    const bundeslaenderKuerzel = { "Burgenland":"BGR","Kärnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W" };
+    const bundeslaenderKuerzel = {"Burgenland":"BGR","Kärnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W"};
     const bundeslaenderListe = ganzOe ? ['W','NOE','OOE','SBG','STK','KTN','TIR','VBG','BGR'] : [...ausgewaehlteBL].map(bl => bundeslaenderKuerzel[bl] || bl);
-    const bezirkeListe = [...ausgewaehlteBez].map(k => k.split('||')[1]);
-    const gemeindenListe = [...ausgewaehlteGem].map(k => k.split('||')[2]);
     const apiKosten = berechneApiKosten();
 
     const { data: suchanfrage, error: sFehler } = await db.from('suchanfragen').insert({
       kunden_id:         kundenId,
       gewerke:           [...ausgewaehlteGewerke],
       bundeslaender:     bundeslaenderListe,
-      bezirke:           bezirkeListe,
-      gemeinden:         gemeindenListe,
+      bezirke:           [...ausgewaehlteBez].map(k => k.split('||')[1]),
+      gemeinden:         [...ausgewaehlteGem].map(k => k.split('||')[2]),
       ganz_oesterreich:  ganzOe,
       chat_verfeinerung: chatVerfeinerung || null,
       zeitraum_tage:     gewaehlterZeitraum,
       zeitraum_von:      von.toISOString().split('T')[0],
       zeitraum_bis:      heute.toISOString().split('T')[0],
       kosten_geschaetzt: apiKosten.gesamtEur,
-      status:            'ausstehend',
+      status:            'wartet_auf_zahlung',
     }).select('id').single();
 
-    if (sFehler) throw new Error('Suchanfrage konnte nicht gespeichert werden: ' + sFehler.message);
+    if (sFehler) throw new Error('Suchanfrage: ' + sFehler.message);
 
     // IDs im Browser merken
-    sessionStorage.setItem('bs_kunden_id',      kundenId);
-    sessionStorage.setItem('bs_suchanfrage_id',  suchanfrage.id);
-    sessionStorage.setItem('bs_email',           email);
+    sessionStorage.setItem('bs_kunden_id',     kundenId);
+    sessionStorage.setItem('bs_suchanfrage_id', suchanfrage.id);
+    sessionStorage.setItem('bs_email',          email);
+    sessionStorage.setItem('bs_kundenpreis',    berechnePreis().toString());
 
-    zeigeStatus('✅ Erfolgreich gespeichert! Stripe-Bezahlung folgt im nächsten Schritt.', 'erfolg');
-    btn.textContent = '✅ Gespeichert';
-    console.log('✅ Kunden-ID:', kundenId, '| Suchanfrage-ID:', suchanfrage.id);
+    zeigeStatus('✅ Gespeichert! Weiterleitung zu Stripe...', 'erfolg');
+    btn.textContent = '⏳ Weiterleitung...';
 
-    // TODO: Stripe hier starten
+    // Kurz warten damit Status sichtbar ist
+    await new Promise(r => setTimeout(r, 800));
+
+    // Zu Stripe Payment Link weiterleiten
+    // suchanfrage_id als client_reference_id übergeben
+    const stripeUrl = new URL(STRIPE_PAYMENT_LINK);
+    stripeUrl.searchParams.set('client_reference_id', suchanfrage.id);
+    stripeUrl.searchParams.set('prefilled_email', email);
+    window.location.href = stripeUrl.toString();
 
   } catch(fehler) {
     console.error('❌ Fehler:', fehler.message);
-    zeigeStatus('❌ Fehler beim Speichern: ' + fehler.message, 'fehler');
+    zeigeStatus('❌ Fehler: ' + fehler.message, 'fehler');
     btn.disabled = false;
     btn.textContent = '💳 Jetzt bezahlen & starten';
   }
