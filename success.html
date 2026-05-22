@@ -62,7 +62,12 @@
 <script type="module">
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get('session_id');
-  const suchanfrageId = params.get('suchanfrage_id') || sessionStorage.getItem('bs_suchanfrage_id');
+
+  // suchanfrage_id aus URL-Parameter ODER sessionStorage
+  // index.html speichert die ID in sessionStorage bevor Stripe-Weiterleitung
+  // Zusätzlich: index.html hängt die ID direkt an die Success-URL an
+  const suchanfrageId = params.get('suchanfrage_id')
+                     || sessionStorage.getItem('bs_suchanfrage_id');
 
   if (suchanfrageId) {
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
