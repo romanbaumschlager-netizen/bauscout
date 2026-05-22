@@ -1,11 +1,8 @@
 name: BauScout Agent Starter
 
 on:
-  # Alle 15 Minuten prüfen ob neue bezahlte Aufträge da sind
   schedule:
     - cron: '*/15 * * * *'
-  
-  # Auch manuell testbar
   workflow_dispatch:
     inputs:
       suchanfrage_id:
@@ -16,7 +13,8 @@ on:
 jobs:
   neue-auftraege-pruefen:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 55
+
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
@@ -29,66 +27,21 @@ jobs:
       - name: Abhängigkeiten installieren
         run: pip install requests
 
-      - name: Neue bezahlte Aufträge suchen und starten
+      - name: BauScout Agent starten
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-        run: |
-          python3 << 'PYTHON'
-          import os, requests, json
-          from datetime import datetime
-
-          url = os.environ['SUPABASE_URL']
-          key = os.environ['SUPABASE_SECRET_KEY']
-          spezifische_id = "${{ github.event.inputs.suchanfrage_id }}"
-
-          headers = {
-              'apikey': key,
-              'Authorization': f'Bearer {key}',
-              'Content-Type': 'application/json',
-          }
-
-          # Bezahlte aber noch nicht gestartete Aufträge suchen
-          if spezifische_id:
-              filter_url = f"{url}/rest/v1/suchanfragen?id=eq.{spezifische_id}&select=*"
-          else:
-              filter_url = f"{url}/rest/v1/suchanfragen?status=eq.bezahlt&select=*"
-
-          resp = requests.get(filter_url, headers=headers)
-          auftraege = resp.json()
-
-          if not auftraege:
-              print("Keine neuen bezahlten Aufträge gefunden.")
-              exit(0)
-
-          print(f"{len(auftraege)} neuer Auftrag/Aufträge gefunden!")
-
-          for auftrag in auftraege:
-              sid = auftrag['id']
-              print(f"\n→ Starte Auftrag: {sid}")
-              print(f"  Gewerke: {auftrag.get('gewerke', [])}")
-              print(f"  Bundesländer: {auftrag.get('bundeslaender', [])}")
-              print(f"  Zeitraum: {auftrag.get('zeitraum_tage', 30)} Tage")
-
-              # Status auf 'agent_laeuft' setzen
-              requests.patch(
-                  f"{url}/rest/v1/suchanfragen?id=eq.{sid}",
-                  headers={**headers, 'Prefer': 'return=minimal'},
-                  json={'status': 'agent_laeuft'}
-              )
-
-              print(f"  ✅ Status → agent_laeuft")
-              print(f"  → Agent-Code folgt im nächsten Sprint")
-
-          PYTHON
+          ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_HOST:           ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:           ${{ secrets.SMTP_PORT }}
+          SMTP_USER:           ${{ secrets.SMTP_USER }}
+          SMTP_PASS:           ${{ secrets.SMTP_PASS }}
+          SUCHANFRAGE_ID:      ${{ github.event.inputs.suchanfrage_id }}
+        run: python agent/agent.py
 
       - name: Zusammenfassung
+        if: always()
         run: |
-          echo "## BauScout Agent Check" >> $GITHUB_STEP_SUMMARY
+          echo "## BauScout Agent Run" >> $GITHUB_STEP_SUMMARY
           echo "**Zeitpunkt:** $(date)" >> $GITHUB_STEP_SUMMARY
           echo "**Nächster Check:** in 15 Minuten" >> $GITHUB_STEP_SUMMARY
