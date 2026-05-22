@@ -723,11 +723,18 @@ async function bezahlen() {
     zeigeStatus('✅ Gespeichert! Weiterleitung zu Stripe...', 'erfolg');
     btn.textContent = '⏳ Weiterleitung...';
 
+    // IDs im Browser merken (Fallback)
+    sessionStorage.setItem('bs_kunden_id',      kundenId);
+    sessionStorage.setItem('bs_suchanfrage_id',  suchanfrage.id);
+    sessionStorage.setItem('bs_email',           email);
+
     // Kurz warten damit Status sichtbar ist
     await new Promise(r => setTimeout(r, 800));
 
     // Zu Stripe Payment Link weiterleiten
     // suchanfrage_id als client_reference_id übergeben
+    // Stripe leitet danach auf die in Stripe hinterlegte Success URL weiter
+    // success.html liest die ID aus sessionStorage
     const stripeUrl = new URL(STRIPE_PAYMENT_LINK);
     stripeUrl.searchParams.set('client_reference_id', suchanfrage.id);
     stripeUrl.searchParams.set('prefilled_email', email);
