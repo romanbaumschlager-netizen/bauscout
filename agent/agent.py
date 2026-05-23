@@ -643,7 +643,7 @@ def verarbeite_auftrag(auftrag: dict) -> None:
         alle_projekte = sb_get("projekte", {
             "suchanfrage_id": f"eq.{sid}",
             "ignorieren":     "eq.false",
-            "order":          "relevanz.desc",
+            "order":          "relevanz.desc.nullslast",
         })
 
         # Status → abgeschlossen
