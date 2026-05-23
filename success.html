@@ -149,17 +149,4 @@
   }
 </script>
 </body>
-</html>    // Status auf 'bezahlt' setzen – GitHub Actions Workflow
-    // prüft Supabase alle 15 Minuten auf neue bezahlte Aufträge
-    await supabase.from('suchanfragen').update({
-      status: 'bezahlt',
-      bezahlt_am: new Date().toISOString(),
-      stripe_session_id: sessionId || null,
-    }).eq('id', suchanfrageId);
-
-    document.getElementById('status-text').textContent = '✓ Zahlung bestätigt – Agent startet in Kürze';
-    console.log('✅ Status auf bezahlt gesetzt:', suchanfrageId);
-  }
-</script>
-</body>
 </html>
