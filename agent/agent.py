@@ -474,7 +474,7 @@ def erstelle_email_html(kunde: dict, auftrag: dict, projekte_liste: list[dict]) 
 
     projekt_html = ""
     for p in top_projekte:
-        relevanz_sterne = "★" * min(int(p.get("relevanz", 5) / 2), 5)
+        relevanz_sterne = "★" * min(int(int(p.get("relevanz", 5)) / 2), 5)
         projekt_html += f"""
         <div style="background:#1a1a2e;border:1px solid #d4a017;border-radius:6px;padding:16px;margin-bottom:12px;">
           <div style="font-size:11px;color:#d4a017;font-family:monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
