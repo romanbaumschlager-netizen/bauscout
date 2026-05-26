@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BauScout – KI-gestützter Bauprojekt-Scout</title>
+<title>ProjectScout – KI-gestützter Bauprojekt-Scout</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -129,7 +129,7 @@
 <div class="bg-grid"></div>
 <div class="bg-glow"></div>
 <header>
-  <div class="logo">BauScout <span>// KI-BAUPROJEKT-SCOUT</span></div>
+  <div class="logo">ProjectScout <span>// KI-BAUPROJEKT-SCOUT</span></div>
 </header>
 <div class="hero">
   <div class="hero-badge">⚡ Vollautomatisch · KI-gestützt · Österreichweit</div>
@@ -576,7 +576,7 @@ async function chatSenden() {
   try {
     const gewerkeList = [...ausgewaehlteGewerke].join(', ');
     const gebiet = ganzOe ? 'ganz Österreich' : 'ausgewählte Regionen';
-    const systemPrompt = `Du bist ein hilfreicher KI-Assistent für BauScout, einen österreichischen Bauprojekt-Scout.\nDer Nutzer hat folgende Konfiguration:\n- Gewerke: ${gewerkeList}\n- Gebiet: ${gebiet}\nDeine Aufgabe: Verstehe was der Nutzer sucht und extrahiere daraus konkrete Suchparameter.\nAntworte auf Deutsch, kurz und professionell.\nAm Ende jeder Antwort fasse die Suchverfeinerung als JSON zusammen im Format:\n<params>{"keywords":[],"ausschluss":[],"mindestvolumen":"","zeitraum":""}</params>`;
+    const systemPrompt = `Du bist ein hilfreicher KI-Assistent für ProjectScout, einen österreichischen Bauprojekt-Scout.\nDer Nutzer hat folgende Konfiguration:\n- Gewerke: ${gewerkeList}\n- Gebiet: ${gebiet}\nDeine Aufgabe: Verstehe was der Nutzer sucht und extrahiere daraus konkrete Suchparameter.\nAntworte auf Deutsch, kurz und professionell.\nAm Ende jeder Antwort fasse die Suchverfeinerung als JSON zusammen im Format:\n<params>{"keywords":[],"ausschluss":[],"mindestvolumen":"","zeitraum":""}</params>`;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
