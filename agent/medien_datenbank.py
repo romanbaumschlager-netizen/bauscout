@@ -1,5 +1,5 @@
 # =============================================================================
-# BauScout – Österreichische Medien-Datenbank
+# ProjectScout – Österreichische Medien-Datenbank
 # Alle Quellen geordnet nach Bundesland + überregionale Quellen
 # Jeder Eintrag: { "name": ..., "url": ..., "bundeslaender": [...], "typ": ... }
 #
@@ -70,9 +70,9 @@ MEDIEN = [
         "typ": "bundesweit"
     },
     {
-        "name": "Wirtschaftsblatt / WirtschaftsBlatt Online",
-        "url": "https://www.wirtschaftsblatt.at",
-        "suchpfad": "https://www.wirtschaftsblatt.at/suche?q=",
+        "name": "Wirtschafts-Nachrichten (wn.at)",
+        "url": "https://www.wn.at",
+        "suchpfad": "https://www.wn.at/?s=",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "bundesweit"
     },
@@ -83,70 +83,70 @@ MEDIEN = [
     {
         "name": "ORF.at",
         "url": "https://orf.at",
-        "suchpfad": "https://orf.at/stories/?q=",
+        "suchpfad": "https://orf.at/suche/?q=",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Wien",
         "url": "https://wien.orf.at",
-        "suchpfad": "https://wien.orf.at/stories/?q=",
+        "suchpfad": "https://wien.orf.at/suche/?q=",
         "bundeslaender": ["W"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Niederösterreich",
         "url": "https://noe.orf.at",
-        "suchpfad": "https://noe.orf.at/stories/?q=",
+        "suchpfad": "https://noe.orf.at/suche/?q=",
         "bundeslaender": ["NOE"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Oberösterreich",
         "url": "https://ooe.orf.at",
-        "suchpfad": "https://ooe.orf.at/stories/?q=",
+        "suchpfad": "https://ooe.orf.at/suche/?q=",
         "bundeslaender": ["OOE"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Salzburg",
         "url": "https://salzburg.orf.at",
-        "suchpfad": "https://salzburg.orf.at/stories/?q=",
+        "suchpfad": "https://salzburg.orf.at/suche/?q=",
         "bundeslaender": ["SBG"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Steiermark",
         "url": "https://steiermark.orf.at",
-        "suchpfad": "https://steiermark.orf.at/stories/?q=",
+        "suchpfad": "https://steiermark.orf.at/suche/?q=",
         "bundeslaender": ["STK"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Kärnten",
         "url": "https://kaernten.orf.at",
-        "suchpfad": "https://kaernten.orf.at/stories/?q=",
+        "suchpfad": "https://kaernten.orf.at/suche/?q=",
         "bundeslaender": ["KTN"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Tirol",
         "url": "https://tirol.orf.at",
-        "suchpfad": "https://tirol.orf.at/stories/?q=",
+        "suchpfad": "https://tirol.orf.at/suche/?q=",
         "bundeslaender": ["TIR"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Vorarlberg",
         "url": "https://vorarlberg.orf.at",
-        "suchpfad": "https://vorarlberg.orf.at/stories/?q=",
+        "suchpfad": "https://vorarlberg.orf.at/suche/?q=",
         "bundeslaender": ["VBG"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Burgenland",
         "url": "https://burgenland.orf.at",
-        "suchpfad": "https://burgenland.orf.at/stories/?q=",
+        "suchpfad": "https://burgenland.orf.at/suche/?q=",
         "bundeslaender": ["BGR"],
         "typ": "oeffentlich"
     },
@@ -545,16 +545,16 @@ MEDIEN = [
         "typ": "regional"
     },
     {
-        "name": "Linzer Rundschau",
-        "url": "https://www.linzerrundschau.at",
-        "suchpfad": "https://www.linzerrundschau.at/suche?q=",
+        "name": "Linz Aktuell (Stadt Linz)",
+        "url": "https://www.linz.at",
+        "suchpfad": "https://www.linz.at/suche.asp?q=",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
-        "name": "Welser Zeitung",
-        "url": "https://www.welserzeitung.at",
-        "suchpfad": "https://www.welserzeitung.at/suche?q=",
+        "name": "meinBezirk Wels",
+        "url": "https://www.meinbezirk.at/wels",
+        "suchpfad": "https://www.meinbezirk.at/wels/suche?q=",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
@@ -837,9 +837,9 @@ MEDIEN = [
         "typ": "lokal"
     },
     {
-        "name": "Unterkärntner Nachrichten",
-        "url": "https://www.uk-online.at",
-        "suchpfad": "https://www.uk-online.at/suche?q=",
+        "name": "meinBezirk Völkermarkt",
+        "url": "https://www.meinbezirk.at/voelkermarkt",
+        "suchpfad": "https://www.meinbezirk.at/voelkermarkt/suche?q=",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
@@ -946,9 +946,9 @@ MEDIEN = [
         "typ": "lokal"
     },
     {
-        "name": "Zillertal Zeitung",
-        "url": "https://www.zillertaler-zeitung.at",
-        "suchpfad": "https://www.zillertaler-zeitung.at/suche?q=",
+        "name": "meinBezirk Schwaz/Zillertal",
+        "url": "https://www.meinbezirk.at/schwaz",
+        "suchpfad": "https://www.meinbezirk.at/schwaz/suche?q=",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
@@ -1006,9 +1006,9 @@ MEDIEN = [
         "typ": "lokal"
     },
     {
-        "name": "Wann&Wo Vorarlberg",
-        "url": "https://www.wann-wo.at",
-        "suchpfad": "https://www.wann-wo.at/suche?q=",
+        "name": "Ländle.at Vorarlberg",
+        "url": "https://www.laendle.at",
+        "suchpfad": "https://www.laendle.at/?s=",
         "bundeslaender": ["VBG"],
         "typ": "lokal"
     },
@@ -1126,9 +1126,23 @@ MEDIEN = [
         "typ": "online"
     },
     {
-        "name": "Vergabe.at",
-        "url": "https://www.vergabe.at",
-        "suchpfad": "https://www.vergabe.at/suche?q=",
+        "name": "auftrag.at (Vergabeplattform)",
+        "url": "https://www.auftrag.at",
+        "suchpfad": "https://www.auftrag.at/ausschreibungen/suche/?q=",
+        "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
+        "typ": "online"
+    },
+    {
+        "name": "eVergabe.at (Auftragsplattform)",
+        "url": "https://evergabe.at",
+        "suchpfad": "https://evergabe.at/NetServer/ContractSearchServlet?query=",
+        "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
+        "typ": "online"
+    },
+    {
+        "name": "documedia.at (Ausschreibungen)",
+        "url": "https://www.documedia.at",
+        "suchpfad": "https://www.documedia.at/auftraege-nach-ort/?q=",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "online"
     },
