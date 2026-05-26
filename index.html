@@ -457,17 +457,17 @@
       <div style="background:var(--weiss); border:1.5px solid var(--blau); border-radius:14px; padding:32px;">
         <div style="font-size:13px; font-weight:600; color:var(--blau); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Wie der Preis entsteht</div>
         <div style="font-size:15px; color:var(--text); line-height:1.8; margin-bottom:20px;">
-          Der KI-Agent durchsucht je nach Auftrag unterschiedlich viele Quellen. Mehr Bundesländer, mehr Gewerke und längere Zeiträume bedeuten mehr Suchaufwand – und einen höheren Preis.
+          Jeder Scout-Lauf beginnt ab <strong>€ 9,90</strong>. Der Preis steigt je nach Umfang deiner Suche – also je nachdem wie viele Bundesländer, Gewerke und Tage du auswählst. Du siehst den genauen Preis live beim Konfigurieren, noch bevor du bezahlst.
         </div>
         <div style="background:var(--hell); border-radius:8px; padding:16px; font-size:14px;">
-          <div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--text-dim);">
-            <span>Anthropic API-Kosten</span><span>Basis</span>
+          <div style="display:flex; justify-content:space-between; padding:6px 0; color:var(--text-dim); border-bottom:1px solid var(--rand);">
+            <span>Kleines Gebiet · wenige Gewerke · kurzer Zeitraum</span><span style="font-weight:500; color:var(--text);">ab € 9,90</span>
           </div>
-          <div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--text-dim); border-bottom:1px solid var(--rand);">
-            <span>× Faktor 2</span><span>Ihr Preis</span>
+          <div style="display:flex; justify-content:space-between; padding:6px 0; color:var(--text-dim); border-bottom:1px solid var(--rand);">
+            <span>Mehrere Bundesländer · viele Gewerke · 60 Tage</span><span style="font-weight:500; color:var(--text);">ca. € 30–50</span>
           </div>
-          <div style="display:flex; justify-content:space-between; padding:8px 0 4px; font-weight:600; color:var(--text);">
-            <span>Mindestpreis</span><span style="color:var(--blau);">€ 9,90</span>
+          <div style="display:flex; justify-content:space-between; padding:6px 0; color:var(--text-dim);">
+            <span>Ganz Österreich · alle Gewerke · 90 Tage</span><span style="font-weight:500; color:var(--text);">ca. € 80–120</span>
           </div>
         </div>
       </div>
@@ -966,11 +966,8 @@ function updatePreis() {
   if (aufschluss) {
     const istMindest = preis <= MINDESTPREIS;
     aufschluss.innerHTML = `
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:4px 0;">
-        <span>API-Kosten (Anthropic)</span><span>€ ${k.gesamtEur.toFixed(2)}</span>
-      </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:4px 0;border-bottom:1px solid var(--rand);">
-        <span>× Faktor ${PREIS_FAKTOR}</span><span>€ ${(k.gesamtEur * PREIS_FAKTOR).toFixed(2)}</span>
+        <span>~${k.seitenGesamt.toLocaleString()} Quellen · ~${k.relevanteProjekte} Projekte erwartet</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding:6px 0;">
         <span style="color:var(--text);">Ihr Preis${istMindest ? ' (Mindestpreis)' : ''}</span>
