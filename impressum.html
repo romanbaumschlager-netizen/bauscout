@@ -4,131 +4,112 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProjectScout – Impressum, Datenschutz & AGB</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --schwarz: #0a0a0a;
-    --dunkel: #111418;
-    --karte: #161b22;
-    --rand: #21262d;
-    --text: #e6edf3;
-    --text-dim: #8b949e;
-    --gold: #d4a017;
-    --gold-hell: #f0c040;
-    --blau: #1f6feb;
-    --gruen: #238636;
+    --weiss: #ffffff;
+    --hell: #f8f7f4;
+    --hell2: #f1f0ec;
+    --rand: #e5e4e0;
+    --rand2: #d0cfc9;
+    --text: #111111;
+    --text-mid: #444444;
+    --text-dim: #888888;
+    --blau: #2563eb;
+    --blau-hell: #eff6ff;
+    --blau-dunkel: #1d4ed8;
+    --gruen: #16a34a;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--schwarz); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; min-height: 100vh; }
-  .bg-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(212,160,23,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(212,160,23,0.03) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
-  header { position: relative; z-index: 10; padding: 0 40px; height: 70px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--rand); background: rgba(10,10,10,0.8); backdrop-filter: blur(10px); }
-  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px; color: var(--gold); text-decoration: none; }
-  .logo span { color: var(--text-dim); font-size: 14px; font-family: 'DM Mono', monospace; letter-spacing: 1px; margin-left: 12px; }
-  .back-link { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: none; letter-spacing: 1px; transition: color 0.2s; }
-  .back-link:hover { color: var(--gold); }
+  body { background: var(--weiss); color: var(--text); font-family: 'Inter', sans-serif; font-weight: 400; min-height: 100vh; }
 
-  .container { position: relative; z-index: 5; max-width: 860px; margin: 0 auto; padding: 60px 24px 100px; }
+  header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--rand); padding: 0 48px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: var(--blau); }
+  .back-link { font-size: 14px; color: var(--text-dim); text-decoration: none; transition: color 0.15s; }
+  .back-link:hover { color: var(--blau); }
 
-  /* Tabs */
-  .tabs { display: flex; gap: 4px; margin-bottom: 40px; border-bottom: 1px solid var(--rand); padding-bottom: 0; }
-  .tab { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); padding: 12px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+  .container { max-width: 860px; margin: 0 auto; padding: 56px 48px 100px; }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rand); margin-bottom: 48px; }
+  .tab { font-size: 14px; font-weight: 500; color: var(--text-dim); padding: 12px 20px; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
   .tab:hover { color: var(--text); }
-  .tab.aktiv { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab.aktiv { color: var(--blau); border-bottom-color: var(--blau); }
 
-  /* Sektionen */
   .sektion { display: none; }
   .sektion.aktiv { display: block; }
 
-  /* Überschriften */
-  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 48px; letter-spacing: 4px; color: var(--gold); margin-bottom: 8px; }
-  .page-subtitle { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; }
+  .page-title { font-size: 36px; font-weight: 700; letter-spacing: -1px; color: var(--text); margin-bottom: 6px; }
+  .page-sub { font-size: 13px; color: var(--text-dim); font-family: 'DM Mono', monospace; margin-bottom: 40px; }
 
-  h2 { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid rgba(212,160,23,0.2); }
+  h2 { font-size: 11px; font-weight: 600; color: var(--blau); letter-spacing: 2px; text-transform: uppercase; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(37,99,235,0.15); }
   h2:first-of-type { margin-top: 0; }
 
-  p { font-size: 15px; color: var(--text-dim); line-height: 1.8; margin-bottom: 12px; }
-  p strong { color: var(--text); font-weight: 500; }
-  a { color: var(--gold); text-decoration: none; }
-  a:hover { color: var(--gold-hell); text-decoration: underline; }
+  p { font-size: 15px; color: var(--text-mid); line-height: 1.8; margin-bottom: 12px; }
+  p strong { color: var(--text); font-weight: 600; }
+  a { color: var(--blau); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 
-  /* Info-Karte */
-  .info-karte { background: var(--karte); border: 1px solid var(--rand); border-radius: 4px; padding: 24px 28px; margin-bottom: 12px; }
-  .info-zeile { display: flex; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rand); align-items: flex-start; }
-  .info-zeile:last-child { border-bottom: none; padding-bottom: 0; }
-  .info-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; min-width: 140px; padding-top: 2px; flex-shrink: 0; }
+  ul { list-style: none; padding: 0; margin-bottom: 12px; }
+  ul li { font-size: 15px; color: var(--text-mid); line-height: 1.8; padding: 3px 0 3px 20px; position: relative; }
+  ul li::before { content: '→'; position: absolute; left: 0; color: var(--blau); font-size: 12px; top: 5px; }
+
+  .info-karte { background: var(--hell); border: 1px solid var(--rand); border-radius: 10px; padding: 4px 0; margin-bottom: 14px; }
+  .info-zeile { display: flex; gap: 16px; padding: 11px 20px; border-bottom: 1px solid var(--rand); align-items: flex-start; }
+  .info-zeile:last-child { border-bottom: none; }
+  .info-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; min-width: 130px; padding-top: 2px; flex-shrink: 0; }
   .info-wert { font-size: 14px; color: var(--text); line-height: 1.6; }
 
-  /* Hinweis-Box */
-  .hinweis { background: rgba(31,111,235,0.06); border: 1px solid rgba(31,111,235,0.2); border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
-  .hinweis p { margin: 0; font-size: 13px; }
-  .hinweis strong { color: var(--blau); }
+  .hinweis { background: var(--blau-hell); border: 1px solid rgba(37,99,235,0.15); border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 14px; color: #1d4ed8; line-height: 1.7; }
 
-  /* Liste */
-  ul { padding-left: 0; list-style: none; margin-bottom: 12px; }
-  ul li { font-size: 15px; color: var(--text-dim); line-height: 1.8; padding: 4px 0; padding-left: 20px; position: relative; }
-  ul li::before { content: '→'; position: absolute; left: 0; color: var(--gold); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .stand { font-size: 12px; color: var(--text-dim); font-family: 'DM Mono', monospace; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rand); }
 
-  /* Stand-Badge */
-  .stand { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--rand); }
+  footer { background: var(--hell); border-top: 1px solid var(--rand); padding: 28px 48px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .footer-logo { font-size: 16px; font-weight: 700; color: var(--text); }
+  .footer-logo span { color: var(--blau); }
+  .footer-copy { font-size: 12px; color: var(--text-dim); }
 
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     header { padding: 0 20px; }
-    .container { padding: 40px 16px 80px; }
-    .page-title { font-size: 36px; }
-    .tabs { overflow-x: auto; }
+    .container { padding: 40px 20px 80px; }
     .info-zeile { flex-direction: column; gap: 4px; }
     .info-label { min-width: auto; }
+    footer { padding: 20px; flex-direction: column; }
   }
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
+
 <header>
-  <a href="https://project-scout.at/" class="logo">ProjectScout <span>// KI-BAUPROJEKT-SCOUT</span></a>
+  <a href="https://project-scout.at/" class="logo">Project<span>Scout</span></a>
   <a href="https://project-scout.at/" class="back-link">← Zurück zur Startseite</a>
 </header>
 
 <div class="container">
 
-  <!-- TABS -->
   <div class="tabs">
     <button class="tab aktiv" onclick="zeigeTab('impressum', this)">Impressum</button>
     <button class="tab" onclick="zeigeTab('datenschutz', this)">Datenschutz</button>
     <button class="tab" onclick="zeigeTab('agb', this)">AGB</button>
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       IMPRESSUM
-  ═══════════════════════════════════════════════ -->
+  <!-- ═══ IMPRESSUM ═══ -->
   <div class="sektion aktiv" id="impressum">
     <div class="page-title">Impressum</div>
-    <div class="page-subtitle">Offenlegung gem. § 25 MedienG · § 5 ECG</div>
+    <div class="page-sub">Offenlegung gem. § 25 MedienG · § 5 ECG</div>
 
     <h2>Angaben zum Betreiber</h2>
     <div class="info-karte">
-      <div class="info-zeile">
-        <div class="info-label">Name</div>
-        <div class="info-wert">Roman Baumschlager</div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">Anschrift</div>
-        <div class="info-wert">Molln, Oberösterreich, Österreich</div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">E-Mail</div>
-        <div class="info-wert"><a href="mailto:office@project-scout.at">office@project-scout.at</a></div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">Website</div>
-        <div class="info-wert"><a href="https://project-scout.at">project-scout.at</a></div>
-      </div>
+      <div class="info-zeile"><div class="info-label">Name</div><div class="info-wert">Roman Baumschlager</div></div>
+      <div class="info-zeile"><div class="info-label">Anschrift</div><div class="info-wert">Molln, Oberösterreich, Österreich</div></div>
+      <div class="info-zeile"><div class="info-label">E-Mail</div><div class="info-wert"><a href="mailto:office@project-scout.at">office@project-scout.at</a></div></div>
+      <div class="info-zeile"><div class="info-label">Website</div><div class="info-wert"><a href="https://project-scout.at">project-scout.at</a></div></div>
     </div>
 
     <h2>Art der Tätigkeit</h2>
-    <p>ProjectScout ist ein KI-gestützter Bauprojekt-Scout-Dienst für Österreich. Die Plattform ermöglicht es Baufirmen, relevante Bauprojekte automatisiert zu recherchieren und als strukturierten Report zu erhalten. Der Dienst wird als gewerbliche Einzelperson betrieben.</p>
+    <p>ProjectScout ist ein KI-gestützter Projekt-Scout-Dienst für Österreich. Die Plattform ermöglicht es Unternehmen, relevante Projekte, Ausschreibungen und Grundstücke automatisiert zu recherchieren und als strukturierten Report zu erhalten. Der Dienst wird als gewerbliche Einzelperson betrieben.</p>
 
     <h2>Rechtliche Grundlagen</h2>
-    <p>Dieses Impressum erfüllt die Informationspflichten gemäß:</p>
     <ul>
       <li>§ 5 E-Commerce-Gesetz (ECG)</li>
       <li>§ 25 Mediengesetz (MedienG) – Offenlegungspflicht</li>
@@ -139,48 +120,33 @@
     <p>Für den Inhalt dieser Website ist verantwortlich: <strong>Roman Baumschlager</strong>, Molln, Oberösterreich.</p>
 
     <h2>Haftungsausschluss</h2>
-    <p>Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte kann jedoch keine Gewähr übernommen werden. Als Diensteanbieter bin ich gemäß § 7 Abs. 1 ECG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich.</p>
-    <p>Die durch den KI-Agenten recherchierten Bauprojekte basieren auf öffentlich zugänglichen Quellen. Eine Garantie für Vollständigkeit, Aktualität oder Richtigkeit der gefundenen Projekte wird nicht übernommen.</p>
+    <p>Die Inhalte dieser Website wurden mit größtmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte kann keine Gewähr übernommen werden. Die durch den KI-Agenten recherchierten Projekte basieren auf öffentlich zugänglichen Quellen. Eine Garantie für Vollständigkeit, Aktualität oder Richtigkeit wird nicht übernommen.</p>
 
     <h2>Urheberrecht</h2>
-    <p>Die durch den Seitenbetreiber erstellten Inhalte und Werke auf dieser Website unterliegen dem österreichischen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechts bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.</p>
+    <p>Die durch den Seitenbetreiber erstellten Inhalte und Werke auf dieser Website unterliegen dem österreichischen Urheberrecht. Die Vervielfältigung, Bearbeitung oder Verbreitung bedürfen der schriftlichen Zustimmung des Autors.</p>
 
     <div class="stand">Stand: Mai 2026 · ProjectScout · Roman Baumschlager · Molln, OÖ</div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       DATENSCHUTZ
-  ═══════════════════════════════════════════════ -->
+  <!-- ═══ DATENSCHUTZ ═══ -->
   <div class="sektion" id="datenschutz">
     <div class="page-title">Datenschutz</div>
-    <div class="page-subtitle">Datenschutzerklärung gem. DSGVO · DSG 2018</div>
+    <div class="page-sub">Datenschutzerklärung gem. DSGVO · DSG 2018</div>
 
-    <div class="hinweis">
-      <p><strong>Hinweis:</strong> Diese Datenschutzerklärung informiert Sie gemäß Art. 13 DSGVO über die Verarbeitung Ihrer personenbezogenen Daten bei der Nutzung von ProjectScout.</p>
-    </div>
+    <div class="hinweis">Diese Datenschutzerklärung informiert Sie gemäß Art. 13 DSGVO über die Verarbeitung Ihrer personenbezogenen Daten bei der Nutzung von ProjectScout.</div>
 
     <h2>1. Verantwortlicher</h2>
     <div class="info-karte">
-      <div class="info-zeile">
-        <div class="info-label">Verantwortlicher</div>
-        <div class="info-wert">Roman Baumschlager</div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">Anschrift</div>
-        <div class="info-wert">Molln, Oberösterreich, Österreich</div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">E-Mail</div>
-        <div class="info-wert"><a href="mailto:office@project-scout.at">office@project-scout.at</a></div>
-      </div>
+      <div class="info-zeile"><div class="info-label">Verantwortlicher</div><div class="info-wert">Roman Baumschlager</div></div>
+      <div class="info-zeile"><div class="info-label">Anschrift</div><div class="info-wert">Molln, Oberösterreich, Österreich</div></div>
+      <div class="info-zeile"><div class="info-label">E-Mail</div><div class="info-wert"><a href="mailto:office@project-scout.at">office@project-scout.at</a></div></div>
     </div>
 
     <h2>2. Welche Daten wir erheben</h2>
-    <p>Bei der Nutzung von ProjectScout werden folgende personenbezogene Daten erhoben:</p>
     <ul>
       <li><strong>Kontaktdaten:</strong> Firmenname, E-Mail-Adresse, optionale Homepage-URL</li>
       <li><strong>Auftragsdaten:</strong> Gewählte Gewerke, Suchgebiet, Zeitraum, Suchverfeinerungen</li>
-      <li><strong>Zahlungsdaten:</strong> Werden ausschließlich von Stripe verarbeitet – wir erhalten nur eine Bestätigung der Zahlung sowie eine anonymisierte Session-ID</li>
+      <li><strong>Zahlungsdaten:</strong> Werden ausschließlich von Stripe verarbeitet – wir erhalten nur eine Zahlungsbestätigung sowie eine anonymisierte Session-ID</li>
       <li><strong>Technische Daten:</strong> IP-Adresse (durch GitHub Pages/Server-Logs), Browser-Typ (nur für technischen Betrieb)</li>
     </ul>
 
@@ -190,73 +156,55 @@
       <li>Übermittlung der Ergebnisse per E-Mail (Vertragserfüllung)</li>
       <li>Bereitstellung des persönlichen Dashboards (Vertragserfüllung)</li>
       <li>Abwicklung der Zahlung über Stripe (Vertragserfüllung)</li>
-      <li>Speicherung für Folgeaufträge / Wiederkehrende Kunden (berechtigtes Interesse gem. Art. 6 Abs. 1 lit. f DSGVO)</li>
+      <li>Speicherung für Folgeaufträge (berechtigtes Interesse gem. Art. 6 Abs. 1 lit. f DSGVO)</li>
     </ul>
 
     <h2>4. Datenspeicherung</h2>
-    <p>Ihre Daten werden in der Supabase-Datenbank gespeichert (Serverstandort: Westeuropa / Irland, EU). Die Speicherung erfolgt verschlüsselt. Ihre Auftragsdaten werden für die Dauer von 2 Jahren gespeichert, um Ihnen bei Folgeaufträgen bereits gefundene Projekte nicht erneut anzuzeigen.</p>
+    <p>Ihre Daten werden in der Supabase-Datenbank gespeichert (Serverstandort: Westeuropa / Irland, EU). Die Speicherung erfolgt verschlüsselt. Auftragsdaten werden für die Dauer von 2 Jahren gespeichert, um bei Folgeaufträgen bereits gefundene Projekte nicht erneut anzuzeigen.</p>
 
     <h2>5. Weitergabe an Dritte</h2>
-    <p>Ihre Daten werden nur in folgendem Umfang an Dritte weitergegeben:</p>
     <ul>
-      <li><strong>Stripe Inc.</strong> – Zahlungsabwicklung (USA, angemessenes Datenschutzniveau durch EU-Standardvertragsklauseln)</li>
+      <li><strong>Stripe Inc.</strong> – Zahlungsabwicklung (USA, EU-Standardvertragsklauseln)</li>
       <li><strong>Supabase Inc.</strong> – Datenbankhosting (EU-Server, Irland)</li>
-      <li><strong>Anthropic PBC</strong> – KI-Verarbeitung der Suchanfragen (USA, Standardvertragsklauseln); es werden keine personenbezogenen Kundendaten übermittelt, nur Suchanfragen</li>
+      <li><strong>Anthropic PBC</strong> – KI-Verarbeitung der Suchanfragen (USA, Standardvertragsklauseln); keine personenbezogenen Kundendaten werden übermittelt</li>
       <li><strong>GitHub Inc.</strong> – Hosting der Website (USA, Standardvertragsklauseln)</li>
     </ul>
     <p>Eine Weitergabe an sonstige Dritte, insbesondere zu Werbezwecken, findet nicht statt.</p>
 
     <h2>6. Ihre Rechte (DSGVO)</h2>
-    <p>Sie haben folgende Rechte bezüglich Ihrer personenbezogenen Daten:</p>
     <ul>
-      <li><strong>Auskunft</strong> (Art. 15 DSGVO) – Sie können jederzeit Auskunft über Ihre gespeicherten Daten verlangen</li>
-      <li><strong>Berichtigung</strong> (Art. 16 DSGVO) – Korrektur unrichtiger Daten</li>
+      <li><strong>Auskunft</strong> (Art. 15 DSGVO)</li>
+      <li><strong>Berichtigung</strong> (Art. 16 DSGVO)</li>
       <li><strong>Löschung</strong> (Art. 17 DSGVO) – „Recht auf Vergessenwerden"</li>
-      <li><strong>Einschränkung</strong> (Art. 18 DSGVO) – Einschränkung der Verarbeitung</li>
-      <li><strong>Datenübertragbarkeit</strong> (Art. 20 DSGVO) – Übermittlung Ihrer Daten in maschinenlesbarem Format</li>
-      <li><strong>Widerspruch</strong> (Art. 21 DSGVO) – Widerspruch gegen die Verarbeitung</li>
+      <li><strong>Einschränkung</strong> (Art. 18 DSGVO)</li>
+      <li><strong>Datenübertragbarkeit</strong> (Art. 20 DSGVO)</li>
+      <li><strong>Widerspruch</strong> (Art. 21 DSGVO)</li>
     </ul>
-    <p>Zur Ausübung Ihrer Rechte wenden Sie sich bitte an: <a href="mailto:office@project-scout.at">office@project-scout.at</a></p>
+    <p>Zur Ausübung Ihrer Rechte: <a href="mailto:office@project-scout.at">office@project-scout.at</a></p>
 
     <h2>7. Beschwerderecht</h2>
-    <p>Sie haben das Recht, sich bei der österreichischen Datenschutzbehörde zu beschweren:</p>
     <div class="info-karte">
-      <div class="info-zeile">
-        <div class="info-label">Behörde</div>
-        <div class="info-wert">Österreichische Datenschutzbehörde (DSB)</div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">Adresse</div>
-        <div class="info-wert">Barichgasse 40–42, 1030 Wien</div>
-      </div>
-      <div class="info-zeile">
-        <div class="info-label">Website</div>
-        <div class="info-wert"><a href="https://www.dsb.gv.at" target="_blank">www.dsb.gv.at</a></div>
-      </div>
+      <div class="info-zeile"><div class="info-label">Behörde</div><div class="info-wert">Österreichische Datenschutzbehörde (DSB)</div></div>
+      <div class="info-zeile"><div class="info-label">Adresse</div><div class="info-wert">Barichgasse 40–42, 1030 Wien</div></div>
+      <div class="info-zeile"><div class="info-label">Website</div><div class="info-wert"><a href="https://www.dsb.gv.at" target="_blank">www.dsb.gv.at</a></div></div>
     </div>
 
     <h2>8. Cookies</h2>
-    <p>ProjectScout verwendet keine Marketing-Cookies oder Tracking-Dienste (kein Google Analytics, kein Facebook Pixel etc.). Es werden ausschließlich technisch notwendige Browserspeicher-Mechanismen (sessionStorage) für die Funktionsfähigkeit der Zahlung verwendet. Diese enthalten keine personenbezogenen Daten über die aktuelle Sitzung hinaus.</p>
-
-    <h2>9. Externe Links</h2>
-    <p>Diese Website enthält Links zu externen Websites (z.B. Stripe). Für die Datenschutzpraktiken dieser externen Seiten sind wir nicht verantwortlich.</p>
+    <p>ProjectScout verwendet keine Marketing-Cookies oder Tracking-Dienste. Es werden ausschließlich technisch notwendige Browserspeicher-Mechanismen (sessionStorage) für die Funktionsfähigkeit der Zahlung verwendet.</p>
 
     <div class="stand">Stand: Mai 2026 · ProjectScout · Roman Baumschlager · Molln, OÖ</div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       AGB
-  ═══════════════════════════════════════════════ -->
+  <!-- ═══ AGB ═══ -->
   <div class="sektion" id="agb">
     <div class="page-title">AGB</div>
-    <div class="page-subtitle">Allgemeine Geschäftsbedingungen · Stand Mai 2026</div>
+    <div class="page-sub">Allgemeine Geschäftsbedingungen · Stand Mai 2026</div>
 
     <h2>§ 1 Geltungsbereich</h2>
-    <p>Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für alle Leistungen, die über die Plattform ProjectScout (<a href="https://project-scout.at">project-scout.at</a>) angeboten werden. Betreiber ist Roman Baumschlager, Molln, Oberösterreich (nachfolgend „Anbieter").</p>
-    <p>Durch Abschluss einer Bestellung akzeptiert der Kunde diese AGB in der zum Zeitpunkt der Bestellung gültigen Fassung.</p>
+    <p>Diese AGB gelten für alle Leistungen über <a href="https://project-scout.at">project-scout.at</a>. Betreiber ist Roman Baumschlager, Molln, Oberösterreich (nachfolgend „Anbieter"). Durch Abschluss einer Bestellung akzeptiert der Kunde diese AGB.</p>
 
     <h2>§ 2 Leistungsbeschreibung</h2>
-    <p>ProjectScout bietet einen einmaligen, KI-gestützten Recherche-Dienst für Bauprojekte in Österreich an (nachfolgend „Scout-Lauf"). Der Kunde wählt Gewerke, Suchgebiet und Zeitraum. Der KI-Agent durchsucht anschließend öffentlich zugängliche Quellen (Zeitungen, Vergabeportale, Gemeinderatsprotokolle etc.) und liefert die Ergebnisse als:</p>
+    <p>ProjectScout bietet einen einmaligen, KI-gestützten Recherche-Dienst für Projekte, Ausschreibungen und Grundstücke in Österreich an. Der Kunde wählt Suchkriterien, Gebiet und Zeitraum. Der KI-Agent durchsucht anschließend öffentlich zugängliche Quellen und liefert die Ergebnisse als:</p>
     <ul>
       <li>Persönliches Online-Dashboard mit Filterfunktion und Kartenansicht</li>
       <li>E-Mail-Benachrichtigung mit Dashboard-Link</li>
@@ -264,23 +212,21 @@
     </ul>
 
     <h2>§ 3 Vertragsschluss</h2>
-    <p>Der Vertrag kommt durch Ausfüllen des Bestellformulars und erfolgreiche Zahlung über Stripe zustande. Nach Zahlungseingang startet der Scout-Lauf automatisch. Der Anbieter bestätigt den Auftragseingang per E-Mail.</p>
+    <p>Der Vertrag kommt durch Ausfüllen des Bestellformulars und erfolgreiche Zahlung über Stripe zustande. Nach Zahlungseingang startet der Scout-Lauf automatisch.</p>
 
     <h2>§ 4 Preise und Zahlung</h2>
-    <p>Die Preise werden im Bestellformular vor Abschluss klar angezeigt und verstehen sich als Einmalzahlungen inkl. 20% USt. Die Zahlung erfolgt ausschließlich über den Zahlungsanbieter Stripe. Es gelten die Zahlungsmethoden Kreditkarte, EPS, Klarna und weitere von Stripe unterstützte Methoden.</p>
-    <p>Es besteht kein Abonnement oder wiederkehrender Zahlungsplan. Jeder Scout-Lauf ist eine eigenständige Einmalzahlung.</p>
+    <p>Die Preise werden im Bestellformular vor Abschluss live angezeigt und verstehen sich als Einmalzahlungen inkl. 20% USt. Die Zahlung erfolgt über Stripe. Es besteht kein Abonnement – jeder Scout-Lauf ist eine eigenständige Einmalzahlung.</p>
 
     <h2>§ 5 Leistungserbringung und Zeitrahmen</h2>
-    <p>Der Scout-Lauf wird nach Zahlungseingang automatisch gestartet. Die Bearbeitungszeit beträgt je nach Umfang des Auftrags <strong>15 bis 60 Minuten</strong>. Nach Abschluss erhält der Kunde eine E-Mail mit dem Link zum Dashboard.</p>
-    <p>Der Anbieter gibt keine Garantie für eine bestimmte Anzahl gefundener Projekte, da dies von der Datenlage öffentlicher Quellen abhängt.</p>
+    <p>Der Scout-Lauf wird nach Zahlungseingang automatisch gestartet. Die Bearbeitungszeit beträgt je nach Umfang <strong>15 bis 60 Minuten</strong>. Nach Abschluss erhält der Kunde eine E-Mail mit dem Dashboard-Link. Der Anbieter gibt keine Garantie für eine bestimmte Anzahl gefundener Projekte.</p>
 
     <h2>§ 6 Widerrufsrecht</h2>
-    <p>Gemäß § 18 Abs. 1 Z 11 FAGG (Fern- und Auswärtsgeschäfte-Gesetz) besteht <strong>kein Widerrufsrecht</strong> für digitale Dienstleistungen, wenn mit der Ausführung begonnen wurde und der Kunde dem ausdrücklich zugestimmt hat. Mit Abschluss der Zahlung stimmt der Kunde dem sofortigen Start des Scout-Laufs zu und nimmt zur Kenntnis, dass damit das Widerrufsrecht erlischt.</p>
+    <p>Gemäß § 18 Abs. 1 Z 11 FAGG besteht <strong>kein Widerrufsrecht</strong> für digitale Dienstleistungen, wenn mit der Ausführung begonnen wurde und der Kunde dem ausdrücklich zugestimmt hat. Mit Abschluss der Zahlung stimmt der Kunde dem sofortigen Start des Scout-Laufs zu.</p>
 
     <h2>§ 7 Gewährleistung und Haftung</h2>
-    <p>Der Anbieter ist bemüht, qualitativ hochwertige Ergebnisse zu liefern. Da die Recherche auf öffentlich zugänglichen Quellen Dritter basiert, übernimmt der Anbieter keine Haftung für:</p>
+    <p>Da die Recherche auf öffentlich zugänglichen Quellen Dritter basiert, übernimmt der Anbieter keine Haftung für:</p>
     <ul>
-      <li>Vollständigkeit der gefundenen Bauprojekte</li>
+      <li>Vollständigkeit der gefundenen Projekte</li>
       <li>Aktualität oder Richtigkeit der Quellinformationen</li>
       <li>Nicht erreichbare oder fehlerhafte externe Quellen</li>
       <li>Entgangene Geschäfte aufgrund nicht gefundener Projekte</li>
@@ -288,24 +234,26 @@
     <p>Die Haftung des Anbieters ist auf den bezahlten Auftragsbetrag beschränkt, außer bei grober Fahrlässigkeit oder Vorsatz.</p>
 
     <h2>§ 8 Datenschutz</h2>
-    <p>Die Verarbeitung personenbezogener Daten erfolgt gemäß der Datenschutzerklärung (siehe Tab „Datenschutz") und der DSGVO.</p>
+    <p>Die Verarbeitung personenbezogener Daten erfolgt gemäß der Datenschutzerklärung (Tab „Datenschutz") und der DSGVO.</p>
 
     <h2>§ 9 Nutzungsrechte</h2>
-    <p>Der Kunde erhält ein einfaches, nicht übertragbares Nutzungsrecht an den für ihn erstellten Ergebnissen (Dashboard, Excel-Export) für den internen Geschäftsbetrieb. Eine Weitergabe oder kommerzielle Nutzung der Ergebnisse ist ohne Zustimmung des Anbieters nicht gestattet.</p>
+    <p>Der Kunde erhält ein einfaches, nicht übertragbares Nutzungsrecht an den erstellten Ergebnissen für den internen Geschäftsbetrieb. Eine Weitergabe oder kommerzielle Verwertung ohne Zustimmung des Anbieters ist nicht gestattet.</p>
 
-    <h2>§ 10 Änderungen der AGB</h2>
-    <p>Der Anbieter behält sich vor, diese AGB jederzeit zu ändern. Für bereits abgeschlossene Aufträge gelten die AGB zum Zeitpunkt des Vertragsschlusses.</p>
-
-    <h2>§ 11 Anwendbares Recht und Gerichtsstand</h2>
+    <h2>§ 10 Anwendbares Recht und Gerichtsstand</h2>
     <p>Es gilt österreichisches Recht unter Ausschluss des UN-Kaufrechts. Gerichtsstand ist Steyr, Oberösterreich. Für Verbraucher gilt der gesetzliche Gerichtsstand gemäß § 14 KSchG.</p>
 
-    <h2>§ 12 Streitbeilegung</h2>
-    <p>Der Anbieter ist nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. Bei Streitigkeiten steht der Rechtsweg offen.</p>
+    <h2>§ 11 Streitbeilegung</h2>
+    <p>Der Anbieter ist nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. Bei Streitigkeiten steht der Rechtsweg offen.</p>
 
     <div class="stand">Stand: Mai 2026 · ProjectScout · Roman Baumschlager · Molln, OÖ</div>
   </div>
 
 </div>
+
+<footer>
+  <div class="footer-logo">Project<span>Scout</span></div>
+  <div class="footer-copy">© 2026 Roman Baumschlager · Molln, OÖ</div>
+</footer>
 
 <script>
 function zeigeTab(id, btn) {
@@ -314,6 +262,14 @@ function zeigeTab(id, btn) {
   document.getElementById(id).classList.add('aktiv');
   btn.classList.add('aktiv');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Tab aus URL-Hash laden (z.B. impressum.html#datenschutz)
+const hash = window.location.hash.replace('#','');
+if (hash && document.getElementById(hash)) {
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.getAttribute('onclick').includes(hash)) t.click();
+  });
 }
 </script>
 </body>
