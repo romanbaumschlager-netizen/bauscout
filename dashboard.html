@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BauScout – Dashboard</title>
+<title>ProjectScout – Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -393,7 +393,7 @@ body {
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-text">BAUSCOUT</div>
+      <div class="logo-text">PROJECTSCOUT</div>
       <div class="logo-sub">Ihr Projekt-Radar</div>
     </div>
 
@@ -912,7 +912,7 @@ window.exportiereExcel = function() {
 
   const ws = XLSX.utils.json_to_sheet(zeilen);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'BauScout Projekte');
+  XLSX.utils.book_append_sheet(wb, ws, 'ProjectScout Projekte');
 
   // Spaltenbreiten
   ws['!cols'] = [
@@ -921,7 +921,7 @@ window.exportiereExcel = function() {
   ];
 
   const datum = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `BauScout_${datum}.xlsx`);
+  XLSX.writeFile(wb, `ProjectScout_${datum}.xlsx`);
 };
 
 // ============================================================
@@ -955,7 +955,7 @@ function zeigeKeinZugang() {
     <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;
       font-family:'DM Sans',sans-serif;background:#0a0a0a;color:#e6edf3;text-align:center;padding:40px;">
       <div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:#d4a017;letter-spacing:4px;">BAUSCOUT</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:#d4a017;letter-spacing:4px;">PROJECTSCOUT</div>
         <div style="color:#8b949e;margin-top:16px;font-size:16px;">
           Kein Zugang – bitte verwenden Sie den Link aus Ihrer E-Mail.
         </div>
