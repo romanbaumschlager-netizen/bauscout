@@ -27,7 +27,7 @@ jobs:
       - name: Abhängigkeiten installieren
         run: pip install requests
 
-      - name: BauScout Agent starten
+      - name: ProjectScout Agent starten
         env:
           SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
