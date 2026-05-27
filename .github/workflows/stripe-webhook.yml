@@ -1,4 +1,4 @@
-name: BauScout Agent Starter
+name: ProjectScout Agent
 
 on:
   schedule:
@@ -42,6 +42,6 @@ jobs:
       - name: Zusammenfassung
         if: always()
         run: |
-          echo "## BauScout Agent Run" >> $GITHUB_STEP_SUMMARY
+          echo "## ProjectScout Agent Run" >> $GITHUB_STEP_SUMMARY
           echo "**Zeitpunkt:** $(date)" >> $GITHUB_STEP_SUMMARY
           echo "**Nächster Check:** in 15 Minuten" >> $GITHUB_STEP_SUMMARY
