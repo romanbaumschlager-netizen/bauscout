@@ -1,867 +1,1436 @@
-# =============================================================================
-# BauScout – KI-Agent
-# Datei: agent/agent.py
-#
-# Ablauf:
-#   1. Bezahlte Suchanfragen aus Supabase laden
-#   2. Passende Medienquellen nach Bundesland filtern
-#   3. Artikel crawlen (mit Cache-Prüfung)
-#   4. KI-Analyse mit Claude Haiku (Relevanz-Check)
-#   5. Projekte in Supabase speichern (Duplikat-Check via Hash)
-#   6. Status auf "abgeschlossen" setzen
-#   7. E-Mail mit Ergebnis-Zusammenfassung versenden
-#
-# Umgebungsvariablen (GitHub Secrets):
-#   SUPABASE_URL, SUPABASE_SECRET_KEY
-#   ANTHROPIC_API_KEY
-#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
-# =============================================================================
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProjectScout – KI-gestützter Projekt-Scout für Österreich</title>
 
-import os
-import sys
-import json
-import time
-import hashlib
-import smtplib
-import requests
-import re
-from datetime import datetime, timezone, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from urllib.parse import urljoin, urlparse, quote_plus
+<!-- ── SEO Basis ── -->
+<meta name="description" content="ProjectScout durchsucht automatisch Lokalzeitungen, Gemeinden und Ausschreibungsplattformen in ganz Österreich nach relevanten Projekten, Ausschreibungen und Grundstücken – powered by KI. Einmalig zahlen, sofort Ergebnisse.">
+<meta name="keywords" content="Ausschreibungen Österreich, Bauprojekte Österreich, Projektscout, KI Ausschreibungssuche, Vergabe Österreich, Baubewilligung, Photovoltaik Ausschreibung, Infrastruktur Projekte, Grundstücke kaufen Österreich, öffentliche Aufträge">
+<meta name="author" content="ProjectScout">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<link rel="canonical" href="https://project-scout.at/">
+<meta name="language" content="de">
+<meta name="geo.region" content="AT">
+<meta name="geo.placename" content="Österreich">
 
-# Medien-Datenbank importieren (liegt im selben Ordner)
-sys.path.insert(0, os.path.dirname(__file__))
-from medien_datenbank import get_quellen_fuer_bundeslaender, get_alle_bundeslaender_kuerzel
+<!-- ── Open Graph (Facebook, LinkedIn, WhatsApp) ── -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://project-scout.at/">
+<meta property="og:title" content="ProjectScout – KI-gestützter Projekt-Scout für Österreich">
+<meta property="og:description" content="Automatische KI-Suche nach Projekten, Ausschreibungen und Grundstücken in ganz Österreich. 153 Quellen. Einmalzahlung ab € 9,90.">
+<meta property="og:locale" content="de_AT">
+<meta property="og:site_name" content="ProjectScout">
 
-# =============================================================================
-# KONFIGURATION
-# =============================================================================
+<!-- ── Twitter / X Card ── -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ProjectScout – KI-gestützter Projekt-Scout für Österreich">
+<meta name="twitter:description" content="Automatische KI-Suche nach Projekten, Ausschreibungen und Grundstücken in ganz Österreich. 153 Quellen. Einmalzahlung ab € 9,90.">
 
-SUPABASE_URL      = os.environ["SUPABASE_URL"]
-SUPABASE_KEY      = os.environ["SUPABASE_SECRET_KEY"]
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-SMTP_HOST         = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT         = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER         = os.environ.get("SMTP_USER", "")
-SMTP_PASS         = os.environ.get("SMTP_PASS", "")
+<!-- ── KI-Crawler (ChatGPT, Perplexity, Claude, Gemini) ── -->
+<meta name="ai-content-declaration" content="human-authored">
+<meta name="citation_title" content="ProjectScout – KI-gestützter Projekt-Scout für Österreich">
+<meta name="citation_language" content="de">
+<meta name="citation_abstract" content="ProjectScout ist eine österreichische SaaS-Plattform, die mittels KI-Agenten automatisch Projekte, Ausschreibungen, Baubewilligungen und Grundstücke aus 153 österreichischen Medienquellen und Gemeinden zusammenführt. Branchen: Bau, Energie, Infrastruktur, Immobilien, Landwirtschaft, Industrie.">
 
-DASHBOARD_BASE_URL = "https://project-scout.at/dashboard.html"
-
-# Crawling-Einstellungen
-MAX_ARTIKEL_PRO_QUELLE = 15      # Wie viele Artikel pro Quelle analysiert werden
-REQUEST_TIMEOUT        = 15      # Sekunden pro HTTP-Request
-PAUSE_ZWISCHEN_QUELLEN = 1.0     # Sekunden Pause zwischen Quellen (höfliches Crawling)
-
-SUPABASE_HEADERS = {
-    "apikey":        SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type":  "application/json",
-    "Prefer":        "return=representation",
-}
-
-# =============================================================================
-# SUPABASE HILFSFUNKTIONEN
-# =============================================================================
-
-def sb_get(tabelle: str, params: dict = None) -> list:
-    """Daten aus Supabase lesen."""
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
-    resp = requests.get(url, headers=SUPABASE_HEADERS, params=params, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
-
-def sb_patch(tabelle: str, filter_params: dict, daten: dict) -> None:
-    """Datensatz in Supabase aktualisieren."""
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
-    headers = {**SUPABASE_HEADERS, "Prefer": "return=minimal"}
-    resp = requests.patch(url, headers=headers, params=filter_params, json=daten, timeout=10)
-    resp.raise_for_status()
-
-def sb_insert(tabelle: str, daten: dict) -> dict | None:
-    """Neuen Datensatz in Supabase einfügen. Gibt eingefügten Datensatz zurück."""
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
-    resp = requests.post(url, headers=SUPABASE_HEADERS, json=daten, timeout=10)
-    if resp.status_code in (200, 201):
-        result = resp.json()
-        return result[0] if isinstance(result, list) and result else result
-    return None
-
-def sb_upsert(tabelle: str, daten: dict, on_conflict: str) -> None:
-    """Datensatz einfügen oder aktualisieren (Upsert)."""
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
-    headers = {**SUPABASE_HEADERS, "Prefer": f"resolution=merge-duplicates,return=minimal"}
-    params = {"on_conflict": on_conflict}
-    resp = requests.post(url, headers=headers, params=params, json=daten, timeout=10)
-    resp.raise_for_status()
-
-# =============================================================================
-# SCHRITT 1: OFFENE AUFTRÄGE LADEN
-# =============================================================================
-
-def lade_offene_auftraege(spezifische_id: str = None) -> list:
-    """
-    Lädt alle Suchanfragen mit Status 'bezahlt' aus Supabase.
-    Optional: nur eine spezifische ID laden.
-    """
-    if spezifische_id:
-        params = {"id": f"eq.{spezifische_id}"}
-    else:
-        params = {"status": "eq.bezahlt"}
-
-    auftraege = sb_get("suchanfragen", params)
-    print(f"📋 {len(auftraege)} offener Auftrag/Aufträge gefunden")
-    return auftraege
-
-def lade_kundendaten(kunden_id: str) -> dict | None:
-    """Kundendaten (E-Mail, Firmenname) für einen Auftrag laden."""
-    ergebnis = sb_get("kunden", {"id": f"eq.{kunden_id}"})
-    return ergebnis[0] if ergebnis else None
-
-# =============================================================================
-# SCHRITT 2: SUCHBEGRIFFE AUFBAUEN
-# =============================================================================
-
-# Gewerk → relevante Suchbegriffe auf Deutsch
-GEWERK_KEYWORDS = {
-    # ── BAU & ROHBAU ──
-    "Erdbau / Aushub":                      ["Erdbau", "Aushub", "Erdarbeiten", "Geländegestaltung"],
-    "Spezialtiefbau":                       ["Spezialtiefbau", "Pfahlgründung", "Bohrpfahl", "Verbau", "Grundwasser"],
-    "Betonbau / Stahlbeton":                ["Betonbau", "Stahlbeton", "Beton", "Betondecke", "Fundamentarbeiten"],
-    "Maurerarbeiten":                       ["Maurerarbeiten", "Mauerwerk", "Ziegelmauerwerk", "Hochbau"],
-    "Abbruch / Demontage":                  ["Abbruch", "Abriss", "Rückbau", "Demolierung", "Demontage"],
-    "Sprengungen":                          ["Sprengung", "Sprengtechnik", "Felssprengung"],
-    "Bohrpfähle / Baugrubensicherung":      ["Bohrpfahl", "Baugrubensicherung", "Verbau", "Pfahlgründung"],
-    "Bodenverbesserung":                    ["Bodenverbesserung", "Bodenstabilisierung", "Untergrundverbesserung"],
-    "Hangsicherungen":                      ["Hangsicherung", "Böschungssicherung", "Steinschlagschutz", "Lawinenschutz"],
-    "Hochwasserschutz":                     ["Hochwasserschutz", "Hochwasserdamm", "Retentionsbecken", "Schutzdamm"],
-    "Zimmerei / Holzbau":                   ["Zimmerei", "Holzbau", "Dachstuhl", "Holzkonstruktion", "Holzriegelbau"],
-    "Trockenbau":                           ["Trockenbau", "Gipskarton", "Rigips", "Raumtrenner"],
-    "Estrich / Boden":                      ["Estrich", "Bodenbelag", "Fußboden", "Industrieboden"],
-    "Fliesen / Naturstein":                 ["Fliesen", "Naturstein", "Fliesenleger", "Keramik", "Klinker"],
-    "Maler / Anstreicher":                  ["Maler", "Anstreicher", "Fassadenanstrich", "Beschichtung"],
-    "Schlosser / Metallbau":                ["Schlosser", "Metallbau", "Stahlbau", "Geländer", "Metallkonstruktion"],
-    "Fenster / Türen / Verglasungen":       ["Fenster", "Türen", "Verglasung", "Glasfassade", "Sonnenschutz"],
-    "Innenausbau":                          ["Innenausbau", "Inneneinrichtung", "Ausbau", "Raumgestaltung"],
-
-    # ── AUSBAU & HAUSTECHNIK ──
-    "Elektriker / Elektrotechnik":          ["Elektroinstallation", "Elektrotechnik", "Elektro", "Stromversorgung"],
-    "Installateur / Sanitär":               ["Sanitär", "Installateur", "Sanitärinstallation", "Rohrinstallation"],
-    "Heizung / Lüftung / Klima (HVAC)":     ["Heizung", "Lüftung", "Klimaanlage", "HKLS", "HVAC", "Heizungsanlage"],
-    "Aufzüge / Lifte":                      ["Aufzug", "Lift", "Personenaufzug", "Lastenaufzug", "Fahrstuhl"],
-    "Brandschutz / Sprinkler":              ["Brandschutz", "Sprinkleranlage", "Brandmeldeanlage", "Feuerschutz"],
-    "Gebäudeautomation / Smart Building":   ["Gebäudeautomation", "Smart Building", "Hausautomation", "GLT"],
-    "Dachdecker":                           ["Dach", "Dachdeckung", "Dachabdichtung", "Dachsanierung", "Dachdecker"],
-    "Spengler / Klempner":                  ["Spengler", "Klempner", "Blechdach", "Entwässerung", "Dachrinne"],
-    "Fassadenbau / WDVS":                   ["Fassade", "WDVS", "Außendämmung", "Wärmedämmung", "Fassadensanierung"],
-    "Gerüstbau":                            ["Gerüst", "Gerüstbau", "Fassadengerüst", "Arbeitsgerüst"],
-
-    # ── ENERGIE & UMWELT ──
-    "PV-Anlagen / Photovoltaik":            ["Photovoltaik", "PV-Anlage", "Solaranlage", "Solarstrom", "Solardach"],
-    "Wärmepumpen":                          ["Wärmepumpe", "Erdwärmepumpe", "Luftwärmepumpe", "Wärmegewinnung"],
-    "Erdwärmebohrungen":                    ["Erdwärme", "Geothermie", "Erdwärmebohrung", "Tiefenbohrung"],
-    "Windkraftanlagen":                     ["Windkraft", "Windrad", "Windkraftanlage", "Windpark"],
-    "E-Ladeinfrastruktur":                  ["Ladestation", "E-Ladepunkt", "Elektromobilität", "Ladeinfrastruktur"],
-    "Biomasse / Nahwärme":                  ["Biomasse", "Nahwärme", "Fernwärme", "Pelletsheizung", "Hackschnitzel"],
-    "Energiesanierung":                     ["Energiesanierung", "Thermische Sanierung", "Gebäudesanierung", "Sanierung"],
-    "Batteriespeicher":                     ["Batteriespeicher", "Energiespeicher", "Stromspeicher"],
-    "Wasserkraft":                          ["Wasserkraft", "Wasserkraftwerk", "Kleinkraftwerk", "Wasserturbine"],
-    "Deponie / Entsorgung":                 ["Deponie", "Entsorgung", "Abfallentsorgung", "Mülldeponie"],
-    "Altlastensanierung":                   ["Altlastensanierung", "Altlast", "Bodensanierung", "Kontamination"],
-    "Recycling / Kreislaufwirtschaft":      ["Recycling", "Kreislaufwirtschaft", "Wertstoffhof", "Recyclinganlage"],
-
-    # ── INFRASTRUKTUR & VERKEHR ──
-    "Straßenbau":                           ["Straßenbau", "Asphalt", "Gehsteig", "Radweg", "Ortsstraße", "Gemeindestraße"],
-    "Bahnbau / Gleisbau":                   ["Gleisbau", "Bahnstrecke", "Schienenverkehr", "ÖBB", "Bahnhof"],
-    "Brückenbau":                           ["Brücke", "Brückenbau", "Unterführung", "Überführung", "Viadukt"],
-    "Tunnelbau":                            ["Tunnel", "Tunnelbau", "Untertagebau", "Tunnelröhre"],
-    "Leitungsbau":                          ["Leitungsbau", "Pipeline", "Gasleitung", "Fernwärmeleitung"],
-    "Kanal / Abwasser":                     ["Kanal", "Abwasser", "Kanalisation", "Kläranlagen", "Regenwasserkanal"],
-    "Wasserversorgung":                     ["Wasserleitung", "Trinkwasser", "Wasserversorgung", "Pumpwerk", "Wasserbehälter"],
-    "Glasfaser / Breitband":                ["Glasfaser", "Breitband", "Glasfaserausbau", "Internet", "Netzausbau"],
-    "Kraftwerksbau":                        ["Kraftwerk", "Kraftwerksbau", "Energieanlage", "Stromversorgung"],
-    "Beleuchtung / Straßenbeleuchtung":     ["Straßenbeleuchtung", "LED-Beleuchtung", "Lichtanlage", "Beleuchtung"],
-    "Verkehrsleitsysteme":                  ["Verkehrsleitsystem", "Ampel", "Verkehrssteuerung", "Lichtsignalanlage"],
-
-    # ── IMMOBILIEN & GRUNDSTÜCKE ──
-    "Grundstückskauf / -verkauf":           ["Grundstück", "Grundstückskauf", "Grundstücksverkauf", "Liegenschaft", "Parzelle"],
-    "Umwidmungen / Flächenwidmung":         ["Umwidmung", "Flächenwidmung", "Widmungsänderung", "Bebauungsplan", "Widmung"],
-    "Wohnbauprojekte":                      ["Wohnbau", "Wohnanlage", "Wohnprojekt", "Mehrfamilienhaus", "Wohnhausanlage"],
-    "Gewerbliche Neubauten":                ["Gewerbegebäude", "Bürogebäude", "Gewerbebau", "Betriebsgebäude"],
-    "Sanierung / Revitalisierung":          ["Sanierung", "Revitalisierung", "Generalsanierung", "Gebäudesanierung"],
-    "Projektentwicklung / Bauträger":       ["Bauträger", "Projektentwicklung", "Immobilienprojekt", "Entwicklung"],
-    "Immobilienmakler":                     ["Immobilienmakler", "Makler", "Liegenschaftsvermittlung", "Immobilienverkauf"],
-    "Liegenschaftsbewertung":               ["Bewertung", "Liegenschaftsbewertung", "Schätzung", "Verkehrswert"],
-    "Zwangsversteigerungen":                ["Zwangsversteigerung", "Versteigerung", "Exekution", "Zwangsverkauf"],
-    "Pachtflächen / Landwirtschaftliche Flächen": ["Pachtfläche", "Landwirtschaftsfläche", "Ackerfläche", "Pacht"],
-
-    # ── ÖFFENTLICHE PROJEKTE & SOZIALES ──
-    "Schulen / Kindergärten":               ["Schule", "Kindergarten", "Bildungseinrichtung", "Schulbau", "Volksschule"],
-    "Pflegeheime / Senioreneinrichtungen":  ["Pflegeheim", "Seniorenheim", "Altenheim", "Senioreneinrichtung"],
-    "Krankenhäuser / Ärztezentren":         ["Krankenhaus", "Klinik", "Ärztehaus", "Ambulanz", "Gesundheitszentrum"],
-    "Sporthallen / Freizeitanlagen":        ["Sporthalle", "Sportzentrum", "Freizeitanlage", "Turnhalle", "Hallenbad"],
-    "Gemeindebauten / Rathäuser":           ["Gemeindeamt", "Rathaus", "Gemeindegebäude", "Verwaltungsgebäude"],
-    "Feuerwehr / Rettung":                  ["Feuerwehr", "Feuerwehrhaus", "Feuerwehrgebäude", "Rettungsstation"],
-    "Sozialwohnbau":                        ["Sozialwohnbau", "Gemeindebau", "Genossenschaftswohnbau", "Sozialbau"],
-    "Kultureinrichtungen":                  ["Kulturhaus", "Theater", "Museum", "Musikschule", "Veranstaltungssaal"],
-    "Friedhöfe / Kapellen":                 ["Friedhof", "Kapelle", "Aufbahrungshalle", "Friedhofsanlage"],
-
-    # ── FAHRZEUGE & AUSRÜSTUNG ──
-    "Nutzfahrzeuge / LKW":                  ["Nutzfahrzeug", "LKW", "Transporter", "Fahrzeugbeschaffung"],
-    "Feuerwehrfahrzeuge":                   ["Feuerwehrfahrzeug", "Löschfahrzeug", "Einsatzfahrzeug", "Feuerwehrauto"],
-    "Rettungsfahrzeuge":                    ["Rettungsfahrzeug", "Krankenwagen", "Notarztwagen", "Rettungsauto"],
-    "Kommunalfahrzeuge / Traktoren":        ["Kommunalfahrzeug", "Traktor", "Kommunalmaschine", "Kehrmaschine"],
-    "Baumaschinen / Geräte":                ["Baumaschine", "Bagger", "Radlader", "Walze", "Kranwagen"],
-    "Krantechnik / Hebetechnik":            ["Kran", "Krantechnik", "Hebetechnik", "Turmdrehkran"],
-    "Fahrzeugausstattung":                  ["Fahrzeugausstattung", "Sonderausstattung", "Aufbau", "Fahrzeugumbau"],
-    "Werkzeuge / Betriebsmittel":           ["Werkzeug", "Betriebsmittel", "Maschinen", "Geräteankauf"],
-    "IT-Ausstattung / Hard- und Software":  ["IT-Ausstattung", "Computer", "Software", "Hardware", "IT-Beschaffung"],
-    "Büroausstattung / Mobiliar":           ["Büroausstattung", "Mobiliar", "Büromöbel", "Einrichtung"],
-
-    # ── LANDSCHAFT & AUSSENANLAGEN ──
-    "Landschaftsbau / Gartengestaltung":    ["Landschaftsbau", "Gartengestaltung", "Grünanlage", "Begrünung"],
-    "Parkanlagen / Grünflächen":            ["Parkanlage", "Grünfläche", "Stadtgrün", "Bepflanzung"],
-    "Spielplätze / Freizeitanlagen":        ["Spielplatz", "Spielgeräte", "Freizeitanlage", "Kinderspielplatz"],
-    "Sportplätze / Kunstrasen":             ["Sportplatz", "Fußballplatz", "Kunstrasen", "Sportanlage"],
-    "Bewässerungsanlagen":                  ["Bewässerungsanlage", "Beregnung", "Bewässerungssystem"],
-    "Forstarbeiten / Holzschlägerung":      ["Forstarbeiten", "Holzschlägerung", "Waldpflege", "Forstwirtschaft"],
-    "Schädlingsbekämpfung / Pflanzenpflege":["Schädlingsbekämpfung", "Pflanzenschutz", "Baumpflege", "Pflanzenpflege"],
-    "Flurbereinigung":                      ["Flurbereinigung", "Grundzusammenlegung", "Agrargemeinschaft"],
-
-    # ── GASTRONOMIE & TOURISMUS ──
-    "Hotelneubauten / Erweiterungen":       ["Hotel", "Hotelbau", "Hotelerweiterung", "Beherbergung", "Resort"],
-    "Gastronomiebetriebe / Konzessionen":   ["Gastronomie", "Restaurant", "Gasthaus", "Konzession", "Gastronomiebetrieb"],
-    "Tourismusinfrastruktur":               ["Tourismus", "Tourismusanlage", "Tourismusentwicklung", "Freizeitinfrastruktur"],
-    "Seilbahnen / Skilifte":               ["Seilbahn", "Skilift", "Gondelbahn", "Sesselbahn", "Bergbahn"],
-    "Campingplätze":                        ["Campingplatz", "Camping", "Zeltplatz", "Wohnmobilstellplatz"],
-    "Veranstaltungsstätten":                ["Veranstaltungsstätte", "Messehalle", "Kongresszentrum", "Eventhalle"],
-    "Küchen- / Gastronomieausstattung":     ["Küchenausstattung", "Gastronomieausstattung", "Gastrogeräte"],
-    "Freizeitparks / Erlebnisanlagen":      ["Freizeitpark", "Erlebnisanlage", "Attraktionen", "Freizeiteinrichtung"],
-
-    # ── PLANUNG & BERATUNG ──
-    "Architektur / Gebäudeplanung":         ["Architekt", "Architektur", "Gebäudeplanung", "Planung", "Entwurf"],
-    "Statik / Tragwerksplanung":            ["Statik", "Tragwerksplanung", "Statiker", "Tragwerksplaner"],
-    "Vermessung / Geodäsie":                ["Vermessung", "Geodäsie", "Vermessungsbüro", "Kataster", "Lageplan"],
-    "Umweltgutachten / UVP":                ["Umweltgutachten", "UVP", "Umweltverträglichkeit", "Gutachten"],
-    "Projektmanagement / Bauleitung":       ["Projektmanagement", "Bauleitung", "Projektsteuerung", "Örtliche Bauaufsicht"],
-    "Energieberatung":                      ["Energieberatung", "Energieausweis", "Energieeffizienz", "Energiekonzept"],
-    "Rechtsberatung / Vergaberecht":        ["Vergaberecht", "Rechtsberatung", "Ausschreibung", "Vergabeverfahren"],
-    "Finanzierung / Fördermittel":          ["Förderung", "Fördermittel", "Wohnbauförderung", "Investitionsförderung"],
-
-    # ── LANDWIRTSCHAFT & FORST ──
-    "Landwirtschaftliche Bauten / Stallbau":["Stallbau", "Landwirtschaftliches Gebäude", "Halle", "Maschinenhalle"],
-    "Silos / Lagerhallen":                  ["Silo", "Lagerhalle", "Getreidesilo", "Lagergebäude"],
-    "Biogasanlagen":                        ["Biogasanlage", "Biogas", "Biogasanlage", "Vergärungsanlage"],
-    "Bewässerung / Drainage":               ["Bewässerung", "Drainage", "Drainagesystem", "Entwässerung"],
-    "Forststraßen":                         ["Forststraße", "Waldweg", "Forstweg", "Erschließung"],
-    "Landmaschinen / Geräte":               ["Landmaschine", "Traktor", "Erntemaschine", "Landwirtschaftsmaschine"],
-    "Weinbau / Obstbau Infrastruktur":      ["Weinbau", "Obstbau", "Weingut", "Mosterei", "Kellerei"],
-    "Fischzucht / Aquakultur":              ["Fischzucht", "Aquakultur", "Fischteich", "Fischerei"],
-
-    # ── INDUSTRIE & GEWERBE ──
-    "Industriehallen / Werkshallen":        ["Industriehalle", "Werkshalle", "Produktionshalle", "Fabrik"],
-    "Gewerbeparks / Betriebsanlagen":       ["Gewerbepark", "Betriebsanlage", "Betriebsgebäude", "Gewerbezone"],
-    "Produktionsanlagen":                   ["Produktionsanlage", "Fertigungsanlage", "Produktionsstätte"],
-    "Lagerhallen / Logistikzentren":        ["Lagerhalle", "Logistikzentrum", "Logistikhalle", "Distributionszentrum"],
-    "Reinräume / Labore":                   ["Reinraum", "Labor", "Laborgebäude", "Reinraumanlage"],
-    "Tankstellen / Waschanlagen":           ["Tankstelle", "Waschanlage", "Tankstellenbau", "Autopflegeanlage"],
-    "Kälteanlagen / Kühlhäuser":            ["Kälteanlage", "Kühlhaus", "Tiefkühlanlage", "Kältetechnik"],
-    "Fördertechnik / Förderanlagen":        ["Fördertechnik", "Förderanlage", "Förderband", "Materialfluss"],
-}
-
-# Allgemeine Keywords (immer dabei – unabhängig von Branche)
-BASIS_KEYWORDS = ["Ausschreibung", "Vergabe", "Baubewilligung", "Projekt", "Vorhaben", "Planung", "Beschluss"]
-
-def baue_suchbegriffe(auftrag: dict) -> list[str]:
-    """
-    Erstellt eine Liste von Suchbegriffen basierend auf den gewählten Gewerken
-    und optionalen Zusatz-Keywords des Kunden.
-    """
-    begriffe = list(BASIS_KEYWORDS)
-
-    gewerke = auftrag.get("gewerke") or []
-    if isinstance(gewerke, str):
-        try:
-            gewerke = json.loads(gewerke)
-        except Exception:
-            gewerke = [gewerke]
-
-    for gewerk in gewerke:
-        if gewerk in GEWERK_KEYWORDS:
-            begriffe.extend(GEWERK_KEYWORDS[gewerk])
-
-    # Zusatz-Keywords des Kunden (freies Textfeld)
-    zusatz = auftrag.get("zusatz_keywords") or ""
-    if zusatz:
-        for kw in re.split(r"[,;\n]+", zusatz):
-            kw = kw.strip()
-            if kw:
-                begriffe.append(kw)
-
-    # Duplikate entfernen, Reihenfolge behalten
-    gesehen = set()
-    ergebnis = []
-    for b in begriffe:
-        if b.lower() not in gesehen:
-            gesehen.add(b.lower())
-            ergebnis.append(b)
-
-    print(f"  🔍 Suchbegriffe ({len(ergebnis)}): {', '.join(ergebnis[:8])}{'...' if len(ergebnis) > 8 else ''}")
-    return ergebnis
-
-# =============================================================================
-# SCHRITT 3: QUELLEN FILTERN
-# =============================================================================
-
-def waehle_quellen(auftrag: dict) -> list[dict]:
-    """
-    Filtert Medienquellen nach den gewählten Bundesländern.
-    Wenn ganz_oesterreich=True, alle Quellen.
-    """
-    if auftrag.get("ganz_oesterreich"):
-        bundeslaender = get_alle_bundeslaender_kuerzel()
-        print(f"  🗺️  Ganz Österreich – alle Quellen")
-    else:
-        bundeslaender = auftrag.get("bundeslaender") or []
-        if isinstance(bundeslaender, str):
-            try:
-                bundeslaender = json.loads(bundeslaender)
-            except Exception:
-                bundeslaender = [bundeslaender]
-
-    quellen = get_quellen_fuer_bundeslaender(bundeslaender)
-    print(f"  📰 {len(quellen)} Medienquellen für Bundesländer: {bundeslaender}")
-    return quellen
-
-# =============================================================================
-# SCHRITT 4: ARTIKEL CRAWLEN
-# =============================================================================
-
-def berechne_hash(text: str) -> str:
-    """SHA256-Hash eines Textes – für Duplikat-Erkennung."""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
-
-def _extrahiere_links(html: str, basis_url: str, gefundene_urls: set, quelle_name: str, limit: int) -> list:
-    """Hilfsfunktion: extrahiert Artikel-Links aus HTML, dedupliziert gegen gefundene_urls."""
-    muster = re.compile(
-        r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>([^<]{12,150})</a>',
-        re.IGNORECASE | re.DOTALL
-    )
-    skip_patterns = ["/impressum", "/kontakt", "/datenschutz", "/agb",
-                     "/login", "/register", "/suche", "/search", "#",
-                     "javascript:", "mailto:", "/kategorie", "/tag/",
-                     "/autor/", "/author/", "/feed", ".xml", ".rss"]
-    neu = []
-    for match in muster.finditer(html):
-        href, title = match.group(1).strip(), match.group(2).strip()
-        title = re.sub(r'\s+', ' ', title).strip()
-        if len(title) < 12:
-            continue
-        if href.startswith("/"):
-            href = basis_url + href
-        elif not href.startswith("http"):
-            continue
-        if urlparse(href).netloc != urlparse(basis_url).netloc:
-            continue
-        if any(p in href.lower() for p in skip_patterns):
-            continue
-        if href in gefundene_urls:
-            continue
-        gefundene_urls.add(href)
-        neu.append({"titel": title, "url": href, "quelle_name": quelle_name})
-        if len(neu) >= limit:
-            break
-    return neu
-
-
-def crawle_suchergebnis(quelle: dict, suchbegriffe: list) -> list:
-    """
-    Durchsucht eine Quelle mit TOP-3 spezifischen Keywords (separate Abfragen).
-    Dedupliziert quer über alle Abfragen. Liefert bis zu MAX_ARTIKEL_PRO_QUELLE Artikel.
-    """
-    suchpfad = quelle.get("suchpfad", "")
-    if not suchpfad:
-        return []
-
-    # Gewerk-spezifische Keywords bevorzugen, Basis-Keywords als Fallback
-    basis = {"ausschreibung", "vergabe", "baubewilligung", "projekt", "vorhaben", "planung", "beschluss"}
-    spezifisch = [b for b in suchbegriffe if b.lower() not in basis]
-    top_keywords = spezifisch[:3] if spezifisch else suchbegriffe[:3]
-    if not top_keywords:
-        top_keywords = ["Bauprojekt"]
-
-    headers_req = {
-        "User-Agent": "Mozilla/5.0 (compatible; ProjectScout/1.0; +https://project-scout.at)",
-        "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "de-AT,de;q=0.9",
-    }
-
-    alle_artikel = []
-    gefundene_urls: set = set()
-    limit_pro_kw = max(5, MAX_ARTIKEL_PRO_QUELLE // len(top_keywords))
-
-    for keyword in top_keywords:
-        if len(alle_artikel) >= MAX_ARTIKEL_PRO_QUELLE:
-            break
-        url = suchpfad + quote_plus(keyword)
-        try:
-            resp = requests.get(url, headers=headers_req, timeout=REQUEST_TIMEOUT, allow_redirects=True)
-            if resp.status_code != 200:
-                print(f"    ⚠️  {quelle['name']} [{keyword}]: HTTP {resp.status_code}")
-                continue
-            basis_url = f"{urlparse(resp.url).scheme}://{urlparse(resp.url).netloc}"
-            neu = _extrahiere_links(resp.text, basis_url, gefundene_urls, quelle["name"], limit_pro_kw)
-            alle_artikel.extend(neu)
-            if len(top_keywords) > 1:
-                time.sleep(0.4)
-        except requests.exceptions.Timeout:
-            print(f"    ⏱️  {quelle['name']} [{keyword}]: Timeout")
-        except Exception as e:
-            print(f"    ❌ {quelle['name']} [{keyword}]: {e}")
-
-    return alle_artikel[:MAX_ARTIKEL_PRO_QUELLE]
-
-def lade_artikel_text(artikel_url: str) -> str:
-    """
-    Lädt den Volltext eines Artikels und extrahiert den Textinhalt.
-    Gibt maximal 3000 Zeichen zurück (genug für KI-Analyse).
-    """
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; ProjectScout/1.0; +https://project-scout.at)",
-            "Accept": "text/html",
-            "Accept-Language": "de-AT,de;q=0.9",
-        }
-        resp = requests.get(artikel_url, headers=headers, timeout=REQUEST_TIMEOUT)
-        if resp.status_code != 200:
-            return ""
-
-        html = resp.text
-
-        # HTML-Tags entfernen
-        text = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r'<style[^>]*>.*?</style>',  ' ', text,  flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r'<[^>]+>', ' ', text)
-        text = re.sub(r'&[a-zA-Z]+;', ' ', text)   # HTML-Entities
-        text = re.sub(r'\s+', ' ', text).strip()
-
-        return text[:4500]
-    except Exception:
-        return ""
-
-# =============================================================================
-# SCHRITT 5: KI-ANALYSE MIT CLAUDE HAIKU
-# =============================================================================
-
-ANALYSE_SYSTEM_PROMPT = """Du bist ein Analyse-Assistent für ProjectScout, eine österreichische Plattform die Projekte, Ausschreibungen, Grundstücke und Vorhaben für Unternehmen aus allen Branchen findet.
-
-Deine Aufgabe: Analysiere Nachrichtenartikel und entscheide ob sie ein relevantes Projekt, Vorhaben oder eine Ausschreibung beschreiben.
-
-Antworte NUR mit einem JSON-Objekt. Absolut kein Text davor oder danach. Kein Markdown.
-
-Format:
+<!-- ── Structured Data: Organization + SoftwareApplication (Google, KI) ── -->
+<script type="application/ld+json">
 {
-  "ist_bauprojekt": true/false,
-  "relevanz": 0-10,
-  "titel": "Kurzer prägnanter Projekttitel",
-  "ort": "Gemeinde oder Stadt",
-  "bezirk": "Bezirksname oder leer",
-  "bundesland": "Bundesland-Kürzel (W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR)",
-  "kategorie": "Hochbau/Tiefbau/Energie/Infrastruktur/Immobilien/Öffentlich/Landschaft/Gastronomie/Planung/Landwirtschaft/Industrie/Fahrzeuge/Sonstiges",
-  "volumen": "Geschätztes Projektvolumen in Euro oder leer",
-  "phase": "Planung/Ausschreibung/Vergabe/Bau/Fertigstellung/Betrieb",
-  "beschreibung": "2-3 präzise Sätze: Was wird gebaut/gemacht, wo, wann, wer ist Auftraggeber?"
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://project-scout.at/#organization",
+      "name": "ProjectScout",
+      "url": "https://project-scout.at",
+      "description": "KI-gestützte Plattform zur automatischen Suche nach Projekten, Ausschreibungen und Grundstücken in Österreich.",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Austria"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "office@project-scout.at",
+        "contactType": "customer support",
+        "availableLanguage": "German"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://project-scout.at/#software",
+      "name": "ProjectScout",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://project-scout.at",
+      "description": "KI-Agent durchsucht automatisch 153 österreichische Medienquellen, Gemeinden und Ausschreibungsplattformen nach Projekten, Vergaben und Grundstücken. Ergebnisse als Dashboard und Excel-Export.",
+      "offers": {
+        "@type": "Offer",
+        "price": "9.90",
+        "priceCurrency": "EUR",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "9.90",
+          "priceCurrency": "EUR",
+          "description": "Einmalzahlung pro Scout-Lauf, kein Abo"
+        }
+      },
+      "featureList": [
+        "KI-gestützte Projektsuche in ganz Österreich",
+        "153 österreichische Medienquellen und Gemeinden",
+        "Alle Branchen: Bau, Energie, Infrastruktur, Immobilien, Industrie, Landwirtschaft",
+        "Ergebnisse als Dashboard und Excel-Export",
+        "E-Mail-Benachrichtigung bei Fertigstellung",
+        "Einmalzahlung, kein Abo"
+      ],
+      "inLanguage": "de",
+      "availableCountry": "AT"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://project-scout.at/#website",
+      "url": "https://project-scout.at",
+      "name": "ProjectScout",
+      "description": "KI-gestützter Projekt-Scout für Österreich",
+      "inLanguage": "de",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://project-scout.at/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+  ]
+}
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --weiss: #ffffff;
+    --hell: #f8f7f4;
+    --hell2: #f1f0ec;
+    --rand: #e5e4e0;
+    --rand2: #d0cfc9;
+    --text: #111111;
+    --text-mid: #444444;
+    --text-dim: #888888;
+    --blau: #2563eb;
+    --blau-hell: #eff6ff;
+    --blau-dunkel: #1d4ed8;
+    --gruen: #16a34a;
+    --gruen-hell: #f0fdf4;
+    --rot: #dc2626;
+    --gold: #d97706;
+    --gold-hell: #fffbeb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--weiss); color: var(--text); font-family: 'Inter', sans-serif; font-weight: 400; min-height: 100vh; overflow-x: hidden; }
+
+  /* ── HEADER ── */
+  header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--rand); padding: 0 48px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .logo span { color: var(--blau); }
+  .header-nav { display: flex; align-items: center; gap: 32px; }
+  .header-nav a { font-size: 14px; color: var(--text-mid); text-decoration: none; transition: color 0.15s; }
+  .header-nav a:hover { color: var(--blau); }
+  .header-cta { background: var(--blau); color: white; font-size: 14px; font-weight: 600; padding: 9px 20px; border-radius: 8px; text-decoration: none; transition: background 0.15s; }
+  .header-cta:hover { background: var(--blau-dunkel); }
+
+  /* ── HERO ── */
+  .hero { background: var(--weiss); padding: 80px 48px 72px; max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 480px; gap: 64px; align-items: center; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--blau-hell); color: var(--blau); font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; margin-bottom: 24px; }
+  .hero-badge .dot { width: 7px; height: 7px; background: var(--blau); border-radius: 50%; }
+  .hero h1 { font-size: clamp(36px, 4.5vw, 54px); font-weight: 700; line-height: 1.1; letter-spacing: -1.5px; color: var(--text); margin-bottom: 12px; }
+  .hero h1 em { font-style: normal; color: var(--blau); display: block; }
+  .hero-sub { font-size: 20px; font-weight: 500; color: var(--text-mid); margin-bottom: 20px; letter-spacing: -0.3px; }
+  .hero p { font-size: 16px; color: var(--text-dim); line-height: 1.75; margin-bottom: 36px; max-width: 460px; }
+  .hero-btns { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .btn-primary { background: var(--blau); color: white; font-size: 15px; font-weight: 600; padding: 13px 28px; border-radius: 10px; text-decoration: none; border: none; cursor: pointer; transition: all 0.15s; display: inline-block; }
+  .btn-primary:hover { background: var(--blau-dunkel); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+  .btn-secondary { background: var(--weiss); color: var(--text-mid); font-size: 15px; font-weight: 500; padding: 12px 24px; border-radius: 10px; border: 1.5px solid var(--rand2); text-decoration: none; cursor: pointer; transition: all 0.15s; display: inline-block; }
+  .btn-secondary:hover { border-color: var(--blau); color: var(--blau); }
+  .hero-trust { display: flex; align-items: center; gap: 6px; margin-top: 20px; font-size: 13px; color: var(--text-dim); }
+  .hero-trust .check { color: var(--gruen); font-weight: 600; }
+
+  /* Hero rechts – Formular-Vorschau */
+  .hero-karte { background: var(--weiss); border: 1.5px solid var(--rand); border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04); }
+  .hero-karte-titel { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .hero-karte-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+  .scout-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .scout-step { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--hell); border-radius: 8px; border: 1px solid var(--rand); cursor: pointer; transition: all 0.15s; }
+  .scout-step:hover { border-color: var(--blau); background: var(--blau-hell); }
+  .scout-step.aktiv { border-color: var(--blau); background: var(--blau-hell); }
+  .step-nr { width: 28px; height: 28px; background: var(--weiss); border: 1.5px solid var(--rand2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text-dim); flex-shrink: 0; transition: all 0.15s; }
+  .scout-step.aktiv .step-nr { background: var(--blau); border-color: var(--blau); color: white; }
+  .scout-step.erledigt .step-nr { background: var(--gruen); border-color: var(--gruen); color: white; }
+  .step-info { flex: 1; }
+  .step-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .step-desc { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+  .scout-step.aktiv .step-name { color: var(--blau-dunkel); }
+  .preis-preview { background: var(--hell); border: 1px solid var(--rand); border-radius: 8px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .preis-preview-label { font-size: 12px; color: var(--text-dim); }
+  .preis-preview-wert { font-size: 22px; font-weight: 700; color: var(--text); }
+  .preis-preview-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .btn-start { width: 100%; background: var(--blau); color: white; font-size: 15px; font-weight: 600; padding: 14px; border-radius: 10px; border: none; cursor: pointer; transition: all 0.15s; }
+  .btn-start:hover { background: var(--blau-dunkel); }
+
+  /* ── STATS LEISTE ── */
+  .stats-bar { background: var(--hell); border-top: 1px solid var(--rand); border-bottom: 1px solid var(--rand); padding: 28px 48px; }
+  .stats-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .stat-item { text-align: center; }
+  .stat-zahl { font-size: 32px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
+  .stat-zahl span { color: var(--blau); }
+  .stat-label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── WIE ES FUNKTIONIERT ── */
+  .section { max-width: 1100px; margin: 0 auto; padding: 80px 48px; }
+  .section-badge { display: inline-block; background: var(--blau-hell); color: var(--blau); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; margin-bottom: 16px; }
+  .section-titel { font-size: clamp(28px, 3vw, 38px); font-weight: 700; letter-spacing: -1px; color: var(--text); margin-bottom: 12px; }
+  .section-sub { font-size: 17px; color: var(--text-dim); max-width: 540px; line-height: 1.7; }
+  .wie-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+  .wie-karte { background: var(--weiss); border: 1.5px solid var(--rand); border-radius: 14px; padding: 28px; transition: all 0.2s; position: relative; overflow: hidden; }
+  .wie-karte:hover { border-color: var(--blau); box-shadow: 0 8px 24px rgba(37,99,235,0.08); transform: translateY(-2px); }
+  .wie-nr { font-size: 48px; font-weight: 800; color: var(--hell2); letter-spacing: -2px; margin-bottom: 16px; font-family: 'DM Mono', monospace; }
+  .wie-karte:hover .wie-nr { color: var(--blau-hell); }
+  .wie-icon { width: 44px; height: 44px; background: var(--blau-hell); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; }
+  .wie-titel { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .wie-text { font-size: 14px; color: var(--text-dim); line-height: 1.7; }
+
+  /* ── QUELLEN LEISTE ── */
+  .quellen-section { background: var(--hell); border-top: 1px solid var(--rand); border-bottom: 1px solid var(--rand); padding: 48px; }
+  .quellen-inner { max-width: 1100px; margin: 0 auto; }
+  .quellen-titel { font-size: 14px; font-weight: 600; color: var(--text-dim); text-align: center; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .quellen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .quelle-tag { background: var(--weiss); border: 1px solid var(--rand); border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 500; color: var(--text-mid); text-align: center; }
+
+  /* ── FEATURES ── */
+  .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 48px; }
+  .feature-karte { background: var(--hell); border: 1px solid var(--rand); border-radius: 14px; padding: 24px 28px; }
+  .feature-icon { font-size: 24px; margin-bottom: 12px; }
+  .feature-titel { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .feature-text { font-size: 14px; color: var(--text-dim); line-height: 1.7; }
+  .feature-highlight { background: var(--blau-hell); border-color: rgba(37,99,235,0.2); }
+
+  /* ── PREISE ── */
+  .preise-section { background: var(--hell); border-top: 1px solid var(--rand); }
+  .preise-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px; }
+  .preis-karte { background: var(--weiss); border: 1.5px solid var(--rand); border-radius: 14px; padding: 28px; }
+  .preis-karte.empfohlen { border-color: var(--blau); box-shadow: 0 8px 32px rgba(37,99,235,0.12); }
+  .empfohlen-badge { background: var(--blau); color: white; font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 16px; }
+  .preis-name { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .preis-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+  .preis-zahl { font-size: 40px; font-weight: 700; color: var(--text); letter-spacing: -1.5px; }
+  .preis-zahl span { font-size: 18px; font-weight: 500; color: var(--text-dim); }
+  .preis-einmalig { font-size: 12px; color: var(--text-dim); margin-bottom: 20px; margin-top: 4px; }
+  .preis-features { list-style: none; margin-bottom: 24px; }
+  .preis-features li { font-size: 14px; color: var(--text-mid); padding: 6px 0; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--rand); }
+  .preis-features li:last-child { border-bottom: none; }
+  .preis-features .check { color: var(--gruen); font-weight: 700; flex-shrink: 0; }
+  .btn-preis { width: 100%; background: var(--hell); color: var(--text); font-size: 14px; font-weight: 600; padding: 12px; border-radius: 8px; border: 1.5px solid var(--rand2); cursor: pointer; transition: all 0.15s; }
+  .btn-preis:hover { border-color: var(--blau); color: var(--blau); background: var(--blau-hell); }
+  .preis-karte.empfohlen .btn-preis { background: var(--blau); color: white; border-color: var(--blau); }
+  .preis-karte.empfohlen .btn-preis:hover { background: var(--blau-dunkel); }
+
+  /* ── FAQ ── */
+  .faq-liste { margin-top: 48px; display: flex; flex-direction: column; gap: 12px; }
+  .faq-item { background: var(--weiss); border: 1px solid var(--rand); border-radius: 10px; overflow: hidden; }
+  .faq-frage { padding: 18px 24px; font-size: 15px; font-weight: 500; color: var(--text); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+  .faq-frage:hover { background: var(--hell); }
+  .faq-pfeil { font-size: 18px; color: var(--text-dim); transition: transform 0.2s; }
+  .faq-item.offen .faq-pfeil { transform: rotate(180deg); }
+  .faq-antwort { display: none; padding: 0 24px 18px; font-size: 14px; color: var(--text-dim); line-height: 1.75; border-top: 1px solid var(--rand); padding-top: 16px; }
+  .faq-item.offen .faq-antwort { display: block; }
+
+  /* ── CTA SECTION ── */
+  .cta-section { background: var(--text); padding: 80px 48px; text-align: center; }
+  .cta-inner { max-width: 600px; margin: 0 auto; }
+  .cta-section h2 { font-size: 38px; font-weight: 700; color: white; letter-spacing: -1px; margin-bottom: 16px; }
+  .cta-section p { font-size: 16px; color: #888; line-height: 1.7; margin-bottom: 32px; }
+  .btn-cta { background: var(--blau); color: white; font-size: 16px; font-weight: 600; padding: 16px 36px; border-radius: 12px; border: none; cursor: pointer; transition: all 0.15s; display: inline-block; text-decoration: none; }
+  .btn-cta:hover { background: var(--blau-dunkel); transform: translateY(-2px); }
+  .cta-sub { font-size: 13px; color: #666; margin-top: 16px; }
+
+  /* ── FOOTER ── */
+  footer { background: var(--hell); border-top: 1px solid var(--rand); padding: 32px 48px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .footer-logo { font-size: 16px; font-weight: 700; color: var(--text); }
+  .footer-logo span { color: var(--blau); }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { font-size: 13px; color: var(--text-dim); text-decoration: none; transition: color 0.15s; }
+  .footer-links a:hover { color: var(--blau); }
+  .footer-copy { font-size: 12px; color: var(--text-dim); }
+
+  /* ── FORMULAR SECTION ── */
+  .formular-section { max-width: 860px; margin: 0 auto; padding: 0 48px 80px; scroll-margin-top: 80px; }
+  .formular-titel { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); margin-bottom: 8px; }
+  .formular-sub { font-size: 15px; color: var(--text-dim); margin-bottom: 36px; }
+  .schritt { background: var(--weiss); border: 1.5px solid var(--rand); border-radius: 12px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+  .schritt.aktiv { border-color: var(--blau); box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+  .schritt-header { display: flex; align-items: center; gap: 14px; padding: 18px 24px; cursor: pointer; user-select: none; }
+  .schritt-nr { width: 30px; height: 30px; border-radius: 50%; background: var(--hell2); border: 1.5px solid var(--rand2); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text-dim); flex-shrink: 0; transition: all 0.2s; }
+  .schritt.aktiv .schritt-nr { background: var(--blau); border-color: var(--blau); color: white; }
+  .schritt.erledigt .schritt-nr { background: var(--gruen); border-color: var(--gruen); color: white; }
+  .schritt-titel { font-size: 15px; font-weight: 600; color: var(--text); flex: 1; }
+  .schritt-status { font-size: 12px; color: var(--text-dim); font-family: 'DM Mono', monospace; }
+  .schritt.erledigt .schritt-status { color: var(--gruen); }
+  .schritt.aktiv .schritt-status { color: var(--blau); }
+  .schritt-inhalt { display: none; padding: 0 24px 24px; border-top: 1px solid var(--rand); }
+  .schritt.aktiv .schritt-inhalt { display: block; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; margin-top: 20px; }
+  input[type="text"], input[type="email"], input[type="url"] { width: 100%; background: var(--weiss); border: 1.5px solid var(--rand2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; padding: 11px 14px; border-radius: 8px; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: var(--blau); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  .hinweis { background: var(--blau-hell); border: 1px solid rgba(37,99,235,0.15); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #1d4ed8; margin-top: 12px; line-height: 1.6; }
+  .gewerke-kategorien { margin-top: 8px; }
+  .kategorie-titel { font-size: 11px; font-weight: 600; color: var(--blau); letter-spacing: 1.5px; text-transform: uppercase; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(37,99,235,0.15); }
+  .gewerke-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  .gewerk-check { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--hell); border: 1.5px solid var(--rand); border-radius: 8px; cursor: pointer; transition: all 0.15s; font-size: 13px; color: var(--text-mid); }
+  .gewerk-check:hover { border-color: var(--blau); color: var(--text); background: var(--blau-hell); }
+  .gewerk-check.ausgewaehlt { border-color: var(--blau); background: var(--blau-hell); color: var(--blau-dunkel); font-weight: 500; }
+  .gewerk-check input { display: none; }
+  .gewerk-check .check-box { width: 16px; height: 16px; border: 1.5px solid currentColor; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; }
+  .alle-btn { background: var(--weiss); border: 1.5px solid var(--rand2); color: var(--text-mid); font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; margin-top: 14px; margin-right: 8px; }
+  .alle-btn:hover { border-color: var(--blau); color: var(--blau); }
+  .tag-liste { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { background: var(--blau-hell); border: 1px solid rgba(37,99,235,0.2); color: var(--blau-dunkel); font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+  .gebiet-optionen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .gebiet-karte { background: var(--hell); border: 1.5px solid var(--rand); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.15s; }
+  .gebiet-karte:hover { border-color: var(--blau); background: var(--blau-hell); }
+  .gebiet-karte.ausgewaehlt { border-color: var(--blau); background: var(--blau-hell); }
+  .gebiet-karte-titel { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .gebiet-karte-desc { font-size: 12px; color: var(--text-dim); }
+  .ganz-oe { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+  select { width: 100%; background: var(--weiss); border: 1.5px solid var(--rand2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; padding: 11px 14px; border-radius: 8px; outline: none; transition: border-color 0.2s; cursor: pointer; }
+  select:focus { border-color: var(--blau); }
+  select[multiple] { height: 160px; }
+  .chat-box { background: var(--hell); border: 1.5px solid var(--rand); border-radius: 10px; padding: 20px; margin-top: 8px; min-height: 200px; max-height: 360px; overflow-y: auto; }
+  .chat-nachricht { display: flex; gap: 12px; margin-bottom: 14px; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .chat-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .chat-avatar.ki { background: var(--blau-hell); color: var(--blau); }
+  .chat-avatar.user { background: #f0fdf4; color: var(--gruen); }
+  .chat-text { font-size: 14px; line-height: 1.6; color: var(--text); background: var(--weiss); padding: 10px 14px; border-radius: 8px; flex: 1; border: 1px solid var(--rand); }
+  .chat-eingabe-wrapper { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-eingabe { flex: 1; background: var(--weiss); border: 1.5px solid var(--rand2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; padding: 11px 14px; border-radius: 8px; outline: none; transition: border-color 0.2s; }
+  .chat-eingabe:focus { border-color: var(--blau); }
+  .btn-gold { background: var(--blau); color: white; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px; padding: 11px 22px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .btn-gold:hover { background: var(--blau-dunkel); }
+  .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline { background: var(--weiss); color: var(--text-mid); font-family: 'Inter', sans-serif; font-size: 14px; padding: 11px 22px; border: 1.5px solid var(--rand2); border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .btn-outline:hover { border-color: var(--blau); color: var(--blau); }
+  .btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .typing span { width: 6px; height: 6px; background: var(--text-dim); border-radius: 50%; animation: typing 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%,60%,100% { opacity: 0.3; transform: scale(1); } 30% { opacity: 1; transform: scale(1.3); } }
+  .zeitraum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 8px; }
+  .zeitraum-karte { background: var(--hell); border: 1.5px solid var(--rand); border-radius: 10px; padding: 12px 8px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .zeitraum-karte:hover { border-color: var(--blau); background: var(--blau-hell); }
+  .zeitraum-karte.ausgewaehlt { border-color: var(--blau); background: var(--blau-hell); }
+  .zt-tage { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -1px; line-height: 1; }
+  .zeitraum-karte.ausgewaehlt .zt-tage { color: var(--blau); }
+  .zt-label { font-size: 10px; font-weight: 600; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .zeitraum-karte.ausgewaehlt .zt-label { color: var(--blau); }
+  .kosten-box { background: var(--hell); border: 1px solid var(--rand); border-radius: 8px; padding: 14px 18px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .kosten-box .k-label { font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+  .kosten-box .k-wert { font-size: 18px; font-weight: 600; color: var(--text); margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .kosten-box .k-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .preis-box { background: var(--weiss); border: 1.5px solid var(--blau); border-radius: 10px; padding: 20px 24px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .preis-label { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+  .preis-wert { font-size: 40px; font-weight: 700; color: var(--blau); letter-spacing: -1.5px; }
+  .preis-details { font-size: 12px; color: var(--text-dim); margin-top: 4px; font-family: 'DM Mono', monospace; }
+  #bauscout-status { display: none; padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-top: 14px; }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding: 48px 24px; gap: 40px; }
+    .hero-karte { display: none; }
+    .stats-inner { grid-template-columns: repeat(2, 1fr); }
+    .wie-grid { grid-template-columns: 1fr; }
+    .preise-grid { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .section { padding: 60px 24px; }
+    .formular-section { padding: 0 24px 60px; }
+    header { padding: 0 24px; }
+    .header-nav { display: none; }
+    .stats-bar { padding: 28px 24px; }
+    footer { padding: 24px; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <a href="https://project-scout.at/" style="text-decoration:none; display:flex; align-items:center;">
+    <svg height="38" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="90" cy="90" r="52" fill="none" stroke="#111111" stroke-width="2.5"/>
+      <circle cx="90" cy="90" r="38" fill="none" stroke="#111111" stroke-width="0.8" opacity="0.25"/>
+      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
+      <polygon points="90,138 83,90 90,98 97,90" fill="#111111" opacity="0.35"/>
+      <text x="90" y="36" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#2563eb">N</text>
+      <text x="90" y="152" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#111111" opacity="0.4">S</text>
+      <text x="34" y="94" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#111111" opacity="0.4">W</text>
+      <text x="146" y="94" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#111111" opacity="0.4">O</text>
+      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
+      <circle cx="116" cy="116" r="7" fill="#2563eb" opacity="0.2"/>
+      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
+      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+      <text x="162" y="74" font-family="Inter,Arial,sans-serif" font-size="48" font-weight="700" fill="#111111">Project<tspan fill="#2563eb">Scout</tspan></text>
+      <text x="164" y="102" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400" fill="#6b7280" letter-spacing="1">Intelligentes Scouting · Österreich</text>
+    </svg>
+  </a>
+  <nav class="header-nav">
+    <a href="#wie-es-funktioniert">Wie es funktioniert</a>
+    <a href="#quellen">Quellen</a>
+    <a href="#preise">Preise</a>
+    <a href="impressum.html">Impressum</a>
+  </nav>
+  <a href="#scout-starten" class="header-cta">Scout starten →</a>
+</header>
+
+<!-- ── HERO ── -->
+<section>
+  <div class="hero">
+    <div class="hero-content">
+      <div class="hero-badge"><span class="dot"></span> KI-gestützt · Vollautomatisch · Österreich</div>
+      <h1>Schneller sein als<em>der Mitbewerb.</em></h1>
+      <div class="hero-sub">Projekte finden lassen.</div>
+      <p>Der KI-Agent durchsucht Zeitungen, Vergabeportale, Gemeinderatsprotokolle und mehr – und liefert dir relevante Projekte, Grundstücke und Ausschreibungen direkt ins Postfach.</p>
+      <div style="margin-bottom:28px;">
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:14px; letter-spacing:-0.3px;">Immer einen Schritt voraus – Effizienz durch Vorsprung.</div>
+        <p style="font-size:15px; color:var(--text-mid); line-height:1.8; margin-bottom:12px;">
+          Ein zeitlicher Informationsvorsprung ist in vielen Branchen ein entscheidender Faktor für den Erfolg. Wer frühzeitig über geplante Vorhaben informiert ist, kann Projekte fundiert prüfen, Ressourcen besser planen und Kapazitäten rechtzeitig sichern. So entstehen solide Partnerschaften und tragfähige Projektplanungen.
+        </p>
+        <p style="font-size:15px; color:var(--text-mid); line-height:1.8; margin-bottom:12px;">
+          Doch wer hat heute noch die Zeit, sich täglich durch den digitalen Dschungel aus Gemeinderatsprotokollen, Lokalportalen und Pressemitteilungen zu kämpfen? Niemand. Genau deshalb gibt es ProjectScout.
+        </p>
+        <p style="font-size:15px; color:var(--text-mid); line-height:1.8; margin-bottom:16px;">
+          ProjectScout ist dein digitaler Assistent, der dir die mühsame Recherche abnimmt. Unsere KI durchforstet vollautomatisch das österreichische Informationsnetz – exakt nach deinen Parametern, für deine Regionen und für dein Gewerk.
+        </p>
+        <div style="background:var(--blau-hell); border:1px solid rgba(37,99,235,0.15); border-radius:10px; padding:18px 20px; margin-bottom:16px;">
+          <div style="font-size:12px; font-weight:700; color:var(--blau); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:12px;">Dein Vorteil</div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; gap:10px; align-items:flex-start;">
+              <span style="color:var(--blau); font-weight:700; flex-shrink:0; margin-top:1px;">→</span>
+              <span style="font-size:14px; color:var(--text-mid); line-height:1.7;"><strong style="color:var(--text);">Strategische Planung:</strong> Erkenne Projekte in der frühen Phase, um deine Kalkulation und Ressourcen optimal auszurichten.</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:flex-start;">
+              <span style="color:var(--blau); font-weight:700; flex-shrink:0; margin-top:1px;">→</span>
+              <span style="font-size:14px; color:var(--text-mid); line-height:1.7;"><strong style="color:var(--text);">Automatisierte Entlastung:</strong> Wir filtern das Informationsrauschen für dich, damit du dich auf dein Kerngeschäft konzentrieren kannst.</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:flex-start;">
+              <span style="color:var(--blau); font-weight:700; flex-shrink:0; margin-top:1px;">→</span>
+              <span style="font-size:14px; color:var(--text-mid); line-height:1.7;"><strong style="color:var(--text);">Relevanz pur:</strong> Du erhältst nur die Informationen, die für dein Unternehmen wirklich von Bedeutung sind.</span>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:15px; color:var(--text); font-weight:600; line-height:1.7; margin-bottom:0;">
+          Lass die Suche die KI erledigen. Du konzentrierst dich auf die Umsetzung.
+        </p>
+      </div>
+      <div class="hero-btns">
+        <a href="#scout-starten" class="btn-primary">Jetzt Scout starten →</a>
+        <a href="#wie-es-funktioniert" class="btn-secondary">Wie es funktioniert</a>
+      </div>
+      <div class="hero-trust">
+        <span class="check">✓</span> Kein Abo &nbsp;·&nbsp;
+        <span class="check">✓</span> Einmalzahlung &nbsp;·&nbsp;
+        <span class="check">✓</span> Preis live kalkuliert
+      </div>
+    </div>
+    <div class="hero-karte">
+      <div class="hero-karte-titel">Scout konfigurieren</div>
+      <div class="hero-karte-sub">In 5 Schritten zum Ergebnis</div>
+      <div class="scout-steps">
+        <div class="scout-step aktiv">
+          <div class="step-nr">1</div>
+          <div class="step-info">
+            <div class="step-name">Kontaktdaten</div>
+            <div class="step-desc">Firma & E-Mail eingeben</div>
+          </div>
+        </div>
+        <div class="scout-step">
+          <div class="step-nr">2</div>
+          <div class="step-info">
+            <div class="step-name">Gewerke / Branchen</div>
+            <div class="step-desc">Was soll gesucht werden?</div>
+          </div>
+        </div>
+        <div class="scout-step">
+          <div class="step-nr">3</div>
+          <div class="step-info">
+            <div class="step-name">Suchgebiet</div>
+            <div class="step-desc">Region, Bundesland oder ganz Österreich</div>
+          </div>
+        </div>
+        <div class="scout-step">
+          <div class="step-nr">4</div>
+          <div class="step-info">
+            <div class="step-name">KI-Verfeinerung</div>
+            <div class="step-desc">Optional: Suche präzisieren</div>
+          </div>
+        </div>
+        <div class="scout-step">
+          <div class="step-nr">5</div>
+          <div class="step-info">
+            <div class="step-name">Bezahlung & Start</div>
+            <div class="step-desc">Einmalig, sicher via Stripe</div>
+          </div>
+        </div>
+      </div>
+      <div class="preis-preview">
+        <div>
+          <div class="preis-preview-label">Ab</div>
+          <div class="preis-preview-wert">ab € 9,90</div>
+          <div class="preis-preview-sub">Dynamisch · inkl. USt</div>
+        </div>
+        <div style="text-align:right; font-size:13px; color:var(--text-dim); line-height:1.8;">✓ Dashboard<br>✓ Excel-Export<br>✓ E-Mail-Report</div>
+      </div>
+      <button class="btn-start" onclick="document.getElementById('scout-starten').scrollIntoView({behavior:'smooth'})">Scout jetzt konfigurieren →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-zahl">151<span>+</span></div>
+      <div class="stat-label">Österreichische Quellen</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-zahl">9</div>
+      <div class="stat-label">Bundesländer abgedeckt</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-zahl">15<span>–60</span></div>
+      <div class="stat-label">Minuten bis zum Ergebnis</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-zahl">ab <span>€9,90</span></div>
+      <div class="stat-label">Dynamisch kalkuliert</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WIE ES FUNKTIONIERT ── -->
+<section id="wie-es-funktioniert">
+  <div class="section">
+    <div class="section-badge">So funktioniert's</div>
+    <h2 class="section-titel">In 3 Schritten zu deinen Projekten</h2>
+    <p class="section-sub">Kein technisches Know-how nötig. Einfach konfigurieren – und der KI-Agent erledigt den Rest.</p>
+    <div class="wie-grid">
+      <div class="wie-karte">
+        <div class="wie-nr">01</div>
+        <div class="wie-icon">🎯</div>
+        <div class="wie-titel">Konfigurieren</div>
+        <div class="wie-text">Wähle Gewerke oder Branchen, dein Suchgebiet (von einzelnen Gemeinden, Bundesländern bis ganz Österreich) und den Zeitraum. Optional: präzisiere die Suche per KI-Chat.</div>
+      </div>
+      <div class="wie-karte">
+        <div class="wie-nr">02</div>
+        <div class="wie-icon">🤖</div>
+        <div class="wie-titel">KI sucht automatisch</div>
+        <div class="wie-text">Der Agent durchsucht 151+ österreichische Quellen: Tageszeitungen, Gemeinderatsprotokolle, Vergabeportale, Immobilienportale und mehr – vollautomatisch.</div>
+      </div>
+      <div class="wie-karte">
+        <div class="wie-nr">03</div>
+        <div class="wie-icon">📊</div>
+        <div class="wie-titel">Ergebnisse erhalten</div>
+        <div class="wie-text">Du bekommst per E-Mail einen Link zu deinem persönlichen Dashboard mit Kartenansicht, Filterfunktion und Excel-Export aller gefundenen Projekte.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── QUELLEN ── -->
+<div class="quellen-section" id="quellen">
+  <div class="quellen-inner">
+    <div class="quellen-titel">Durchsuchte Quellen (Auszug aus 151+)</div>
+    <div class="quellen-grid">
+      <div class="quelle-tag">ORF.at</div>
+      <div class="quelle-tag">Der Standard</div>
+      <div class="quelle-tag">Die Presse</div>
+      <div class="quelle-tag">Kurier</div>
+      <div class="quelle-tag">Kleine Zeitung</div>
+      <div class="quelle-tag">OÖNachrichten</div>
+      <div class="quelle-tag">Salzburger Nachr.</div>
+      <div class="quelle-tag">meinBezirk.at</div>
+      <div class="quelle-tag">Vergabe Austria</div>
+      <div class="quelle-tag">Ausschreibung.at</div>
+      <div class="quelle-tag">Gemeinderat-Proto.</div>
+      <div class="quelle-tag">Immobilienscout</div>
+      <div class="quelle-tag">willhaben.at</div>
+      <div class="quelle-tag">+ 137 weitere</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<section>
+  <div class="section">
+    <div class="section-badge">Features</div>
+    <h2 class="section-titel">Alles was du brauchst</h2>
+    <p class="section-sub">Kein Abo-Zwang. Kein Datenchaos. Nur das was du wirklich brauchst.</p>
+    <div class="features-grid">
+      <div class="feature-karte feature-highlight">
+        <div class="feature-icon">🗺️</div>
+        <div class="feature-titel">Interaktive Kartenansicht</div>
+        <div class="feature-text">Alle gefundenen Projekte auf einer Österreich-Karte. Klick auf einen Punkt – und du siehst alle Details, die Quelle und den Originallink zum Artikel.</div>
+      </div>
+      <div class="feature-karte">
+        <div class="feature-icon">📥</div>
+        <div class="feature-titel">Excel-Export</div>
+        <div class="feature-text">Ein Klick – und alle Projekte landen strukturiert in einer Excel-Datei. Perfekt für die eigene Nachbearbeitung, CRM oder Weitergabe im Team.</div>
+      </div>
+      <div class="feature-karte">
+        <div class="feature-icon">🔁</div>
+        <div class="feature-titel">Wiederkehrende Kunden</div>
+        <div class="feature-text">Bereits gefundene Projekte werden erkannt und nicht erneut angezeigt. Projekte die du ignorierst, bleiben dauerhaft ausgeblendet.</div>
+      </div>
+      <div class="feature-karte feature-highlight">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-titel">KI-Verfeinerung per Chat</div>
+        <div class="feature-text">Erkläre dem KI-Assistenten in eigenen Worten was du suchst – er passt die Suche an. Mindestvolumen, spezielle Materialien, bestimmte Projekttypen.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PREISE ── -->
+<section class="preise-section" id="preise">
+  <div class="section">
+    <div class="section-badge">Preise</div>
+    <h2 class="section-titel">Transparent. Dynamisch. Fair.</h2>
+    <p class="section-sub">Kein Abo, keine Pakete, keine versteckten Kosten. Du bezahlst genau das was deine Suche tatsächlich kostet.</p>
+    <div style="max-width:560px; margin-top:48px;">
+      <div style="background:var(--weiss); border:1.5px solid var(--blau); border-radius:14px; padding:32px;">
+        <div style="font-size:13px; font-weight:600; color:var(--blau); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Wie der Preis entsteht</div>
+        <div style="font-size:15px; color:var(--text); line-height:1.8; margin-bottom:20px;">
+          Jeder Scout-Lauf beginnt ab <strong>€ 9,90</strong>. Der Preis steigt je nach Umfang deiner Suche – also je nachdem wie viele Bundesländer, Gewerke und Tage du auswählst. Du siehst den genauen Preis live beim Konfigurieren, noch bevor du bezahlst.
+        </div>
+
+      </div>
+    </div>
+    <div style="background:var(--blau-hell); border:1px solid rgba(37,99,235,0.2); border-radius:10px; padding:16px 20px; margin-top:20px; font-size:14px; color:#1d4ed8;">
+      💡 <strong>Tipp:</strong> Den genauen Preis siehst du live beim Konfigurieren – noch bevor du zahlst. Keine Überraschungen.
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section>
+  <div class="section">
+    <div class="section-badge">FAQ</div>
+    <h2 class="section-titel">Häufige Fragen</h2>
+    <div class="faq-liste">
+      <div class="faq-item">
+        <div class="faq-frage" onclick="toggleFaq(this)">Wie lange dauert ein Scout-Lauf? <span class="faq-pfeil">▾</span></div>
+        <div class="faq-antwort">Je nach Umfang des Auftrags dauert ein Scout-Lauf 15 bis 60 Minuten. Nach Abschluss erhältst du automatisch eine E-Mail mit dem Link zu deinem persönlichen Dashboard.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-frage" onclick="toggleFaq(this)">Welche Quellen werden durchsucht? <span class="faq-pfeil">▾</span></div>
+        <div class="faq-antwort">Der KI-Agent durchsucht über 151 österreichische Quellen: Tageszeitungen (Standard, Presse, OÖN, Kleine Zeitung u.v.m.), Gemeinderatsprotokolle, Vergabeportale, Immobilienportale und Regionalmedien – je nach gewähltem Bundesland.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-frage" onclick="toggleFaq(this)">Gibt es ein Abo oder eine Mindestlaufzeit? <span class="faq-pfeil">▾</span></div>
+        <div class="faq-antwort">Nein. ProjectScout funktioniert ausschließlich als Einmalzahlung pro Scout-Lauf. Kein Abo, keine automatischen Verlängerungen, keine Mindestlaufzeit. Der Preis wird live beim Konfigurieren berechnet – ab € 9,90.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-frage" onclick="toggleFaq(this)">Wie sicher ist die Zahlung? <span class="faq-pfeil">▾</span></div>
+        <div class="faq-antwort">Die Zahlung wird über Stripe abgewickelt – einen der weltweit führenden Zahlungsanbieter. Deine Kreditkartendaten werden nicht auf unseren Servern gespeichert.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-frage" onclick="toggleFaq(this)">Was passiert wenn ich als Stammkunde zurückkomme? <span class="faq-pfeil">▾</span></div>
+        <div class="faq-antwort">ProjectScout erkennt dich anhand deiner E-Mail-Adresse. Bereits gefundene Projekte werden nicht erneut angezeigt. Projekte die du als irrelevant markierst, bleiben dauerhaft ausgeblendet.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-frage" onclick="toggleFaq(this)">Findet der Scout auch Grundstücke und Immobilien? <span class="faq-pfeil">▾</span></div>
+        <div class="faq-antwort">Ja. ProjectScout durchsucht neben Bauprojekten auch Immobilienportale, Grundstücksausschreibungen und Gemeindebekanntmachungen. Die Plattform wird laufend um weitere Quellen und Kategorien erweitert.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA SECTION ── -->
+<section class="cta-section">
+  <div class="cta-inner">
+    <h2>Bereit schneller zu sein?</h2>
+    <p>Starte jetzt deinen ersten Scout-Lauf. Kein Abo, kein Risiko – nur Ergebnisse.</p>
+    <a href="#scout-starten" class="btn-cta">Scout jetzt starten →</a>
+    <div class="cta-sub">Ergebnisse in 15–60 Minuten · Ab €9,90 · Einmalig</div>
+  </div>
+</section>
+
+<!-- ── FORMULAR ── -->
+<section id="scout-starten" style="background: var(--hell); padding-top: 72px; border-top: 1px solid var(--rand);">
+  <div class="formular-section">
+    <div class="formular-titel">Scout konfigurieren</div>
+    <div class="formular-sub">Fülle die 5 Schritte aus – der Rest passiert automatisch.</div>
+
+    <!-- SCHRITT 1 -->
+    <div class="schritt aktiv" id="s1">
+      <div class="schritt-header" onclick="toggleSchritt(1)">
+        <div class="schritt-nr">1</div>
+        <div class="schritt-titel">Ihre Kontaktdaten</div>
+        <div class="schritt-status" id="s1-status">ausstehend</div>
+      </div>
+      <div class="schritt-inhalt">
+        <label>Firmenname *</label>
+        <input type="text" id="firma" placeholder="z.B. Musterbau GmbH">
+        <label>E-Mail-Adresse *</label>
+        <input type="email" id="email" placeholder="ihr@unternehmen.at">
+        <label>Homepage (optional)</label>
+        <input type="url" id="homepage" placeholder="https://www.ihre-firma.at">
+        <div class="hinweis">💡 <strong>Tipp:</strong> Wenn Sie Ihre Homepage angeben, liest der KI-Agent Ihre Referenzen und erkennt automatisch Ihre Gewerke.</div>
+        <div class="btn-row"><button class="btn-gold" onclick="weiter(1)">Weiter →</button></div>
+      </div>
+    </div>
+
+    <!-- SCHRITT 2 -->
+    <div class="schritt" id="s2">
+      <div class="schritt-header" onclick="toggleSchritt(2)">
+        <div class="schritt-nr">2</div>
+        <div class="schritt-titel">Gewerke / Branchen auswählen</div>
+        <div class="schritt-status" id="s2-status">ausstehend</div>
+      </div>
+      <div class="schritt-inhalt">
+        <p style="color:var(--text-dim); font-size:14px; margin-top:12px;">Wählen Sie alle Bereiche für die der Scout nach Projekten suchen soll.</p>
+        <div class="gewerke-kategorien" id="gewerke-container"></div>
+        <div>
+          <button class="alle-btn" onclick="alleGewerkeAuswaehlen()">Alle auswählen</button>
+          <button class="alle-btn" onclick="alleGewerkeAbwaehlen()">Alle abwählen</button>
+        </div>
+        <div style="margin-top:14px;">
+          <span style="font-size:11px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">Ausgewählt:</span>
+          <div class="tag-liste" id="gewerke-tags"><span style="color:var(--text-dim); font-size:13px;">Noch nichts ausgewählt</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-outline" onclick="zurueck(2)">← Zurück</button>
+          <button class="btn-gold" onclick="weiter(2)">Weiter →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHRITT 3 -->
+    <div class="schritt" id="s3">
+      <div class="schritt-header" onclick="toggleSchritt(3)">
+        <div class="schritt-nr">3</div>
+        <div class="schritt-titel">Suchgebiet festlegen</div>
+        <div class="schritt-status" id="s3-status">ausstehend</div>
+      </div>
+      <div class="schritt-inhalt">
+        <label>Schnellauswahl</label>
+        <div class="gewerk-check ausgewaehlt" id="ganz-oe-btn" onclick="toggleGanzOe()" style="display:inline-flex; padding:12px 20px; font-size:14px; margin-bottom:20px;">
+          <div class="check-box" id="ganz-oe-check">✓</div>
+          🇦🇹 &nbsp;Ganz Österreich (alle 9 Bundesländer)
+        </div>
+        <label>Bundesländer <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– einfach anklicken</span></label>
+        <div class="gewerke-grid" id="bl-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+        <div id="bezirke-wrapper" style="display:none; margin-top:20px;">
+          <label>Bezirke <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– leer lassen = alle Bezirke</span></label>
+          <div class="gewerke-grid" id="bez-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));"></div>
+        </div>
+        <div id="gemeinden-wrapper" style="display:none; margin-top:20px;">
+          <label>Gemeinden <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– leer lassen = alle Gemeinden</span></label>
+          <div class="gewerke-grid" id="gem-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+        </div>
+        <div id="gebiet-zusammenfassung" style="margin-top:16px;"></div>
+        <div class="btn-row">
+          <button class="btn-outline" onclick="zurueck(3)">← Zurück</button>
+          <button class="btn-gold" onclick="weiter(3)">Weiter →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHRITT 4 -->
+    <div class="schritt" id="s4">
+      <div class="schritt-header" onclick="toggleSchritt(4)">
+        <div class="schritt-nr">4</div>
+        <div class="schritt-titel">Suche verfeinern (KI-Chat)</div>
+        <div class="schritt-status" id="s4-status">optional</div>
+      </div>
+      <div class="schritt-inhalt">
+        <p style="color:var(--text-dim); font-size:14px; margin-top:12px; margin-bottom:16px;">Beschreiben Sie dem KI-Assistenten in eigenen Worten was Sie suchen – er passt die Suche entsprechend an.</p>
+        <div class="chat-box" id="chat-box">
+          <div class="chat-nachricht">
+            <div class="chat-avatar ki">KI</div>
+            <div class="chat-text" id="ki-begruessung">Ich lade Ihre Konfiguration...</div>
+          </div>
+        </div>
+        <div class="chat-eingabe-wrapper">
+          <input type="text" class="chat-eingabe" id="chat-input" placeholder="Ihre Antwort..." onkeypress="chatEnter(event)">
+          <button class="btn-gold" onclick="chatSenden()">Senden</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn-outline" onclick="zurueck(4)">← Zurück</button>
+          <button class="btn-gold" onclick="weiter(4)">Weiter →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHRITT 5 -->
+    <div class="schritt" id="s5">
+      <div class="schritt-header" onclick="toggleSchritt(5)">
+        <div class="schritt-nr">5</div>
+        <div class="schritt-titel">Zusammenfassung & Bezahlung</div>
+        <div class="schritt-status" id="s5-status">ausstehend</div>
+      </div>
+      <div class="schritt-inhalt">
+        <div id="zusammenfassung" style="margin-top:8px;"></div>
+        <label style="margin-top:24px;">Zeitraum – Wie weit zurück soll gesucht werden?</label>
+        <div class="zeitraum-grid">
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(1,this)"><div class="zt-tage">1</div><div class="zt-label">Tag</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(3,this)"><div class="zt-tage">3</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(7,this)"><div class="zt-tage">7</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte ausgewaehlt" onclick="zeitraumWaehlen(30,this)"><div class="zt-tage">30</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(60,this)"><div class="zt-tage">60</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(90,this)"><div class="zt-tage">90</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(180,this)"><div class="zt-tage">180</div><div class="zt-label">Tage</div></div>
+        </div>
+        <div class="kosten-box" style="background:transparent; border:none; padding:6px 0 0 0;">
+          <div style="text-align:left;">
+            <div class="k-label">Ausgewählter Zeitraum</div>
+            <div style="font-size:16px; font-weight:600; color:var(--blau); margin-top:4px; font-family:'DM Mono',monospace;" id="kosten-zeitraum">30 Tage</div>
+          </div>
+        </div>
+        <div class="preis-box">
+          <div style="flex:1;">
+            <div class="preis-label">Ihr Scout-Lauf – Echtzeit-Kalkulation</div>
+            <div class="preis-wert" id="preis-anzeige">€ –</div>
+            <div class="preis-details" id="preis-details" style="margin-bottom:12px;">Konfiguration noch nicht abgeschlossen</div>
+            <div id="preis-aufschluss" style="background:var(--hell); border-radius:6px; padding:10px 14px;"></div>
+          </div>
+          <div style="text-align:right; padding-left:20px; flex-shrink:0;">
+            <div style="font-size:12px; color:var(--text-dim); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px;">Inkludiert</div>
+            <div style="font-size:13px; color:var(--text-mid); line-height:1.8;">✓ Dashboard + Karte<br>✓ E-Mail-Report<br>✓ Excel-Export</div>
+          </div>
+        </div>
+        <div class="hinweis" style="margin-top:14px;">
+          🔒 <strong>Sicher bezahlen:</strong> Die Abwicklung erfolgt über Stripe. Ihre Kreditkartendaten werden nicht auf unseren Servern gespeichert. Nach erfolgreicher Zahlung startet der Scout-Lauf automatisch.
+        </div>
+        <div id="bauscout-status"></div>
+        <div class="btn-row" style="margin-top:20px;">
+          <button class="btn-outline" onclick="zurueck(5)">← Zurück</button>
+          <button class="btn-gold" id="bezahl-btn" onclick="bezahlen()" style="padding:14px 36px; font-size:16px;">💳 Jetzt bezahlen & starten</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <a href="https://project-scout.at/" style="text-decoration:none; display:flex; align-items:center;">
+    <svg height="28" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="90" cy="90" r="52" fill="none" stroke="#111111" stroke-width="2.5"/>
+      <circle cx="90" cy="90" r="38" fill="none" stroke="#111111" stroke-width="0.8" opacity="0.25"/>
+      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
+      <polygon points="90,138 83,90 90,98 97,90" fill="#111111" opacity="0.35"/>
+      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
+      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
+      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+      <text x="162" y="74" font-family="Inter,Arial,sans-serif" font-size="48" font-weight="700" fill="#111111">Project<tspan fill="#2563eb">Scout</tspan></text>
+      <text x="164" y="102" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400" fill="#6b7280" letter-spacing="1">Intelligentes Scouting · Österreich</text>
+    </svg>
+  </a>
+  <div class="footer-links">
+    <a href="impressum.html">Impressum</a>
+    <a href="impressum.html#datenschutz">Datenschutz</a>
+    <a href="impressum.html#agb">AGB</a>
+    <a href="mailto:office@project-scout.at">office@project-scout.at</a>
+  </div>
+  <div class="footer-copy">© 2026 Roman Baumschlager · Molln, OÖ</div>
+</footer>
+
+<script>
+// ── SUPABASE ──
+const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
+let _supabase = null;
+async function getSupabase() {
+  if (_supabase) return _supabase;
+  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+  _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  return _supabase;
 }
 
-Relevanz-Skala (wichtig für korrekte Bewertung):
-- 9-10: Konkrete Ausschreibung oder Vergabe mit Auftragssumme, direkt umsetzbar
-- 7-8:  Beschlossenes Projekt mit konkreten Details (Ort, Zeitplan, Volumen)
-- 5-6:  Geplantes Vorhaben mit ersten konkreten Angaben
-- 3-4:  Allgemeiner Hinweis auf mögliches Projekt, wenig Details
-- 1-2:  Nur vage Erwähnung, kein konkretes Projekt erkennbar
-- 0:    Kein Projekt (Unfall, Meinung, reine Statistik, Personalthema)
+// ── STRIPE ──
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVd6rIciKaWv9dT5kk00';
 
-ist_bauprojekt=true wenn der Artikel über EINES dieser Themen berichtet:
-- Bau-, Sanierungs-, Infrastruktur- oder Energieprojekte (Neubau, Umbau, Sanierung)
-- Ausschreibungen oder Vergaben (Bauleistungen, Lieferungen, Dienstleistungen)
-- Baubewilligungen, Gemeinderatsbeschlüsse, Widmungen für Bauvorhaben
-- Grundstücksverkäufe oder -entwicklungen mit Bauabsicht
-- Förderprojekte mit konkretem Investitionsvorhaben
-- Neue Betriebe, Betriebserweiterungen, Investitionen in Anlagen
-- Öffentliche Projekte: Schulen, Kindergärten, Straßen, Kanal, Wasserversorgung
-- Energieprojekte: PV, Windkraft, Wärmepumpen, Nahwärme, Batteriespeicher
-- Tourismus/Gastronomie: Hotelneubauten, Umbau, Konzessionen
+// ── GEWERKE ──
+const GEWERKE = {
+  "🏗️ Bau & Rohbau": [
+    "Erdbau / Aushub","Spezialtiefbau","Betonbau / Stahlbeton","Maurerarbeiten",
+    "Abbruch / Demontage","Sprengungen","Bohrpfähle / Baugrubensicherung",
+    "Bodenverbesserung","Hangsicherungen","Hochwasserschutz","Zimmerei / Holzbau",
+    "Trockenbau","Estrich / Boden","Fliesen / Naturstein","Maler / Anstreicher",
+    "Schlosser / Metallbau","Fenster / Türen / Verglasungen","Innenausbau"
+  ],
+  "🔧 Ausbau & Haustechnik": [
+    "Elektriker / Elektrotechnik","Installateur / Sanitär","Heizung / Lüftung / Klima (HVAC)",
+    "Aufzüge / Lifte","Brandschutz / Sprinkler","Gebäudeautomation / Smart Building",
+    "Dachdecker","Spengler / Klempner","Fassadenbau / WDVS","Gerüstbau"
+  ],
+  "⚡ Energie & Umwelt": [
+    "PV-Anlagen / Photovoltaik","Wärmepumpen","Erdwärmebohrungen",
+    "Windkraftanlagen","E-Ladeinfrastruktur","Biomasse / Nahwärme",
+    "Energiesanierung","Batteriespeicher","Wasserkraft","Deponie / Entsorgung",
+    "Altlastensanierung","Recycling / Kreislaufwirtschaft"
+  ],
+  "🛣️ Infrastruktur & Verkehr": [
+    "Straßenbau","Bahnbau / Gleisbau","Brückenbau","Tunnelbau",
+    "Leitungsbau","Kanal / Abwasser","Wasserversorgung","Glasfaser / Breitband",
+    "Kraftwerksbau","Beleuchtung / Straßenbeleuchtung","Verkehrsleitsysteme"
+  ],
+  "🏘️ Immobilien & Grundstücke": [
+    "Grundstückskauf / -verkauf","Umwidmungen / Flächenwidmung",
+    "Wohnbauprojekte","Gewerbliche Neubauten","Sanierung / Revitalisierung",
+    "Projektentwicklung / Bauträger","Immobilienmakler","Liegenschaftsbewertung",
+    "Zwangsversteigerungen","Pachtflächen / Landwirtschaftliche Flächen"
+  ],
+  "🏫 Öffentliche Projekte & Soziales": [
+    "Schulen / Kindergärten","Pflegeheime / Senioreneinrichtungen",
+    "Krankenhäuser / Ärztezentren","Sporthallen / Freizeitanlagen",
+    "Gemeindebauten / Rathäuser","Feuerwehr / Rettung",
+    "Sozialwohnbau","Kultureinrichtungen","Friedhöfe / Kapellen"
+  ],
+  "🚗 Fahrzeuge & Ausrüstung": [
+    "Nutzfahrzeuge / LKW","Feuerwehrfahrzeuge","Rettungsfahrzeuge",
+    "Kommunalfahrzeuge / Traktoren","Baumaschinen / Geräte",
+    "Krantechnik / Hebetechnik","Fahrzeugausstattung","Werkzeuge / Betriebsmittel",
+    "IT-Ausstattung / Hard- und Software","Büroausstattung / Mobiliar"
+  ],
+  "🌳 Landschaft & Außenanlagen": [
+    "Landschaftsbau / Gartengestaltung","Parkanlagen / Grünflächen",
+    "Spielplätze / Freizeitanlagen","Sportplätze / Kunstrasen",
+    "Bewässerungsanlagen","Forstarbeiten / Holzschlägerung",
+    "Schädlingsbekämpfung / Pflanzenpflege","Flurbereinigung"
+  ],
+  "🍽️ Gastronomie & Tourismus": [
+    "Hotelneubauten / Erweiterungen","Gastronomiebetriebe / Konzessionen",
+    "Tourismusinfrastruktur","Seilbahnen / Skilifte","Campingplätze",
+    "Veranstaltungsstätten","Küchen- / Gastronomieausstattung",
+    "Freizeitparks / Erlebnisanlagen"
+  ],
+  "📐 Planung & Beratung": [
+    "Architektur / Gebäudeplanung","Statik / Tragwerksplanung",
+    "Vermessung / Geodäsie","Umweltgutachten / UVP",
+    "Projektmanagement / Bauleitung","Energieberatung",
+    "Rechtsberatung / Vergaberecht","Finanzierung / Fördermittel"
+  ],
+  "🌾 Landwirtschaft & Forst": [
+    "Landwirtschaftliche Bauten / Stallbau","Silos / Lagerhallen",
+    "Biogasanlagen","Bewässerung / Drainage","Forststraßen",
+    "Landmaschinen / Geräte","Weinbau / Obstbau Infrastruktur",
+    "Fischzucht / Aquakultur"
+  ],
+  "🏭 Industrie & Gewerbe": [
+    "Industriehallen / Werkshallen","Gewerbeparks / Betriebsanlagen",
+    "Produktionsanlagen","Lagerhallen / Logistikzentren",
+    "Reinräume / Labore","Tankstellen / Waschanlagen",
+    "Kälteanlagen / Kühlhäuser","Fördertechnik / Förderanlagen"
+  ]
+};
+let ausgewaehlteGewerke = new Set();
+let ganzOe = true;
+let chatVerlauf = [];
+let chatVerfeinerung = "";
+let gewaehlterZeitraum = 30;
 
-Berücksichtige die gesuchten Gewerke/Themen des Kunden bei der Relevanz-Bewertung.
-Gewerke die NICHT gesucht werden → Relevanz max. 3, auch wenn Projekt interessant.
+// ── GEWERKE RENDER ──
+function renderGewerke() {
+  const container = document.getElementById('gewerke-container');
+  container.innerHTML = '';
+  for (const [kat, gewerke] of Object.entries(GEWERKE)) {
+    const alleAusgewaehlt = gewerke.every(g => ausgewaehlteGewerke.has(g));
+    const teilweiseAusgewaehlt = gewerke.some(g => ausgewaehlteGewerke.has(g)) && !alleAusgewaehlt;
+    const katId = 'kat_' + kat.replace(/[^a-zA-Z0-9]/g, '_');
+    const offen = container.querySelector('#' + katId + '_body')?.style.display !== 'none';
 
-ist_bauprojekt=false (nicht relevant):
-- Reine Unfallberichte oder Polizeimeldungen
-- Politische Meinungsartikel ohne konkretes Projekt
-- Reine Immobilienpreis-Statistiken ohne konkretes Objekt
-- Personalberichte ohne Projektbezug
-- Veranstaltungen, Konzerte, Sport"""
+    const katDiv = document.createElement('div');
+    katDiv.style.cssText = 'border:1.5px solid var(--rand); border-radius:10px; margin-bottom:8px; overflow:hidden;';
 
-def analysiere_artikel_mit_ki(artikel: dict, suchbegriffe: list[str]) -> dict | None:
-    """
-    Sendet Artikel-Text an Claude Haiku zur Analyse.
-    Gibt strukturiertes Ergebnis zurück oder None wenn nicht relevant.
-    """
-    volltext = lade_artikel_text(artikel["url"])
-    if not volltext:
-        volltext = artikel.get("titel", "")
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; background:${alleAusgewaehlt ? 'var(--blau-hell)' : 'var(--hell)'}; user-select:none; border-bottom:0px solid var(--rand);`;
+    header.id = katId + '_header';
 
-    # Suchbegriffe: spezifische zuerst (max. 10), Basis-Keywords weglassen für Übersichtlichkeit
-    basis = {"ausschreibung", "vergabe", "baubewilligung", "projekt", "vorhaben", "planung", "beschluss"}
-    top_begriffe = [b for b in suchbegriffe if b.lower() not in basis][:10] or suchbegriffe[:5]
+    // Kategorie-Checkbox
+    const katCheck = document.createElement('div');
+    katCheck.style.cssText = `width:20px; height:20px; border:2px solid ${alleAusgewaehlt ? 'var(--blau)' : teilweiseAusgewaehlt ? 'var(--blau)' : 'var(--rand2)'}; border-radius:5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:${alleAusgewaehlt ? 'var(--blau)' : teilweiseAusgewaehlt ? 'rgba(37,99,235,0.15)' : 'var(--weiss)'}; transition:all 0.15s;`;
+    katCheck.innerHTML = alleAusgewaehlt ? '<span style="color:white;font-size:12px;font-weight:700;">✓</span>' : teilweiseAusgewaehlt ? '<span style="color:var(--blau);font-size:11px;font-weight:700;">–</span>' : '';
+    katCheck.addEventListener('click', (e) => { e.stopPropagation(); toggleKategorie(kat); });
 
-    user_prompt = f"""Analysiere diesen Artikel. Bewerte die Relevanz für die gesuchten Themen.
+    // Titel
+    const titel = document.createElement('div');
+    titel.style.cssText = `flex:1; font-size:14px; font-weight:600; color:${alleAusgewaehlt ? 'var(--blau-dunkel)' : 'var(--text)'}; letter-spacing:-0.2px;`;
+    titel.textContent = kat;
 
-Gesuchte Gewerke/Themen des Kunden: {', '.join(top_begriffe)}
+    // Anzahl Badge
+    const anzahl = gewerke.filter(g => ausgewaehlteGewerke.has(g)).length;
+    const badge = document.createElement('div');
+    badge.style.cssText = `font-size:11px; font-weight:600; color:${anzahl > 0 ? 'var(--blau)' : 'var(--text-dim)'}; background:${anzahl > 0 ? 'rgba(37,99,235,0.1)' : 'transparent'}; padding:2px 8px; border-radius:10px; flex-shrink:0;`;
+    badge.textContent = anzahl > 0 ? `${anzahl}/${gewerke.length}` : `${gewerke.length}`;
 
-Quelle: {artikel['quelle_name']}
-URL: {artikel['url']}
-Titel: {artikel['titel']}
+    // Pfeil
+    const pfeil = document.createElement('div');
+    pfeil.style.cssText = 'font-size:12px; color:var(--text-dim); flex-shrink:0; transition:transform 0.2s;';
+    pfeil.textContent = '▾';
+    pfeil.id = katId + '_pfeil';
 
-Artikeltext:
-{volltext}"""
+    header.appendChild(katCheck);
+    header.appendChild(titel);
+    header.appendChild(badge);
+    header.appendChild(pfeil);
 
-    try:
-        resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key":         ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type":      "application/json",
-            },
-            json={
-                "model":      "claude-haiku-4-5",
-                "max_tokens": 500,
-                "system":     ANALYSE_SYSTEM_PROMPT,
-                "messages": [
-                    {"role": "user", "content": user_prompt}
-                ],
-            },
-            timeout=30,
-        )
+    // Body (ausgeklappt oder eingeklappt)
+    const body = document.createElement('div');
+    body.id = katId + '_body';
+    body.style.cssText = 'display:none; padding:12px; background:var(--weiss); border-top:1px solid var(--rand);';
 
-        if resp.status_code != 200:
-            print(f"    ⚠️  Anthropic API Fehler: {resp.status_code}")
-            return None
+    const grid = document.createElement('div');
+    grid.className = 'gewerke-grid';
+    gewerke.forEach(g => {
+      const label = document.createElement('div');
+      label.className = 'gewerk-check' + (ausgewaehlteGewerke.has(g) ? ' ausgewaehlt' : '');
+      label.innerHTML = `<div class="check-box">${ausgewaehlteGewerke.has(g) ? '✓' : ''}</div>${g}`;
+      label.addEventListener('click', () => toggleGewerk(g, label));
+      grid.appendChild(label);
+    });
+    body.appendChild(grid);
 
-        antwort_text = resp.json()["content"][0]["text"].strip()
+    // Toggle accordion
+    header.addEventListener('click', (e) => {
+      if (e.target === katCheck || katCheck.contains(e.target)) return;
+      const isOffen = body.style.display !== 'none';
+      body.style.display = isOffen ? 'none' : 'block';
+      pfeil.style.transform = isOffen ? '' : 'rotate(180deg)';
+      header.style.borderBottom = isOffen ? '0px' : '1px solid var(--rand)';
+    });
 
-        # JSON parsen (manchmal kommt es in ```json ... ``` verpackt)
-        antwort_text = re.sub(r'^```json\s*', '', antwort_text)
-        antwort_text = re.sub(r'\s*```$', '', antwort_text)
+    katDiv.appendChild(header);
+    katDiv.appendChild(body);
+    container.appendChild(katDiv);
+  }
+}
 
-        ergebnis = json.loads(antwort_text)
-        return ergebnis
+function toggleKategorie(kat) {
+  const gewerke = GEWERKE[kat];
+  const alleAusgewaehlt = gewerke.every(g => ausgewaehlteGewerke.has(g));
+  if (alleAusgewaehlt) {
+    gewerke.forEach(g => ausgewaehlteGewerke.delete(g));
+  } else {
+    gewerke.forEach(g => ausgewaehlteGewerke.add(g));
+  }
+  renderGewerke();
+  // Accordion offen lassen wenn gerade aufgeklappt
+  updateGewerkeTags();
+}
 
-    except json.JSONDecodeError as e:
-        print(f"    ⚠️  JSON-Parse-Fehler: {e}")
-        return None
-    except Exception as e:
-        print(f"    ❌ KI-Analyse Fehler: {e}")
-        return None
+function toggleGewerk(g, el) {
+  if (ausgewaehlteGewerke.has(g)) { ausgewaehlteGewerke.delete(g); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = ''; }
+  else { ausgewaehlteGewerke.add(g); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓'; }
+  renderGewerke();
+  updateGewerkeTags();
+}
 
-# =============================================================================
-# SCHRITT 6: PROJEKTE IN SUPABASE SPEICHERN
-# =============================================================================
-
-def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
-    """
-    Speichert ein gefundenes Projekt in der Supabase-Tabelle 'projekte'.
-    Prüft vorher ob das Projekt schon bekannt ist (via URL-Hash).
-    Gibt True zurück wenn neu gespeichert, False wenn bereits vorhanden.
-    """
-    # Duplikat-Check via URL-Hash
-    url_hash = berechne_hash(artikel["url"])
-
-    vorhandene = sb_get("projekte", {
-        "rohdaten_hash": f"eq.{url_hash}",
-        "kunden_id":     f"eq.{auftrag['kunden_id']}",
-    })
-
-    if vorhandene:
-        # Bereits bekannt – nur "zuletzt_gecrawlt" aktualisieren
-        sb_patch("projekte",
-                 {"rohdaten_hash": f"eq.{url_hash}", "kunden_id": f"eq.{auftrag['kunden_id']}"},
-                 {"zuletzt_gecrawlt": datetime.now(timezone.utc).isoformat()})
-        return False
-
-    # Neu → speichern
-    jetzt = datetime.now(timezone.utc).isoformat()
-    projekt = {
-        "kunden_id":       auftrag["kunden_id"],
-        "suchanfrage_id":  auftrag["id"],
-        "titel":           analyse.get("titel") or artikel["titel"][:200],
-        "ort":             analyse.get("ort", ""),
-        "bezirk":          analyse.get("bezirk", ""),
-        "bundesland":      analyse.get("bundesland", ""),
-        "kategorie":       analyse.get("kategorie", "Sonstiges"),
-        "volumen":         analyse.get("volumen", ""),
-        "phase":           analyse.get("phase", ""),
-        "quelle":          artikel["quelle_name"],
-        "artikel_url":     artikel["url"],
-        "beschreibung":    analyse.get("beschreibung", ""),
-        "relevanz":        analyse.get("relevanz", 5),
-        "ignorieren":      False,
-        "ist_oeffentlich": False,
-        "erstmals_gefunden": jetzt,
-        "zuletzt_geaendert": jetzt,
-        "zuletzt_gecrawlt":  jetzt,
-        "rohdaten_hash":     url_hash,
-        "cache_gueltig_bis": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+function updateGewerkeTags() {
+  const container = document.getElementById('gewerke-tags');
+  if (ausgewaehlteGewerke.size === 0) container.innerHTML = '<span style="color:var(--text-dim); font-size:13px;">Noch nichts ausgewählt</span>';
+  else {
+    // Gruppiert nach Kategorie anzeigen
+    let html = '';
+    for (const [kat, gewerke] of Object.entries(GEWERKE)) {
+      const ausgewaehlt = gewerke.filter(g => ausgewaehlteGewerke.has(g));
+      if (ausgewaehlt.length === gewerke.length) {
+        html += `<span class="tag" style="background:rgba(37,99,235,0.15); font-weight:600;">${kat} (alle)</span>`;
+      } else {
+        ausgewaehlt.forEach(g => { html += `<span class="tag">${g}</span>`; });
+      }
     }
+    container.innerHTML = html;
+  }
+}
+function alleGewerkeAuswaehlen() { Object.values(GEWERKE).flat().forEach(g => ausgewaehlteGewerke.add(g)); renderGewerke(); updateGewerkeTags(); }
+function alleGewerkeAbwaehlen() { ausgewaehlteGewerke.clear(); renderGewerke(); updateGewerkeTags(); }
 
-    result = sb_insert("projekte", projekt)
-    return result is not None
+// ── ÖSTERREICH DATEN ──
+const OESTERREICH = {
+  "Burgenland":{"Eisenstadt (Stadt)":["Eisenstadt"],"Rust (Stadt)":["Rust"],"Eisenstadt-Umgebung":["Breitenbrunn","Donnerskirchen","Großhöflein","Hornstein","Kleinhöflein","Leithaprodersdorf","Mörbisch","Müllendorf","Neufeld an der Leitha","Oggau","Oslip","Purbach","Schützen","St. Margarethen","Steinbrunn","Trausdorf","Wimpassing","Zagersdorf"],"Güssing":["Bildein","Deutsch Kaltenbrunn","Gerersdorf","Großmürbisch","Güssing","Hackerberg","Heiligenbrunn","Kukmirn","Neustift","Olbendorf","Rauchwart","Sankt Michael","Stinatz","Strem","Tobaj","Tschanigraben"],"Jennersdorf":["Deutsch Minihof","Eltendorf","Jennersdorf","Minihof-Liebau","Mogersdorf","Neuhaus","St. Martin","Weichselbaum"],"Mattersburg":["Bad Sauerbrunn","Baumgarten","Draßburg","Forchtenstein","Mattersburg","Neutal","Pöttelsdorf","Rohrbach","Schattendorf","Sieggraben","Wiesen","Zemendorf"],"Neusiedl am See":["Andau","Apetlon","Bruckneudorf","Gols","Halbturn","Illmitz","Jois","Kittsee","Mönchhof","Neusiedl am See","Pamhagen","Parndorf","Podersdorf","Tadten","Wallern","Weiden","Zurndorf"],"Oberpullendorf":["Deutschkreutz","Frankenau","Großwarasdorf","Horitschon","Kaisersdorf","Kleinwarasdorf","Lackenbach","Lackendorf","Lockenhaus","Lutzmannsburg","Mannersdorf","Markt St. Martin","Nikitsch","Oberpullendorf","Piringsdorf","Raiding","Stoob","Unterfrauenhaid","Weppersdorf"],"Oberwart":["Bad Tatzmannsdorf","Bernstein","Bocksdorf","Grafenschachen","Großpetersdorf","Kemeten","Kohfidisch","Litzelsdorf","Loipersdorf","Markt Allhau","Oberwart","Pinkafeld","Riedlingsdorf","Rotenturm","Stadtschlaining","Wolfau"]},
+  "Kärnten":{"Klagenfurt (Stadt)":["Klagenfurt am Wörthersee"],"Villach (Stadt)":["Villach"],"Feldkirchen":["Albeck","Arriach","Feldkirchen","Glanegg","Gnesau","Himmelberg","Ossiach","Steindorf","Steuerberg"],"Hermagor":["Dellach","Gitschtal","Hermagor","Kötschach-Mauthen","Lesachtal","St. Stefan"],"Klagenfurt-Land":["Feistritz","Grafenstein","Keutschach","Köttmannsdorf","Krumpendorf","Magdalensberg","Maria Rain","Maria Saal","Maria Wörth","Moosburg","Poggersdorf","Pörtschach","Velden","Wernberg"],"Sankt Veit an der Glan":["Brückl","Eberstein","Frauenstein","Guttaring","Liebenfels","Micheldorf","Neumarkt","St. Georgen","St. Veit an der Glan","Straßburg","Weitensfeld"],"Spittal an der Drau":["Baldramsdorf","Berg im Drautal","Flattach","Gmünd","Greifenburg","Großkirchheim","Heiligenblut","Lendorf","Mallnitz","Millstatt","Obervellach","Radenthein","Sachsenburg","Seeboden","Spittal","Steinfeld"],"Villach-Land":["Arnoldstein","Bad Bleiberg","Feld am See","Finkenstein","Fresach","Nötsch","Paternion","Rosegg","Stockenboi","Treffen","Weißensee"],"Völkermarkt":["Bleiburg","Diex","Eisenkappel","Gallizien","Griffen","Neuhaus","Ruden","St. Kanzian","Sittersdorf","Völkermarkt"],"Wolfsberg":["Bad St. Leonhard","Frantschach","Lavamünd","Reichenfels","Roßbach","St. Andrä","St. Paul","Wolfsberg"]},
+  "Niederösterreich":{"Amstetten":["Allhartsberg","Amstetten","Ardagger","Aschbach","Behamberg","Ertl","Euratsfeld","Ferschnitz","Haag","Hollenstein","Kematen","Neuhofen","Pochlarn","Seitenstetten","St. Georgen","St. Peter","Steinakirchen","Strengberg","Ulmerfeld","Viehdorf","Wallsee","Wang","Weistrach","Winklarn","Wolfsbach","Ybbsitz"],"Baden":["Alland","Altenmarkt","Bad Fischau","Bad Vöslau","Baden","Berndorf","Ebreichsdorf","Enzesfeld","Furth","Günselsdorf","Heiligenkreuz","Hernstein","Hirtenberg","Klausen-Leopoldsdorf","Leobersdorf","Mitterndorf","Oberwaltersdorf","Pfaffstätten","Pottendorf","Pottenstein","Schönau","Sooss","Tattendorf","Teesdorf","Traiskirchen","Trumau","Weissenbach"],"Bruck an der Leitha":["Au am Leithaberge","Bruck an der Leitha","Enzersdorf","Fischamend","Göttlesbrunn","Hainburg","Haslau","Höflein","Klein-Neusiedl","Mannersdorf","Moosbrunn","Pachfurth","Petronell","Prellenkirchen","Rohrau","Schwadorf","Sommerein","Wildungsmauer"],"Gänserndorf":["Angern","Deutsch-Wagram","Drösing","Engelhartstetten","Gänserndorf","Groß-Enzersdorf","Jedenspeigen","Leopoldsdorf","Marchegg","Markgrafneusiedl","Matzen","Neusiedl an der Zaya","Orth an der Donau","Prottes","Raasdorf","Schönkirchen","Strasshof","Weikendorf","Zistersdorf"],"Gmünd":["Amaliendorf","Gmünd","Groß Gerungs","Hoheneich","Kirchberg am Walde","Langschlag","Moorbad Harbach","Reingers","Schrems","St. Martin","Waldenstein","Weitra","Zwettl"],"Hollabrunn":["Grabern","Göllersdorf","Hadres","Hardegg","Haugsdorf","Hollabrunn","Mailberg","Retz","Röhrenbach","Wullersdorf","Zellerndorf","Ziersdorf"],"Horn":["Altenburg","Burgschleinitz","Drosendorf","Eggenburg","Gars am Kamp","Horn","Maissau","Pernegg","Rosenburg","Sigmundsherberg","St. Bernhard","Weitersfeld"],"Korneuburg":["Bisamberg","Ernstbrunn","Großmugl","Hausleiten","Langenzersdorf","Leobendorf","Niederhollabrunn","Spillern","Stockerau","Ulrichskirchen"],"Krems an der Donau (Stadt)":["Krems an der Donau"],"Krems (Land)":["Aggsbach","Dürnstein","Gedersdorf","Hadersdorf","Herzogenburg","Langenlois","Lengenfeld","Mautern","Nußdorf","Paudorf","Rohrendorf","Rossatz","Senftenberg","Spitz","Traismauer","Weißenkirchen"],"Lilienfeld":["Eschenau","Hainfeld","Hohenberg","Kleinzell","Lilienfeld","Mitterbach","Ramsau","St. Aegyd","St. Veit","Traisen","Türnitz"],"Melk":["Artstetten","Blindenmarkt","Emmersdorf","Erlauf","Gaming","Kilb","Klein-Pöchlarn","Loosdorf","Marbach","Maria Taferl","Melk","Persenbeug","Petzenkirchen","Purgstall","Ybbs"],"Mistelbach":["Asparn","Dürnkrut","Falkenstein","Gaweinstal","Großkrut","Herrnbaumgarten","Laa an der Thaya","Ladendorf","Mistelbach","Poysdorf","Schrattenberg","Staatz","Zistersdorf"],"Mödling":["Biedermannsdorf","Brühl","Giesshübl","Gumpoldskirchen","Guntramsdorf","Hinterbrühl","Kaltenleutgeben","Laxenburg","Maria Enzersdorf","Mödling","Münchendorf","Perchtoldsdorf","Vösendorf","Wiener Neudorf"],"Neunkirchen":["Aspang","Breitenau","Gloggnitz","Grafenbach","Kirchberg am Wechsel","Neunkirchen","Payerbach","Reichenau","Ternitz","Wartmannstetten","Wimpassing"],"Sankt Pölten (Stadt)":["Sankt Pölten"],"Sankt Pölten (Land)":["Böheimkirchen","Eichgraben","Gerersdorf","Hafnerbach","Haunoldstein","Herzogenburg","Kapelln","Karlstetten","Kilb","Kirchberg","Loosdorf","Maria-Anzbach","Mautern","Neidling","Ober-Grafendorf","Obritzberg","Prinzersdorf","Pyhra","Rabenstein","Ried","Rott","Schwarzenbach","St. Margarethen","Statzendorf","Traismauer","Wilhelmsburg","Wölbling"],"Scheibbs":["Annaberg","Gaming","Göstling","Gresten","Lunz am See","Pöchlarn","Purgstall","Randegg","Reinsberg","Scheibbs","St. Anton","St. Georgen","Wang","Wieselburg","Ybbsitz"],"Tulln":["Atzenbrugg","Dürnrohr","Grafenwörth","Großweikersdorf","Heiligeneich","Judenau","Klosterneuburg","Königstetten","Langenlebarn","Muckendorf","Niederhollabrunn","Nußdorf","Pixendorf","Sieghartskirchen","Sierndorf","Stetteldorf","Straß","Tulln","Wördern","Zeiselmauer"],"Waidhofen an der Thaya":["Dietmanns","Dobersberg","Gastern","Groß-Siegharts","Kautzen","Pfaffenschlag","Raabs","Thaya","Vitis","Waidhofen an der Thaya","Waldkirchen","Windigsteig"],"Waidhofen an der Ybbs (Stadt)":["Waidhofen an der Ybbs"],"Wiener Neustadt (Stadt)":["Wiener Neustadt"],"Wiener Neustadt (Land)":["Bad Erlach","Bad Fischau","Bromberg","Hochwolkersdorf","Katzelsdorf","Lanzenkirchen","Lichtenwörth","Markt Piesting","Muggendorf","Rohrbach","Seebenstein","Sollenau","Theresienfeld","Walpersbach","Wöllersdorf","Zöbern"],"Wien-Umgebung":["Gablitz","Klosterneuburg","Mauerbach","Pressbaum","Purkersdorf","Wolfsgraben"],"Zwettl":["Allentsteig","Arbesbach","Bad Traunstein","Bärnkopf","Friedersbach","Grafenschlag","Groß Gerungs","Gutenbrunn","Kirchschlag","Langschlag","Lichtenau","Martinsberg","Ottenschlag","Rappottenstein","Sallingberg","Schwarzenau","St. Martin","Traunstein","Weitra","Zwettl"]},
+  "Oberösterreich":{"Braunau am Inn":["Altheim","Burgkirchen","Eggelsberg","Geretsberg","Haigermoos","Helpfau","Hochburg","Jeging","Kirchberg","Lengau","Lochen","Mauerkirchen","Mining","Munderfing","Neukirchen","Ostermiething","Palting","Perwang","Polling","Roßbach","Schalchen","St. Georgen","St. Johann","St. Pantaleon","St. Peter","St. Radegund","Tarsdorf","Trimmelkam"],"Eferding":["Aschach an der Donau","Eferding","Fraham","Haibach ob der Donau","Hartkirchen","Hinzenbach","Kematen an der Krems","Michaelnbach","Natternbach","Prambachkirchen","Pupping","Scharten","St. Marienkirchen","St. Thomas","Stroheim"],"Freistadt":["Freistadt","Gutau","Hagenberg","Kefermarkt","Lasberg","Leopoldschlag","Neumarkt","Pregarten","Rainbach","Reichenthal","Sandl","St. Georgen","St. Leonhard","Tragwein","Unterweitersdorf","Waldburg","Wartberg","Weitersfelden","Zell"],"Gmunden":["Altmünster","Ebensee","Gmunden","Grünau im Almtal","Gschwandt","Kirchham","Laakirchen","Neukirchen","Ohlsdorf","Pinsdorf","Roitham","Scharnstein","St. Konrad","Steinbach am Attersee","Traunkirchen","Vorchdorf","Weißenbach","Weyregg"],"Grieskirchen":["Aistersheim","Bad Schallerbach","Gallspach","Gaspoltshofen","Grieskirchen","Haag am Hausruck","Hofkirchen","Kallham","Kematen","Krenglbach","Natternbach","Neukirchen","Offenhausen","Peuerbach","Schlüßlberg","St. Agatha","St. Georgen","St. Thomas","Taufkirchen","Weibern","Weißkirchen"],"Kirchdorf an der Krems":["Grünburg","Hinterstoder","Inzersdorf","Kirchdorf an der Krems","Klaus","Kremsmünster","Leonstein","Micheldorf","Molln","Nußbach","Oberschlierbach","Pettenbach","Rosenau","Schlierbach","Sipbachzell","Spital am Pyhrn","St. Pankraz","Steinbach an der Steyr","Waldneukirchen","Wartberg an der Krems","Windischgarsten"],"Linz (Stadt)":["Linz"],"Linz-Land":["Allhaming","Ansfelden","Asten","Enns","Hargelsberg","Hörsching","Kematen","Kirchberg","Kronstorf","Leonding","Neuhofen an der Krems","Niederneukirchen","Pasching","Piberbach","Pucking","Raffelstetten","St. Florian","St. Marien","Traun","Weißkirchen","Wilhering"],"Perg":["Allerheiligen","Arbing","Bad Zell","Baumgartenberg","Dimbach","Grein","Klam","Langenstein","Luftenberg","Mauthausen","Mitterkirchen","Münzbach","Naarn","Perg","Rechberg","Schwertberg","St. Georgen","St. Nikola","St. Thomas","Windhaag","Zell"],"Ried im Innkreis":["Antiesenhofen","Aurolzmünster","Eberschwang","Eitzing","Geiersberg","Gurten","Hohenzell","Kirchdorf am Inn","Lohnsburg","Mehrnbach","Neuhofen im Innkreis","Obernberg am Inn","Ried im Innkreis","Schildorn","Schwand","St. Georgen","St. Marienkirchen","Tumeltsham","Utzenaich","Waldzell","Weilbach"],"Rohrbach":["Altenfelden","Arnreit","Aschach","Bad Leonfelden","Haslach","Helfenberg","Herzogsdorf","Hofkirchen","Kleinzell","Kollerschlag","Klaffer","Lembach","Neufelden","Niederwaldkirchen","Oberneukirchen","Oepping","Peilstein","Rohrbach","Sarleinsbach","Schwarzenberg","St. Johann","St. Martin","St. Stefan","Ulrichsberg","Vorderweißenbach","Waxenberg"],"Schärding":["Andorf","Brunnenthal","Dorf an der Pram","Eggerding","Engelhartszell","Esternberg","Freinberg","Kopfing","Münzkirchen","Neuhaus am Inn","Raab","Riedau","Schärding","St. Aegidi","St. Florian","St. Marienkirchen","St. Roman","St. Willibald","Suben","Taufkirchen","Vichtenstein","Wernstein","Zell"],"Steyr (Stadt)":["Steyr"],"Steyr-Land":["Aschach an der Steyr","Bad Hall","Dietach","Gaflenz","Garsten","Großraming","Haidershofen","Kirchdorf","Laussa","Losenstein","Nußbach","Pfarrkirchen","Reichraming","Rosenau","Schiedlberg","Sierning","St. Florian","St. Georgen","St. Peter","Ternberg","Waldneukirchen","Wolfsberg","Wolfern"],"Urfahr-Umgebung":["Altenberg","Engerwitzdorf","Feldkirchen","Gallneukirchen","Gramastetten","Hellmonsödt","Herzogsdorf","Kirchschlag","Lichtenberg","Ottensheim","Puchenau","Reichenthal","Steyregg","Unterweißenbach","Vorderweißenbach","Waldburg","Walding","Wartberg","Zwettl"],"Vöcklabruck":["Altenhof","Ampflwang","Attersee","Attnang-Puchheim","Aurach","Berg","Desselbrunn","Fornach","Frankenmarkt","Gampern","Innerschwand","Kirchham","Lenzing","Mondsee","Nußdorf","Oberhofen","Oberwang","Ottnang","Pfaffing","Pöndorf","Puchkirchen","Regau","Roitham","Rüstorf","Schörfling","Schwanenstadt","Seewalchen","St. Georgen","St. Gilgen","St. Lorenz","Steindorf","Straß","Timelkam","Vöcklabruck","Vöcklamarkt","Weißenkirchen","Weyregg","Zell am Moos","Zell am Pettenfirst"],"Wels (Stadt)":["Wels"],"Wels-Land":["Aichkirchen","Bachmanning","Buchkirchen","Desselbrunn","Edt","Fischlham","Gunskirchen","Holzhausen","Krenglbach","Lambach","Marchtrenk","Neukirchen","Pennewang","Pichl","Puchberg","Redlham","Roitham","Schleißheim","Sipbachzell","Steinhaus","St. Agatha","St. Georgen","Thalheim","Tollet","Weißkirchen"]},
+  "Salzburg":{"Salzburg (Stadt)":["Salzburg"],"Hallein":["Abtenau","Adnet","Annaberg-Lungötz","Bad Dürrnberg","Ebenau","Golling","Hallein","Hintersee","Krispl","Kuchl","Oberalm","Puch","Rußbach","St. Koloman","Scheffau","Schwarzach"],"Salzburg-Umgebung":["Anif","Bergheim","Bürmoos","Elixhausen","Elsbethen","Eugendorf","Faistenau","Fuschl am See","Großgmain","Hallwang","Henndorf","Hof bei Salzburg","Koppl","Mattsee","Neumarkt","Nußdorf","Obertrum","Plainfeld","Puch","Schleedorf","Seekirchen","St. Georgen","Thalgau","Wals-Siezenheim"],"St. Johann im Pongau":["Altenmarkt","Annaberg","Bischofshofen","Eben","Flachau","Forstau","Goldegg","Großarl","Hüttau","Kleinarl","Mühlbach","Pfarrwerfen","Radstadt","Schwarzach","St. Johann","St. Martin","St. Veit","Untertauern","Wagrain","Werfen","Werfenweng"],"Tamsweg":["Göriach","Lessach","Mariapfarr","Mauterndorf","Muhr","Ramingstein","St. Andrä","St. Margarethen","St. Michael","Tamsweg","Thomatal","Tweng","Unternberg","Weißpriach"],"Zell am See":["Bramberg","Bruck","Dienten","Fusch","Hollersbach","Kaprun","Kirchberg","Krimml","Lend","Lofer","Maishofen","Maria Alm","Mittersill","Niedernsill","Piesendorf","Rauris","Saalbach-Hinterglemm","Saalfelden","St. Martin","St. Veit","Stuhlfelden","Taxenbach","Unken","Uttendorf","Viehhofen","Zell am See"]},
+  "Steiermark":{"Bruck-Mürzzuschlag":["Aflenz","Breitenau","Bruck an der Mur","Frohnleiten","Kapfenberg","Kindberg","Krieglach","Langenwang","Mariazell","Mürzzuschlag","Neuberg","Pernegg","St. Barbara","St. Lorenzen","St. Marein","Thörl","Turnau","Veitsch","Wartberg"],"Deutschlandsberg":["Bad Gams","Deutschlandsberg","Eibiswald","Frauental","Groß St. Florian","Hollenegg","Kitzeck","Lannach","Preding","Schwanberg","Stainz","Wettmannstätten"],"Graz (Stadt)":["Graz"],"Graz-Umgebung":["Dobl","Feldkirchen","Fernitz","Gössendorf","Gratwein","Gratkorn","Hart","Hitzendorf","Kalsdorf","Kainbach","Laßnitzhöhe","Lieboch","Nestelbach","Pirka","Raaba","Seiersberg","Stattegg","Thal","Übelbach","Vasoldsberg","Weinitzen"],"Hartberg-Fürstenfeld":["Bad Blumau","Birkfeld","Friedberg","Fürstenfeld","Grafendorf","Hartberg","Kaindorf","Kirchberg an der Raab","Lafnitz","Loipersdorf","Mönichwald","Neudau","Pöllau","Rohrbach","St. Johann","Vorau","Waldbach"],"Leibnitz":["Ehrenhausen","Gamlitz","Gleinstätten","Heimschuh","Kaindorf","Kitzeck","Leutschach","Merkendorf","Mureck","Oberhaag","Pölfing-Brunn","Spielfeld","St. Andrä","St. Johann","Stainz","Tillmitsch","Wagna","Wildon"],"Leoben":["Breitenau","Eisenerz","Kalwang","Kammern","Kraubath","Leoben","Mautern","Niklasdorf","Proleb","Radmer","St. Michael","St. Stefan","Traboch","Trofaiach","Vordernberg"],"Liezen":["Admont","Aich","Aigen","Altaussee","Ardning","Bad Aussee","Bad Mitterndorf","Donnersbach","Gröbming","Grundlsee","Hall","Haus im Ennstal","Irdning","Kleinsölk","Landl","Liezen","Niederöblarn","Öblarn","Ramsau","Rottenmann","Schladming","Selzthal","Stainach","Trieben","Weißenbach","Wörschach"],"Murau":["Frojach","Hohentauern","Katsch","Krakau","Murau","Niederwölz","Oberwölz","Ranten","Schöder","Stadl","St. Blasen","St. Georgen","St. Lambrecht","St. Lorenzen","Teufenbach","Unzmarkt","Zeutschach"],"Murtal":["Fohnsdorf","Judenburg","Knittelfeld","Kobenz","Mariahof","Obdach","Pöls","Rachau","Seckau","Spielberg","St. Georgen","St. Margarethen","Weißkirchen","Zeltweg"],"Südoststeiermark":["Anger","Fehring","Feldbach","Gnas","Halbenrain","Kirchbach","Klöch","Mureck","Murfeld","Oberhaag","Radkersburg","Riegersburg","St. Anna","St. Peter","Straden","Tieschen"]},
+  "Tirol":{"Innsbruck (Stadt)":["Innsbruck"],"Imst":["Arzl im Pitztal","Haiming","Imst","Imsterberg","Karres","Karrösten","Längenfeld","Mieming","Mils","Mötz","Nassereith","Obsteig","Rietz","Roppen","Sautens","Silz","Sölden","Stams","Tarrenz","Umhausen","Wenns"],"Innsbruck-Land":["Absam","Aldrans","Ampass","Axams","Baumkirchen","Birgitz","Ellbögen","Flaurling","Fritzens","Gnadenwald","Götzens","Hall in Tirol","Hatting","Kematen","Kolsass","Lans","Mils","Mutters","Natters","Oberhofen","Patsch","Pfaffenhofen","Ranggen","Rum","Rinn","Schönberg","Sellrain","Sistrans","Tulfes","Thaur","Volders","Völs","Wattens","Zirl"],"Kitzbühel":["Aurach","Brixen im Thale","Ellmau","Going","Hopfgarten","Itter","Jochberg","Kelchsau","Kirchberg","Kirchdorf","Kitzbühel","Kössen","Reith","Scheffau","Söll","St. Johann","Westendorf"],"Kufstein":["Angath","Angerberg","Breitenbach","Brixlegg","Erl","Kirchbichl","Kramsach","Kufstein","Langkampfen","Mariastein","Münster","Niederndorf","Radfeld","Rattenberg","Reith","Schwoich","Thiersee","Wörgl"],"Landeck":["Fendels","Fiss","Flirsch","Grins","Ischgl","Kauns","Kaunertal","Ladis","Landeck","Nauders","Pfunds","Prutz","Ried im Oberinntal","Serfaus","See","St. Anton am Arlberg","Stanzach","Tobadill","Tösens","Zams"],"Lienz":["Abfaltersbach","Ainet","Amlach","Anras","Assling","Außervillgraten","Dölsach","Gaimberg","Heinfels","Hopfgarten im Defereggen","Innervillgraten","Kals am Großglockner","Kartitsch","Lavant","Leisach","Lienz","Matrei in Osttirol","Nikolsdorf","Nußdorf-Debant","Oberlienz","Obertilliach","Prägraten","Sillian","St. Jakob","St. Johann","St. Veit","Strassen","Tristach","Untertilliach","Virgen"],"Reutte":["Biberwier","Bichlbach","Breitenwang","Ehrwald","Elbigenalp","Elmen","Forchach","Grän","Häselgehr","Heiterwang","Höfen","Holzgau","Jungholz","Lechaschau","Lermoos","Musau","Namlos","Nesselwängle","Pflach","Pinswang","Reutte","Schattwald","Stanzach","Steeg","Tannheim","Vils","Wängle","Weißenbach","Zöblen"],"Schwaz":["Achenkirch","Buch in Tirol","Eben am Achensee","Fügenberg","Fügen","Gerlos","Hart im Zillertal","Hippach","Jenbach","Kaltenbach","Mayrhofen","Münster","Neukirchen","Pill","Rattenberg","Rohrberg","Schwaz","Stans","Stumm","Terfens","Uderns","Vomp","Weer","Weerberg","Wiesing","Zell am Ziller","Zellberg"]},
+  "Vorarlberg":{"Bludenz":["Bartholomäberg","Bludenz","Brand","Bürs","Bürserberg","Dalaas","Fontanella","Gaschurn","Klösterle","Lech","Lorüns","Ludesch","Nüziders","Raggal","St. Anton im Montafon","St. Gallenkirch","St. Gerold","Schruns","Silbertal","Stallehr","Thüringen","Vandans"],"Bregenz":["Alberschwende","Andelsbuch","Au","Bezau","Bildstein","Bizau","Bregenz","Buch","Doren","Egg","Eichenberg","Hard","Hittisau","Höchst","Hörbranz","Kennelbach","Krumbach","Langenegg","Langen","Lingenau","Lochau","Mellau","Mittelberg","Möggers","Moos","Reuthe","Riefensberg","Schwarzach","Sibratsgfäll","Sulzberg","Wolfurt"],"Dornbirn":["Dornbirn","Hohenems","Lustenau"],"Feldkirch":["Düns","Dünserberg","Feldkirch","Frastanz","Furx","Göfis","Koblach","Laterns","Meiningen","Muntlix","Rankweil","Röns","Röthis","Schlins","Schnifis","Sulz","Übersaxen","Viktorsberg","Weiler","Zwischenwasser"]},
+  "Wien":{"Wien":["1. Bezirk (Innere Stadt)","2. Bezirk (Leopoldstadt)","3. Bezirk (Landstraße)","4. Bezirk (Wieden)","5. Bezirk (Margareten)","6. Bezirk (Mariahilf)","7. Bezirk (Neubau)","8. Bezirk (Josefstadt)","9. Bezirk (Alsergrund)","10. Bezirk (Favoriten)","11. Bezirk (Simmering)","12. Bezirk (Meidling)","13. Bezirk (Hietzing)","14. Bezirk (Penzing)","15. Bezirk (Rudolfsheim)","16. Bezirk (Ottakring)","17. Bezirk (Hernals)","18. Bezirk (Währing)","19. Bezirk (Döbling)","20. Bezirk (Brigittenau)","21. Bezirk (Floridsdorf)","22. Bezirk (Donaustadt)","23. Bezirk (Liesing)"]}
+};
+let ausgewaehlteBL = new Set();
+let ausgewaehlteBez = new Set();
+let ausgewaehlteGem = new Set();
+const BUNDESLAENDER = ["Burgenland","Kärnten","Niederösterreich","Oberösterreich","Salzburg","Steiermark","Tirol","Vorarlberg","Wien"];
 
-# =============================================================================
-# SCHRITT 7: E-MAIL VERSENDEN
-# =============================================================================
+function renderBundeslaender() {
+  const grid = document.getElementById('bl-grid');
+  grid.innerHTML = '';
+  BUNDESLAENDER.forEach(bl => {
+    const div = document.createElement('div');
+    div.className = 'gewerk-check' + (ausgewaehlteBL.has(bl) ? ' ausgewaehlt' : '');
+    div.innerHTML = `<div class="check-box">${ausgewaehlteBL.has(bl) ? '✓' : ''}</div>${bl}`;
+    div.addEventListener('click', () => toggleBL(bl, div));
+    grid.appendChild(div);
+  });
+}
+function toggleBL(bl, el) {
+  if (ausgewaehlteBL.has(bl)) {
+    ausgewaehlteBL.delete(bl); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = '';
+    [...ausgewaehlteBez].filter(k => k.startsWith(bl+'||')).forEach(k => ausgewaehlteBez.delete(k));
+    [...ausgewaehlteGem].filter(k => k.startsWith(bl+'||')).forEach(k => ausgewaehlteGem.delete(k));
+  } else {
+    ausgewaehlteBL.add(bl); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓';
+    ganzOe = false;
+    document.getElementById('ganz-oe-btn').classList.remove('ausgewaehlt');
+    document.getElementById('ganz-oe-check').textContent = '';
+  }
+  renderBezirke(); updateGebietZusammenfassung();
+}
+function renderBezirke() {
+  const wrapper = document.getElementById('bezirke-wrapper');
+  const grid = document.getElementById('bez-grid');
+  grid.innerHTML = '';
+  if (ausgewaehlteBL.size === 0) { wrapper.style.display='none'; document.getElementById('gemeinden-wrapper').style.display='none'; return; }
+  wrapper.style.display = 'block';
+  ausgewaehlteBL.forEach(bl => {
+    if (!OESTERREICH[bl]) return;
+    if (ausgewaehlteBL.size > 1) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'grid-column:1/-1; font-size:10px; font-weight:600; color:var(--blau); letter-spacing:1.5px; padding:8px 0 4px; border-bottom:1px solid rgba(37,99,235,0.15); margin-bottom:4px; text-transform:uppercase;';
+      sep.textContent = bl; grid.appendChild(sep);
+    }
+    Object.keys(OESTERREICH[bl]).forEach(bez => {
+      const key = bl+'||'+bez;
+      const div = document.createElement('div');
+      div.className = 'gewerk-check'+(ausgewaehlteBez.has(key)?' ausgewaehlt':'');
+      div.innerHTML = `<div class="check-box">${ausgewaehlteBez.has(key)?'✓':''}</div>${bez}`;
+      div.addEventListener('click', () => toggleBez(bl, bez, key, div));
+      grid.appendChild(div);
+    });
+  });
+}
+function toggleBez(bl, bez, key, el) {
+  if (ausgewaehlteBez.has(key)) {
+    ausgewaehlteBez.delete(key); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = '';
+    [...ausgewaehlteGem].filter(k => k.startsWith(key+'||')).forEach(k => ausgewaehlteGem.delete(k));
+  } else { ausgewaehlteBez.add(key); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓'; }
+  renderGemeinden(); updateGebietZusammenfassung();
+}
+function renderGemeinden() {
+  const wrapper = document.getElementById('gemeinden-wrapper');
+  const grid = document.getElementById('gem-grid');
+  grid.innerHTML = '';
+  if (ausgewaehlteBez.size === 0) { wrapper.style.display='none'; return; }
+  wrapper.style.display = 'block';
+  ausgewaehlteBez.forEach(key => {
+    const [bl, bez] = key.split('||');
+    if (!OESTERREICH[bl]?.[bez]) return;
+    if (ausgewaehlteBez.size > 1) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'grid-column:1/-1; font-size:10px; font-weight:600; color:var(--blau); letter-spacing:1.5px; padding:8px 0 4px; border-bottom:1px solid rgba(37,99,235,0.15); margin-bottom:4px; text-transform:uppercase;';
+      sep.textContent = bez; grid.appendChild(sep);
+    }
+    OESTERREICH[bl][bez].forEach(gem => {
+      const gemKey = key+'||'+gem;
+      const div = document.createElement('div');
+      div.className = 'gewerk-check'+(ausgewaehlteGem.has(gemKey)?' ausgewaehlt':'');
+      div.innerHTML = `<div class="check-box">${ausgewaehlteGem.has(gemKey)?'✓':''}</div>${gem}`;
+      div.addEventListener('click', () => toggleGem(gemKey, div));
+      grid.appendChild(div);
+    });
+  });
+}
+function toggleGem(key, el) {
+  if (ausgewaehlteGem.has(key)) { ausgewaehlteGem.delete(key); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = ''; }
+  else { ausgewaehlteGem.add(key); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓'; }
+  updateGebietZusammenfassung();
+}
+function toggleGanzOe() {
+  ganzOe = !ganzOe;
+  document.getElementById('ganz-oe-btn').classList.toggle('ausgewaehlt', ganzOe);
+  document.getElementById('ganz-oe-check').textContent = ganzOe ? '✓' : '';
+  if (ganzOe) { ausgewaehlteBL.clear(); ausgewaehlteBez.clear(); ausgewaehlteGem.clear(); renderBundeslaender(); document.getElementById('bezirke-wrapper').style.display='none'; document.getElementById('gemeinden-wrapper').style.display='none'; }
+  updateGebietZusammenfassung();
+}
+function updateGebietZusammenfassung() {
+  const el = document.getElementById('gebiet-zusammenfassung');
+  if (!el) return;
+  if (ganzOe) { el.innerHTML = `<div class="tag-liste"><span class="tag">🇦🇹 Ganz Österreich</span></div>`; return; }
+  let tags = '';
+  ausgewaehlteBL.forEach(bl => {
+    const bezImBL = [...ausgewaehlteBez].filter(k => k.startsWith(bl+'||'));
+    if (bezImBL.length === 0) tags += `<span class="tag">📍 ${bl} (alle Bezirke)</span>`;
+    else bezImBL.forEach(bezKey => {
+      const bez = bezKey.split('||')[1];
+      const gemImBez = [...ausgewaehlteGem].filter(k => k.startsWith(bezKey+'||'));
+      if (gemImBez.length === 0) tags += `<span class="tag">📍 ${bez}</span>`;
+      else gemImBez.forEach(gemKey => { tags += `<span class="tag">📍 ${gemKey.split('||')[2]}</span>`; });
+    });
+  });
+  el.innerHTML = tags ? `<div style="font-size:11px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.8px;">Auswahl:</div><div class="tag-liste">${tags}</div>` : '';
+}
 
-def erstelle_email_html(kunde: dict, auftrag: dict, projekte_liste: list[dict]) -> str:
-    """Erstellt HTML-E-Mail mit Projektzusammenfassung."""
-    anzahl = len(projekte_liste)
-    dashboard_url = f"{DASHBOARD_BASE_URL}?kunden_id={auftrag['kunden_id']}&suchanfrage_id={auftrag['id']}"
+// ── ZEITRAUM ──
+function zeitraumWaehlen(tage, el) {
+  gewaehlterZeitraum = tage;
+  document.querySelectorAll('.zeitraum-karte').forEach(k => k.classList.remove('ausgewaehlt'));
+  el.classList.add('ausgewaehlt');
+  document.getElementById('kosten-zeitraum').textContent = tage + ' Tag' + (tage > 1 ? 'e' : '');
+  updatePreis();
+}
 
-    # Top-Projekte für E-Mail (max. 5, sortiert nach Relevanz)
-    top_projekte = sorted(projekte_liste, key=lambda p: p.get("relevanz", 0), reverse=True)[:5]
+// ── KOSTENKALKULATION ──
+const MINDESTPREIS = 9.90;
+const PREIS_FAKTOR = 5;
 
-    projekt_html = ""
-    for p in top_projekte:
-        relevanz_sterne = "★" * min(int(int(p.get("relevanz", 5)) / 2), 5)
-        projekt_html += f"""
-        <div style="background:#1a1a2e;border:1px solid #d4a017;border-radius:6px;padding:16px;margin-bottom:12px;">
-          <div style="font-size:11px;color:#d4a017;font-family:monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
-            {p.get('kategorie','Sonstiges')} · {p.get('phase','unbekannt')} · {relevanz_sterne}
-          </div>
-          <div style="font-size:16px;font-weight:600;color:#f0f0f0;margin-bottom:6px;">{p.get('titel','')}</div>
-          <div style="font-size:13px;color:#8b949e;margin-bottom:8px;">
-            📍 {p.get('ort','')} {('· ' + p.get('bezirk','')) if p.get('bezirk') else ''} · {p.get('bundesland','')}
-            {(' · 💶 ' + p.get('volumen','')) if p.get('volumen') else ''}
-          </div>
-          <div style="font-size:13px;color:#c9d1d9;margin-bottom:10px;">{p.get('beschreibung','')}</div>
-          <a href="{p.get('artikel_url','#')}" style="color:#d4a017;font-size:12px;">→ Zum Artikel</a>
-        </div>"""
+function berechneApiKosten() {
+  const anzahlBL = ganzOe ? 9 : Math.max(ausgewaehlteBL.size, 1);
+  const basisQuellen = ganzOe ? 151 : anzahlBL * 17;
+  const plattformAbrufe = ganzOe ? 120 : anzahlBL * 14;
+  const anzahlBez = ausgewaehlteBez.size;
+  const bezBonus = anzahlBez > 0 ? Math.round(anzahlBez * 2.5) : 0;
+  const gesamtAbrufe = basisQuellen + plattformAbrufe + bezBonus;
+  const zeitFaktor = 1 + (gewaehlterZeitraum / 100);
+  const seitenGesamt = Math.max(Math.round(gesamtAbrufe * zeitFaktor), gesamtAbrufe);
+  const anzahlGew = Math.max(ausgewaehlteGewerke.size, 1);
+  const gewFaktor = 1 + Math.min((anzahlGew - 1) * 0.015, 0.45);
+  const kostenHaikuUsd = (seitenGesamt * 1500 / 1e6) * 1.00 * gewFaktor
+                       + (seitenGesamt * 200  / 1e6) * 5.00 * gewFaktor;
+  const relevanteProjekte = Math.max(Math.round(seitenGesamt * 0.08 * gewFaktor), 2);
+  const kostenSonnetUsd = ((relevanteProjekte * 2000 + 3000) / 1e6) * 3.00
+                        + ((relevanteProjekte * 400  + 1500) / 1e6) * 15.00;
+  const gesamtEur = (kostenHaikuUsd + kostenSonnetUsd) / 1.08;
+  return { seitenGesamt, relevanteProjekte, gesamtEur: Math.round(gesamtEur * 100) / 100 };
+}
 
-    return f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="background:#0a0a0a;color:#e6edf3;font-family:'DM Sans',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 16px;">
+function berechnePreis() {
+  const k = berechneApiKosten();
+  const rohpreis = k.gesamtEur * PREIS_FAKTOR;
+  const gerundet = Math.round(rohpreis * 10) / 10;
+  return Math.max(gerundet, MINDESTPREIS);
+}
 
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="font-size:32px;font-weight:900;letter-spacing:4px;color:#d4a017;">ProjectScout</div>
-    <div style="font-size:13px;color:#8b949e;margin-top:4px;">KI-Bauprojekt-Scout für Österreich</div>
-  </div>
 
-  <div style="background:#161b22;border:1px solid #238636;border-radius:8px;padding:24px;margin-bottom:24px;text-align:center;">
-    <div style="font-size:40px;font-weight:900;color:#d4a017;">{anzahl}</div>
-    <div style="font-size:16px;color:#e6edf3;margin-top:4px;">Relevante Bauprojekte gefunden</div>
-    <div style="font-size:13px;color:#8b949e;margin-top:8px;">für {kunde.get('firmenname','Ihr Unternehmen')}</div>
-  </div>
 
-  <p style="color:#8b949e;font-size:14px;margin-bottom:20px;">
-    Ihr ProjectScout-Lauf ist abgeschlossen. Hier sind die {min(anzahl, 5)} relevantesten Projekte:
-  </p>
+function updatePreis() {
+  const k = berechneApiKosten();
+  const preis = berechnePreis();
+  const el = document.getElementById('preis-anzeige');
+  const details = document.getElementById('preis-details');
+  const aufschluss = document.getElementById('preis-aufschluss');
+  if (!el) return;
+  el.textContent = `€ ${preis.toFixed(2)}`;
+  const gebiet = ganzOe ? 'Ganz Österreich' : (ausgewaehlteBL.size > 0 ? [...ausgewaehlteBL].join(', ') : 'Noch kein Gebiet gewählt');
+  if (details) details.textContent = `${gebiet} · ${ausgewaehlteGewerke.size} Gewerke · ${gewaehlterZeitraum} Tage`;
+  if (aufschluss) {
+    const istMindest = preis <= MINDESTPREIS;
+    aufschluss.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:4px 0;border-bottom:1px solid var(--rand);">
+        <span>~${k.seitenGesamt.toLocaleString()} Quellen · ~${k.relevanteProjekte} Projekte erwartet</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding:6px 0;">
+        <span style="color:var(--text);">Ihr Preis${istMindest ? ' (Mindestpreis)' : ''}</span>
+        <span style="color:var(--blau);">€ ${preis.toFixed(2)}</span>
+      </div>
+    `;
+  }
+}
 
-  {projekt_html}
+// ── ZUSAMMENFASSUNG ──
+function renderZusammenfassung() {
+  const firma = document.getElementById('firma').value;
+  const email = document.getElementById('email').value;
+  const gebiet = ganzOe ? '🇦🇹 Ganz Österreich' : 'Ausgewählte Regionen';
+  document.getElementById('zusammenfassung').innerHTML = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+      <div style="background:var(--hell); border:1px solid var(--rand); border-radius:8px; padding:12px 16px;">
+        <div style="font-size:10px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">Firma</div>
+        <div style="font-size:14px; font-weight:500;">${firma}</div>
+      </div>
+      <div style="background:var(--hell); border:1px solid var(--rand); border-radius:8px; padding:12px 16px;">
+        <div style="font-size:10px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">E-Mail</div>
+        <div style="font-size:14px; font-weight:500;">${email}</div>
+      </div>
+      <div style="background:var(--hell); border:1px solid var(--rand); border-radius:8px; padding:12px 16px;">
+        <div style="font-size:10px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">Gebiet</div>
+        <div style="font-size:14px; font-weight:500;">${gebiet}</div>
+      </div>
+      <div style="background:var(--hell); border:1px solid var(--rand); border-radius:8px; padding:12px 16px;">
+        <div style="font-size:10px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">Gewerke</div>
+        <div style="font-size:14px; font-weight:500;">${ausgewaehlteGewerke.size} ausgewählt</div>
+      </div>
+    </div>
+    <div class="tag-liste">${[...ausgewaehlteGewerke].map(g=>`<span class="tag">${g}</span>`).join('')}</div>
+  `;
+  updatePreis();
+}
 
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{dashboard_url}"
-       style="background:#d4a017;color:#0a0a0a;font-weight:700;font-size:15px;padding:14px 32px;border-radius:4px;text-decoration:none;display:inline-block;">
-      → Alle {anzahl} Projekte im Dashboard ansehen
-    </a>
-  </div>
+// ── CHAT ──
+async function initChat() {
+  const firma = document.getElementById('firma').value || 'Ihr Unternehmen';
+  const gewerkeList = [...ausgewaehlteGewerke].slice(0, 5).join(', ');
+  const gebiet = ganzOe ? 'ganz Österreich' : 'ausgewählte Regionen';
+  const begruessung = `Hallo! Ich habe Ihre Konfiguration geladen:\n\n📍 Gebiet: ${gebiet}\n🔧 Gewerke (${ausgewaehlteGewerke.size}): ${gewerkeList}${ausgewaehlteGewerke.size > 5 ? '...' : ''}\n\nMöchten Sie die Suche noch verfeinern? Sie können mir z.B. sagen:\n• Mindestprojektgröße (z.B. "nur ab 500.000 €")\n• Spezielle Materialien oder Methoden\n• Bestimmte Projekttypen\n• Zeitraum (z.B. "Projekte die 2025 starten")`;
+  document.getElementById('ki-begruessung').textContent = begruessung;
+  chatVerlauf = [{ role: 'assistant', content: begruessung }];
+}
+function chatNachrichtHinzufuegen(text, istKi) {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'chat-nachricht';
+  div.innerHTML = `<div class="chat-avatar ${istKi?'ki':'user'}">${istKi?'KI':'S'}</div><div class="chat-text">${text.replace(/\n/g,'<br>')}</div>`;
+  box.appendChild(div); box.scrollTop = box.scrollHeight;
+}
+function typingAnzeigen() {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'chat-nachricht'; div.id = 'typing-indicator';
+  div.innerHTML = `<div class="chat-avatar ki">KI</div><div class="chat-text"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  box.appendChild(div); box.scrollTop = box.scrollHeight;
+}
+function typingEntfernen() { const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
+async function chatSenden() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  chatNachrichtHinzufuegen(text, false);
+  chatVerlauf.push({ role: 'user', content: text });
+  typingAnzeigen();
+  try {
+    const gewerkeList = [...ausgewaehlteGewerke].join(', ');
+    const gebiet = ganzOe ? 'ganz Österreich' : 'ausgewählte Regionen';
+    const systemPrompt = `Du bist ein hilfreicher KI-Assistent für ProjectScout, einen österreichischen Projekt-Scout.\nDer Nutzer hat folgende Konfiguration:\n- Gewerke: ${gewerkeList}\n- Gebiet: ${gebiet}\nDeine Aufgabe: Verstehe was der Nutzer sucht und extrahiere daraus konkrete Suchparameter.\nAntworte auf Deutsch, kurz und professionell.\nAm Ende jeder Antwort fasse die Suchverfeinerung als JSON zusammen im Format:\n<params>{"keywords":[],"ausschluss":[],"mindestvolumen":"","zeitraum":""}</params>`;
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: systemPrompt, messages: chatVerlauf })
+    });
+    const data = await response.json();
+    const antwort = data.content?.[0]?.text || 'Entschuldigung, ein Fehler ist aufgetreten.';
+    const paramMatch = antwort.match(/<params>(.*?)<\/params>/s);
+    if (paramMatch) { try { chatVerfeinerung = paramMatch[1]; } catch(e) {} }
+    const saubereAntwort = antwort.replace(/<params>.*?<\/params>/s, '').trim();
+    typingEntfernen(); chatNachrichtHinzufuegen(saubereAntwort, true);
+    chatVerlauf.push({ role: 'assistant', content: antwort });
+  } catch(e) {
+    typingEntfernen();
+    chatNachrichtHinzufuegen('Entschuldigung, der Chat ist momentan nicht verfügbar. Sie können trotzdem fortfahren.', true);
+  }
+}
+function chatEnter(e) { if (e.key === 'Enter') chatSenden(); }
 
-  <div style="background:#161b22;border-radius:6px;padding:16px;font-size:12px;color:#8b949e;margin-top:24px;">
-    <strong style="color:#e6edf3;">Excel-Export</strong> steht im Dashboard zum Download bereit.<br><br>
-    Sie haben Fragen? Antworten Sie auf diese E-Mail.<br>
-    <a href="https://project-scout.at/" style="color:#d4a017;">project-scout.at</a>
-  </div>
+// ── BEZAHLEN ──
+async function bezahlen() {
+  const firma = document.getElementById('firma').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const homepage = document.getElementById('homepage').value.trim();
+  if (!firma || !email) { alert('Bitte zurückgehen und Firmenname + E-Mail ausfüllen.'); return; }
+  const btn = document.getElementById('bezahl-btn');
+  btn.disabled = true; btn.textContent = '⏳ Wird gespeichert...';
+  zeigeStatus('Daten werden gespeichert...', 'laden');
+  try {
+    const db = await getSupabase();
+    let kundenId;
+    const { data: vorhandener } = await db.from('kunden').select('id').eq('email', email).maybeSingle();
+    if (vorhandener) { kundenId = vorhandener.id; }
+    else {
+      const { data: neuer, error: kFehler } = await db.from('kunden').insert({ email, firmenname: firma, homepage: homepage || null }).select('id').single();
+      if (kFehler) throw new Error('Kunde: ' + kFehler.message);
+      kundenId = neuer.id;
+    }
+    const heute = new Date();
+    const von = new Date(heute);
+    von.setDate(heute.getDate() - gewaehlterZeitraum);
+    const bundeslaenderKuerzel = {"Burgenland":"BGR","Kärnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W"};
+    const bundeslaenderListe = ganzOe ? ['W','NOE','OOE','SBG','STK','KTN','TIR','VBG','BGR'] : [...ausgewaehlteBL].map(bl => bundeslaenderKuerzel[bl] || bl);
+    const apiKosten = berechneApiKosten();
+    const { data: suchanfrage, error: sFehler } = await db.from('suchanfragen').insert({
+      kunden_id: kundenId, gewerke: [...ausgewaehlteGewerke], bundeslaender: bundeslaenderListe,
+      bezirke: [...ausgewaehlteBez].map(k => k.split('||')[1]), gemeinden: [...ausgewaehlteGem].map(k => k.split('||')[2]),
+      ganz_oesterreich: ganzOe, chat_verfeinerung: chatVerfeinerung || null, zeitraum_tage: gewaehlterZeitraum,
+      zeitraum_von: von.toISOString().split('T')[0], zeitraum_bis: heute.toISOString().split('T')[0],
+      kosten_geschaetzt: apiKosten.gesamtEur, status: 'wartet_auf_zahlung',
+    }).select('id').single();
+    if (sFehler) throw new Error('Suchanfrage: ' + sFehler.message);
+    sessionStorage.setItem('bs_kunden_id', kundenId);
+    sessionStorage.setItem('bs_suchanfrage_id', suchanfrage.id);
+    sessionStorage.setItem('bs_email', email);
+    sessionStorage.setItem('bs_kundenpreis', berechnePreis().toString());
+    zeigeStatus('✅ Gespeichert! Weiterleitung zu Stripe...', 'erfolg');
+    btn.textContent = '⏳ Weiterleitung...';
+    await new Promise(r => setTimeout(r, 800));
+    const stripeUrl = new URL(STRIPE_PAYMENT_LINK);
+    stripeUrl.searchParams.set('client_reference_id', suchanfrage.id);
+    stripeUrl.searchParams.set('prefilled_email', email);
+    window.location.href = stripeUrl.toString();
+  } catch(fehler) {
+    console.error('❌ Fehler:', fehler.message);
+    zeigeStatus('❌ Fehler: ' + fehler.message, 'fehler');
+    btn.disabled = false; btn.textContent = '💳 Jetzt bezahlen & starten';
+  }
+}
+function zeigeStatus(text, typ) {
+  const el = document.getElementById('bauscout-status');
+  if (!el) return;
+  const farben = { laden: '#f0f9ff', erfolg: '#f0fdf4', fehler: '#fef2f2' };
+  const randfarben = { laden: '#bae6fd', erfolg: '#bbf7d0', fehler: '#fecaca' };
+  const textfarben = { laden: '#0369a1', erfolg: '#15803d', fehler: '#dc2626' };
+  el.style.cssText = `display:block; padding:12px 16px; border-radius:8px; background:${farben[typ]}; border:1px solid ${randfarben[typ]}; color:${textfarben[typ]}; font-size:14px; margin-top:14px;`;
+  el.textContent = text;
+}
 
+// ── NAVIGATION ──
+function toggleSchritt(nr) {}
+function weiter(nr) {
+  if (nr === 1) {
+    const email = document.getElementById('email').value;
+    const firma = document.getElementById('firma').value;
+    if (!email || !firma) { alert('Bitte Firmenname und E-Mail ausfüllen.'); return; }
+    if (!email.includes('@')) { alert('Bitte gültige E-Mail eingeben.'); return; }
+  }
+  if (nr === 2) { if (ausgewaehlteGewerke.size === 0) { alert('Bitte mindestens ein Gewerk auswählen.'); return; } }
+  const aktuell = document.getElementById(`s${nr}`);
+  aktuell.classList.remove('aktiv'); aktuell.classList.add('erledigt');
+  document.getElementById(`s${nr}-status`).textContent = '✓ erledigt';
+  const naechster = document.getElementById(`s${nr+1}`);
+  if (naechster) {
+    naechster.classList.add('aktiv');
+    if (nr+1 === 4) initChat();
+    if (nr+1 === 5) renderZusammenfassung();
+  }
+  naechster?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function zurueck(nr) {
+  const aktuell = document.getElementById(`s${nr}`);
+  aktuell.classList.remove('aktiv');
+  document.getElementById(`s${nr}-status`).textContent = nr === 4 ? 'optional' : 'ausstehend';
+  const vorheriger = document.getElementById(`s${nr-1}`);
+  if (vorheriger) {
+    vorheriger.classList.remove('erledigt'); vorheriger.classList.add('aktiv');
+    document.getElementById(`s${nr-1}-status`).textContent = 'ausstehend';
+    vorheriger.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ── FAQ ──
+function toggleFaq(el) {
+  const item = el.parentElement;
+  item.classList.toggle('offen');
+}
+
+// ── INIT ──
+renderGewerke();
+renderBundeslaender();
+</script>
 </body>
-</html>"""
-
-def sende_email(kunde: dict, auftrag: dict, projekte_liste: list[dict]) -> bool:
-    """Versendet die Ergebnis-E-Mail an den Kunden."""
-    if not SMTP_USER or not SMTP_PASS:
-        print("  ⚠️  SMTP nicht konfiguriert – E-Mail übersprungen")
-        return False
-
-    empfaenger = kunde.get("email")
-    if not empfaenger:
-        print("  ⚠️  Keine Kunden-E-Mail-Adresse vorhanden")
-        return False
-
-    anzahl = len(projekte_liste)
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"ProjectScout: {anzahl} Projekte gefunden – {kunde.get('firmenname','')}"
-    msg["From"]    = f"ProjectScout <{SMTP_USER}>"
-    msg["To"]      = empfaenger
-
-    # Text-Fallback
-    text_body = f"""ProjectScout – Ihre Ergebnisse sind da!
-
-{anzahl} relevante Bauprojekte wurden gefunden.
-
-Dashboard: {DASHBOARD_BASE_URL}?kunden_id={auftrag['kunden_id']}&suchanfrage_id={auftrag['id']}
-
-ProjectScout – KI-gestützter Projekt-Scout für Österreich"""
-
-    html_body = erstelle_email_html(kunde, auftrag, projekte_liste)
-
-    msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    msg.attach(MIMEText(html_body, "html",  "utf-8"))
-
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, empfaenger, msg.as_string())
-        print(f"  ✉️  E-Mail gesendet an {empfaenger}")
-        return True
-    except Exception as e:
-        print(f"  ❌ E-Mail-Fehler: {e}")
-        return False
-
-# =============================================================================
-# HAUPTFUNKTION: EINEN AUFTRAG ABARBEITEN
-# =============================================================================
-
-def verarbeite_auftrag(auftrag: dict) -> None:
-    """Vollständige Verarbeitung eines bezahlten Auftrags."""
-    sid = auftrag["id"]
-    print(f"\n{'='*60}")
-    print(f"🚀 Starte Auftrag: {sid}")
-    print(f"   Gewerke:      {auftrag.get('gewerke')}")
-    print(f"   Bundesländer: {auftrag.get('bundeslaender')}")
-    print(f"   Zeitraum:     {auftrag.get('zeitraum_tage', 30)} Tage")
-    print(f"{'='*60}")
-
-    # Status → agent_laeuft
-    sb_patch("suchanfragen", {"id": f"eq.{sid}"}, {"status": "agent_laeuft"})
-
-    try:
-        # Kundendaten laden
-        kunde = lade_kundendaten(auftrag["kunden_id"])
-        if not kunde:
-            raise ValueError(f"Keine Kundendaten für ID {auftrag['kunden_id']} gefunden")
-        print(f"  👤 Kunde: {kunde.get('firmenname')} ({kunde.get('email')})")
-
-        # Suchbegriffe + Quellen bestimmen
-        suchbegriffe = baue_suchbegriffe(auftrag)
-        quellen      = waehle_quellen(auftrag)
-
-        # Crawling + KI-Analyse
-        neue_projekte   = []
-        gesamt_artikel  = 0
-        gesamt_relevant = 0
-
-        for i, quelle in enumerate(quellen, 1):
-            print(f"\n  [{i:3}/{len(quellen)}] {quelle['name']}")
-            time.sleep(PAUSE_ZWISCHEN_QUELLEN)
-
-            artikel_liste = crawle_suchergebnis(quelle, suchbegriffe)
-            if not artikel_liste:
-                print(f"         → Keine Artikel gefunden")
-                continue
-
-            print(f"         → {len(artikel_liste)} Artikel gefunden")
-            gesamt_artikel += len(artikel_liste)
-
-            for artikel in artikel_liste:
-                analyse = analysiere_artikel_mit_ki(artikel, suchbegriffe)
-                if not analyse:
-                    continue
-
-                if not analyse.get("ist_bauprojekt"):
-                    continue
-
-                relevanz = analyse.get("relevanz", 0)
-                if relevanz < 4:
-                    continue
-
-                print(f"         ✅ RELEVANT (Relevanz {relevanz}/10): {analyse.get('titel','')[:60]}")
-                gesamt_relevant += 1
-
-                ist_neu = speichere_projekt(analyse, artikel, auftrag)
-                if ist_neu:
-                    neue_projekte.append(analyse)
-
-        print(f"\n  📊 Zusammenfassung:")
-        print(f"     Artikel analysiert:  {gesamt_artikel}")
-        print(f"     Relevante gefunden:  {gesamt_relevant}")
-        print(f"     Neu gespeichert:     {len(neue_projekte)}")
-
-        # Alle Projekte dieses Auftrags für E-Mail laden
-        alle_projekte = sb_get("projekte", {
-            "suchanfrage_id": f"eq.{sid}",
-            "ignorieren":     "eq.false",
-            "order":          "relevanz.desc.nullslast",
-        })
-
-        # Status → abgeschlossen
-        sb_patch("suchanfragen", {"id": f"eq.{sid}"}, {
-            "status":               "abgeschlossen",
-            "kosten_tatsaechlich":  berechne_tatsaechliche_kosten(gesamt_artikel),
-        })
-
-        # E-Mail versenden
-        if alle_projekte:
-            sende_email(kunde, auftrag, alle_projekte)
-        else:
-            print("  ℹ️  Keine relevanten Projekte – E-Mail mit 0-Ergebnis-Hinweis")
-            sende_email(kunde, auftrag, [])
-
-        print(f"\n  ✅ Auftrag {sid} abgeschlossen – {len(alle_projekte)} Projekte geliefert")
-
-    except Exception as e:
-        print(f"\n  ❌ FEHLER bei Auftrag {sid}: {e}")
-        import traceback
-        traceback.print_exc()
-        # Status → fehler
-        sb_patch("suchanfragen", {"id": f"eq.{sid}"}, {
-            "status": "fehler",
-        })
-
-def berechne_tatsaechliche_kosten(anzahl_artikel: int) -> float:
-    """
-    Grobe Kostenschätzung basierend auf API-Nutzung.
-    Haiku: $1/$5 per MTok Input/Output
-    ~500 Token Input + 200 Token Output pro Artikel
-    """
-    input_token  = anzahl_artikel * 500
-    output_token = anzahl_artikel * 200
-    kosten_usd   = (input_token / 1_000_000 * 1.0) + (output_token / 1_000_000 * 5.0)
-    kosten_eur   = round(kosten_usd * 0.92, 4)
-    return kosten_eur
-
-# =============================================================================
-# EINSTIEGSPUNKT
-# =============================================================================
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("🔍  ProjectScout Agent – Start")
-    print(f"   Zeitpunkt: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
-
-    # Optionale spezifische Auftrag-ID via Umgebungsvariable
-    spezifische_id = os.environ.get("SUCHANFRAGE_ID", "").strip() or None
-
-    auftraege = lade_offene_auftraege(spezifische_id)
-
-    if not auftraege:
-        print("✅ Keine offenen Aufträge – Agent beendet.")
-        sys.exit(0)
-
-    for auftrag in auftraege:
-        verarbeite_auftrag(auftrag)
-
-    print("\n" + "=" * 60)
-    print("✅ Alle Aufträge abgearbeitet.")
-    print("=" * 60)
+</html>
