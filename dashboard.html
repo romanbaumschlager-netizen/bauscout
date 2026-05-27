@@ -4,79 +4,842 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProjectScout – Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root {
-  --schwarz:    #0a0a0a;
-  --dunkel:     #0f1318;
-  --karte:      #161b22;
-  --karte2:     #1c2128;
-  --rand:       #21262d;
-  --rand2:      #30363d;
-  --text:       #e6edf3;
-  --text-dim:   #8b949e;
-  --text-dimmer:#4a5568;
-  --gold:       #d4a017;
-  --gold-hell:  #f0c040;
-  --gold-dim:   rgba(212,160,23,0.15);
-  --gruen:      #238636;
-  --gruen-hell: #2ea043;
-  --gruen-dim:  rgba(35,134,54,0.15);
-  --rot:        #da3633;
-  --rot-dim:    rgba(218,54,51,0.15);
-  --blau:       #388bfd;
-  --blau-dim:   rgba(56,139,253,0.15);
-  --lila:       #8957e5;
-  --lila-dim:   rgba(137,87,229,0.15);
-  --orange:     #e3b341;
-  --orange-dim: rgba(227,179,65,0.15);
+  --weiss:       #ffffff;
+  --hell:        #f8f7f4;
+  --hell2:       #f1f0ec;
+  --rand:        #e5e4e0;
+  --rand2:       #d0cfc9;
+  --text:        #111111;
+  --text-mid:    #444444;
+  --text-dim:    #888888;
+  --blau:        #2563eb;
+  --blau-hell:   #eff6ff;
+  --blau-dunkel: #1d4ed8;
+  --gruen:       #16a34a;
+  --gruen-hell:  #f0fdf4;
+  --gruen-rand:  #bbf7d0;
+  --orange:      #d97706;
+  --orange-hell: #fffbeb;
+  --rot:         #dc2626;
+  --rot-hell:    #fef2f2;
+  --sidebar-w:   240px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--schwarz);
+  background: var(--hell);
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
 }
 
-/* HINTERGRUND GRID */
-.bg-grid {
-  position: fixed; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(rgba(212,160,23,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(212,160,23,0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  pointer-events: none;
-}
+/* ── LAYOUT ── */
+.layout { display: flex; min-height: 100vh; }
 
-/* LAYOUT */
-.layout { position: relative; z-index: 1; display: flex; min-height: 100vh; }
-
-/* SIDEBAR */
+/* ── SIDEBAR ── */
 .sidebar {
-  width: 260px; min-width: 260px;
-  background: var(--dunkel);
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--weiss);
   border-right: 1px solid var(--rand);
-  display: flex; flex-direction: column;
-  position: sticky; top: 0; height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
   overflow-y: auto;
 }
 
 .sidebar-logo {
-  padding: 24px 20px 20px;
+  padding: 20px 18px 16px;
   border-bottom: 1px solid var(--rand);
 }
-.logo-text {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 28px; letter-spacing: 3px; color: var(--gold);
+.logo-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
 }
+.logo-name span { color: var(--blau); }
 .logo-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
   font-family: 'DM Mono', monospace;
-  font-size: 10px; color: var(--text-dimmer);
-  text-transform: uppercase; letter-spacing: 1px;
+}
+
+.sidebar-section { padding: 14px 18px 6px; }
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.sidebar-divider { border-top: 1px solid var(--rand); margin: 8px 0; }
+
+/* Filter */
+.filter-group { display: flex; flex-direction: column; gap: 2px; }
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-mid);
+  user-select: none;
+  transition: background 0.15s;
+}
+.filter-item:hover { background: var(--hell); }
+.filter-item.aktiv { background: var(--blau-hell); color: var(--blau); font-weight: 500; }
+.filter-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--rand2);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.filter-item.aktiv .filter-dot { background: var(--blau); }
+.filter-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+}
+
+/* Scout-Läufe */
+.lauf-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+}
+.lauf-item:hover { background: var(--hell); }
+.lauf-item.aktiv { background: var(--blau-hell); }
+.lauf-datum { font-size: 12px; font-weight: 600; color: var(--text); }
+.lauf-titel { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+/* ── HAUPTBEREICH ── */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+/* Header */
+.header {
+  background: var(--weiss);
+  border-bottom: 1px solid var(--rand);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.header-titel { flex: 1; min-width: 0; }
+.header-firma {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-meta { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+.header-stats { display: flex; gap: 12px; }
+.stat-box {
+  background: var(--hell);
+  border: 1px solid var(--rand);
+  border-radius: 8px;
+  padding: 8px 14px;
+  text-align: center;
+  min-width: 60px;
+}
+.stat-zahl { font-size: 20px; font-weight: 700; color: var(--blau); font-family: 'DM Mono', monospace; }
+.stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+.btn-excel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--gruen);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+.btn-excel:hover { background: #15803d; }
+.btn-excel svg { width: 15px; height: 15px; }
+
+/* Tabs */
+.tabs {
+  background: var(--weiss);
+  border-bottom: 1px solid var(--rand);
+  padding: 0 24px;
+  display: flex;
+  gap: 0;
+}
+.tab {
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.aktiv { color: var(--blau); border-bottom-color: var(--blau); font-weight: 600; }
+
+/* Content */
+.content { flex: 1; padding: 20px 24px; }
+#tab-liste, #tab-karte { display: none; }
+#tab-liste.aktiv, #tab-karte.aktiv { display: block; }
+
+/* Suchleiste */
+.suchleiste {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.such-input {
+  flex: 1;
+  background: var(--weiss);
+  border: 1.5px solid var(--rand);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  outline: none;
+}
+.such-input:focus { border-color: var(--blau); }
+.sort-select {
+  background: var(--weiss);
+  border: 1.5px solid var(--rand);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Projekt-Karten */
+.projekte-liste { display: flex; flex-direction: column; gap: 10px; }
+
+.projekt-karte {
+  background: var(--weiss);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: border-color 0.15s, opacity 0.2s;
+}
+.projekt-karte:hover { border-color: var(--blau); }
+.projekt-karte.ignoriert { opacity: 0.4; }
+
+.relevanz-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
+}
+.rel-hoch    { background: var(--gruen-hell); color: var(--gruen); border: 1px solid var(--gruen-rand); }
+.rel-mittel  { background: var(--orange-hell); color: var(--orange); border: 1px solid #fde68a; }
+.rel-niedrig { background: var(--rot-hell); color: var(--rot); border: 1px solid #fecaca; }
+
+.projekt-body { flex: 1; min-width: 0; }
+.projekt-titel {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.projekt-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+
+.tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.tag-kat   { background: var(--blau-hell);   color: var(--blau); }
+.tag-phase { background: var(--gruen-hell);  color: var(--gruen); }
+.tag-bl    { background: var(--hell2);       color: var(--text-mid); }
+.tag-vol   { background: var(--orange-hell); color: var(--orange); }
+
+.projekt-beschreibung {
+  font-size: 13px;
+  color: var(--text-mid);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.projekt-ort { font-size: 12px; color: var(--text-dim); }
+
+.projekt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.btn-link {
+  display: inline-block;
+  background: var(--blau-hell);
+  color: var(--blau);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  text-align: center;
+}
+.btn-link:hover { background: var(--blau); color: white; }
+.btn-ignorieren {
+  background: var(--hell);
+  border: 1px solid var(--rand);
+  color: var(--text-dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-ignorieren:hover { border-color: var(--rot); color: var(--rot); }
+.btn-ignorieren.aktiv { background: var(--rot-hell); border-color: #fecaca; color: var(--rot); }
+
+/* Karte */
+.karte-container { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--rand); }
+#karte { height: calc(100vh - 220px); min-height: 400px; }
+.karte-overlay {
+  position: absolute;
+  top: 12px; left: 12px;
+  z-index: 999;
+  background: var(--weiss);
+  border: 1px solid var(--rand);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-mid);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Laden */
+.laden {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.laden-dots { display: flex; gap: 4px; }
+.laden-dots span {
+  width: 7px; height: 7px;
+  background: var(--blau);
+  border-radius: 50%;
+  animation: pulse 1.2s infinite;
+}
+.laden-dots span:nth-child(2) { animation-delay: 0.2s; }
+.laden-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse {
+  0%,60%,100% { opacity: 0.25; transform: scale(1); }
+  30% { opacity: 1; transform: scale(1.3); }
+}
+
+/* Leer */
+.leer-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+.leer-icon { font-size: 40px; margin-bottom: 12px; }
+.leer-text { color: var(--text-dim); font-size: 15px; }
+
+/* Mobil */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .header { padding: 12px 16px; }
+  .content { padding: 14px 16px; }
+  .tabs { padding: 0 16px; }
+  .projekt-karte { flex-direction: column; }
+  .projekt-actions { flex-direction: row; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-name">Project<span>Scout</span></div>
+      <div class="logo-sub">Ihr Projekt-Radar</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Kategorie</div>
+      <div class="filter-group" id="filter-kategorie"></div>
+    </div>
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Phase</div>
+      <div class="filter-group" id="filter-phase"></div>
+    </div>
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Bundesland</div>
+      <div class="filter-group" id="filter-bundesland"></div>
+    </div>
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Scout-Läufe</div>
+      <div id="laufe-liste"></div>
+    </div>
+  </aside>
+
+  <!-- HAUPTBEREICH -->
+  <div class="main">
+
+    <div class="header">
+      <div class="header-titel">
+        <div class="header-firma" id="header-firma">Laden...</div>
+        <div class="header-meta" id="header-meta"></div>
+      </div>
+      <div class="header-stats">
+        <div class="stat-box">
+          <div class="stat-zahl" id="stat-gesamt">–</div>
+          <div class="stat-label">Projekte</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-zahl" id="stat-neu">–</div>
+          <div class="stat-label">Neu</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-zahl" id="stat-hoch">–</div>
+          <div class="stat-label">Top ≥8</div>
+        </div>
+      </div>
+      <button class="btn-excel" id="btn-excel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="12" y1="12" x2="12" y2="18"/>
+          <polyline points="9,15 12,18 15,15"/>
+        </svg>
+        Excel Export
+      </button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab aktiv" data-tab="liste">📋 Projektliste</div>
+      <div class="tab" data-tab="karte">🗺️ Karte</div>
+    </div>
+
+    <div class="content">
+      <div id="tab-liste" class="aktiv">
+        <div class="suchleiste">
+          <input type="text" class="such-input" id="suche" placeholder="Projekt suchen...">
+          <select class="sort-select" id="sortierung">
+            <option value="relevanz">↓ Relevanz</option>
+            <option value="datum">↓ Datum</option>
+            <option value="ort">A–Z Ort</option>
+          </select>
+        </div>
+        <div class="projekte-liste" id="projekte-liste">
+          <div class="laden">
+            <div class="laden-dots"><span></span><span></span><span></span></div>
+            <span>Projekte werden geladen...</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-karte">
+        <div class="karte-container">
+          <div class="karte-overlay" id="karte-overlay">Projekte werden geladen...</div>
+          <div id="karte"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let alleProjekte   = [];
+let alleAuftraege  = [];
+let aktiverAuftrag = null;
+let karteInstanz   = null;
+let karteMarker    = [];
+let aktiveFilter   = { kategorie: new Set(), phase: new Set(), bundesland: new Set() };
+let ignoriertIds   = new Set();
+
+const params        = new URLSearchParams(window.location.search);
+const kundenId      = params.get('kunden_id');
+const suchanfrageId = params.get('suchanfrage_id');
+
+async function init() {
+  if (!kundenId) { zeigeKeinZugang(); return; }
+  await ladeDaten();
+}
+
+async function ladeDaten() {
+  try {
+    const { data: kunde } = await supabase
+      .from('kunden').select('*').eq('id', kundenId).single();
+    if (kunde) {
+      document.getElementById('header-firma').textContent = kunde.firmenname || 'Dashboard';
+    }
+
+    const { data: auftraege } = await supabase
+      .from('suchanfragen').select('*')
+      .eq('kunden_id', kundenId).eq('status', 'abgeschlossen')
+      .order('erstellt_am', { ascending: false });
+
+    alleAuftraege = auftraege || [];
+    rendereAuftraege();
+
+    aktiverAuftrag = suchanfrageId
+      ? alleAuftraege.find(a => a.id === suchanfrageId) || alleAuftraege[0]
+      : alleAuftraege[0];
+
+    if (aktiverAuftrag) {
+      await ladeProjekte(aktiverAuftrag.id);
+    } else {
+      document.getElementById('projekte-liste').innerHTML =
+        '<div class="leer-state"><div class="leer-icon">🔍</div><div class="leer-text">Noch keine abgeschlossenen Scout-Läufe vorhanden.</div></div>';
+      document.getElementById('header-firma').textContent = kunde?.firmenname || 'Dashboard';
+      aktualisiereStats([]);
+    }
+  } catch(e) { console.error('Ladefehler:', e); }
+}
+
+async function ladeProjekte(auftragId) {
+  const { data: projekte } = await supabase
+    .from('projekte').select('*')
+    .eq('suchanfrage_id', auftragId)
+    .order('relevanz', { ascending: false });
+
+  alleProjekte = projekte || [];
+  ignoriertIds = new Set(alleProjekte.filter(p => p.ignorieren).map(p => p.id));
+
+  if (aktiverAuftrag) {
+    const datum = new Date(aktiverAuftrag.erstellt_am).toLocaleDateString('de-AT',
+      { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const bl = Array.isArray(aktiverAuftrag.bundeslaender)
+      ? aktiverAuftrag.bundeslaender.join(', ')
+      : (aktiverAuftrag.ganz_oesterreich ? 'Ganz Österreich' : '–');
+    document.getElementById('header-meta').textContent = `Scout-Lauf vom ${datum} · ${bl}`;
+  }
+
+  aktualisiereStats(alleProjekte);
+  baueFilter(alleProjekte);
+  rendereListe();
+  aktualisiereKarte();
+}
+
+function aktualisiereStats(projekte) {
+  const sichtbar = projekte.filter(p => !p.ignorieren);
+  document.getElementById('stat-gesamt').textContent = sichtbar.length;
+  document.getElementById('stat-neu').textContent =
+    sichtbar.filter(p => (Date.now() - new Date(p.erstmals_gefunden).getTime()) < 7*24*60*60*1000).length;
+  document.getElementById('stat-hoch').textContent =
+    sichtbar.filter(p => (p.relevanz || 0) >= 8).length;
+}
+
+function baueFilter(projekte) {
+  const kategorien   = [...new Set(projekte.map(p => p.kategorie).filter(Boolean))].sort();
+  const phasen       = [...new Set(projekte.map(p => p.phase).filter(Boolean))].sort();
+  const bundeslaender = [...new Set(projekte.map(p => p.bundesland).filter(Boolean))].sort();
+  baueFilterGruppe('filter-kategorie',  kategorien,    'kategorie',  projekte);
+  baueFilterGruppe('filter-phase',      phasen,        'phase',      projekte);
+  baueFilterGruppe('filter-bundesland', bundeslaender, 'bundesland', projekte);
+}
+
+function baueFilterGruppe(containerId, werte, filterKey, projekte) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  werte.forEach(wert => {
+    const anzahl = projekte.filter(p => p[filterKey] === wert && !p.ignorieren).length;
+    const item = document.createElement('div');
+    item.className = 'filter-item';
+    item.dataset.wert = wert;
+    item.dataset.key  = filterKey;
+    item.innerHTML = `<div class="filter-dot"></div><span>${wert}</span><span class="filter-count">${anzahl}</span>`;
+    item.addEventListener('click', () => {
+      if (aktiveFilter[filterKey].has(wert)) {
+        aktiveFilter[filterKey].delete(wert);
+        item.classList.remove('aktiv');
+      } else {
+        aktiveFilter[filterKey].add(wert);
+        item.classList.add('aktiv');
+      }
+      rendereListe();
+      aktualisiereKarte();
+    });
+    container.appendChild(item);
+  });
+}
+
+function gefilterteProjekte() {
+  const suche = (document.getElementById('suche')?.value || '').toLowerCase();
+  return alleProjekte.filter(p => {
+    if (aktiveFilter.kategorie.size  > 0 && !aktiveFilter.kategorie.has(p.kategorie))   return false;
+    if (aktiveFilter.phase.size      > 0 && !aktiveFilter.phase.has(p.phase))            return false;
+    if (aktiveFilter.bundesland.size > 0 && !aktiveFilter.bundesland.has(p.bundesland)) return false;
+    if (suche) {
+      if (!`${p.titel} ${p.ort} ${p.beschreibung} ${p.kategorie}`.toLowerCase().includes(suche)) return false;
+    }
+    return true;
+  });
+}
+
+function rendereListe() {
+  const container = document.getElementById('projekte-liste');
+  const sort = document.getElementById('sortierung')?.value || 'relevanz';
+  let projekte = gefilterteProjekte();
+  if (sort === 'relevanz') projekte.sort((a,b) => (b.relevanz||0)-(a.relevanz||0));
+  else if (sort === 'datum') projekte.sort((a,b) => new Date(b.erstmals_gefunden)-new Date(a.erstmals_gefunden));
+  else if (sort === 'ort') projekte.sort((a,b) => (a.ort||'').localeCompare(b.ort||''));
+
+  if (!projekte.length) {
+    container.innerHTML = '<div class="leer-state"><div class="leer-icon">🔍</div><div class="leer-text">Keine Projekte – Filter anpassen?</div></div>';
+    return;
+  }
+  container.innerHTML = projekte.map(p => projektKarteHTML(p)).join('');
+  container.querySelectorAll('.btn-ignorieren').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      await toggleIgnorieren(btn.dataset.id, btn);
+    });
+  });
+}
+
+function projektKarteHTML(p) {
+  const rel = p.relevanz || 0;
+  const relKlasse = rel >= 8 ? 'rel-hoch' : rel >= 5 ? 'rel-mittel' : 'rel-niedrig';
+  const ignoriert = ignoriertIds.has(p.id);
+  return `
+  <div class="projekt-karte ${ignoriert ? 'ignoriert' : ''}" id="pk-${p.id}">
+    <div class="relevanz-badge ${relKlasse}">${rel}</div>
+    <div class="projekt-body">
+      <div class="projekt-titel">${escHtml(p.titel || '–')}</div>
+      <div class="projekt-meta">
+        ${p.kategorie ? `<span class="tag tag-kat">${escHtml(p.kategorie)}</span>` : ''}
+        ${p.phase     ? `<span class="tag tag-phase">${escHtml(p.phase)}</span>` : ''}
+        ${p.bundesland? `<span class="tag tag-bl">${escHtml(p.bundesland)}</span>` : ''}
+        ${p.volumen   ? `<span class="tag tag-vol">${escHtml(p.volumen)}</span>` : ''}
+      </div>
+      <div class="projekt-beschreibung">${escHtml(p.beschreibung || '')}</div>
+      <div class="projekt-ort">📍 ${escHtml(p.ort || '')}${p.bezirk ? ' · ' + escHtml(p.bezirk) : ''}</div>
+    </div>
+    <div class="projekt-actions">
+      ${p.artikel_url ? `<a href="${escHtml(p.artikel_url)}" target="_blank" class="btn-link">→ Artikel</a>` : ''}
+      <button class="btn-ignorieren ${ignoriert ? 'aktiv' : ''}" data-id="${p.id}">
+        ${ignoriert ? '✓ Ignoriert' : 'Ignorieren'}
+      </button>
+    </div>
+  </div>`;
+}
+
+async function toggleIgnorieren(projektId, btn) {
+  const neuIgnoriert = !ignoriertIds.has(projektId);
+  await supabase.from('projekte').update({ ignorieren: neuIgnoriert }).eq('id', projektId);
+  if (neuIgnoriert) {
+    ignoriertIds.add(projektId);
+    btn.textContent = '✓ Ignoriert';
+    btn.classList.add('aktiv');
+    document.getElementById(`pk-${projektId}`)?.classList.add('ignoriert');
+  } else {
+    ignoriertIds.delete(projektId);
+    btn.textContent = 'Ignorieren';
+    btn.classList.remove('aktiv');
+    document.getElementById(`pk-${projektId}`)?.classList.remove('ignoriert');
+  }
+  aktualisiereStats(alleProjekte);
+}
+
+function aktualisiereKarte() {
+  if (!karteInstanz) {
+    karteInstanz = L.map('karte', { zoomControl: true }).setView([47.5, 14.0], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap', maxZoom: 18,
+    }).addTo(karteInstanz);
+  }
+
+  karteMarker.forEach(m => m.remove());
+  karteMarker = [];
+
+  const projekte = gefilterteProjekte().filter(p => !p.ignorieren);
+  document.getElementById('karte-overlay').textContent = `${projekte.length} Projekte werden geladen...`;
+  let mitKoords = 0;
+
+  projekte.forEach(async p => {
+    if (!p.ort) return;
+    try {
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(p.ort + ', Österreich')}&format=json&limit=1&countrycodes=at`,
+        { headers: { 'Accept-Language': 'de' } }
+      );
+      const data = await resp.json();
+      if (!data[0]) return;
+
+      const rel = p.relevanz || 0;
+      const farbe = rel >= 8 ? '#16a34a' : rel >= 5 ? '#d97706' : '#dc2626';
+
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:13px;height:13px;border-radius:50%;background:${farbe};border:2px solid white;box-shadow:0 0 6px rgba(0,0,0,0.25);cursor:pointer;"></div>`,
+        iconSize: [13, 13], iconAnchor: [6, 6],
+      });
+
+      const marker = L.marker([parseFloat(data[0].lat), parseFloat(data[0].lon)], { icon }).addTo(karteInstanz);
+      marker.bindPopup(`
+        <div style="font-family:'Inter',sans-serif;min-width:200px;">
+          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">${escHtml(p.kategorie || '')} · Relevanz ${rel}/10</div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#111;">${escHtml(p.titel || '')}</div>
+          <div style="font-size:12px;color:#666;margin-bottom:8px;">📍 ${escHtml(p.ort || '')}</div>
+          ${p.artikel_url ? `<a href="${escHtml(p.artikel_url)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;">→ Zum Artikel</a>` : ''}
+        </div>`, { maxWidth: 280 });
+
+      karteMarker.push(marker);
+      mitKoords++;
+      document.getElementById('karte-overlay').textContent = `${mitKoords} Projekte auf Karte`;
+    } catch(e) { /* ignorieren */ }
+  });
+}
+
+function rendereAuftraege() {
+  const container = document.getElementById('laufe-liste');
+  if (!alleAuftraege.length) {
+    container.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:var(--text-dim);">Noch keine Läufe</div>';
+    return;
+  }
+  container.innerHTML = alleAuftraege.map(a => {
+    const datum = new Date(a.erstellt_am).toLocaleDateString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const bl = Array.isArray(a.bundeslaender)
+      ? a.bundeslaender.join(', ')
+      : (a.ganz_oesterreich ? 'Ganz Österreich' : '–');
+    return `<div class="lauf-item ${aktiverAuftrag?.id === a.id ? 'aktiv' : ''}" data-id="${a.id}">
+      <div class="lauf-datum">${datum}</div>
+      <div class="lauf-titel">${escHtml(bl)}</div>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.lauf-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      aktiverAuftrag = alleAuftraege.find(a => a.id === item.dataset.id);
+      aktiveFilter = { kategorie: new Set(), phase: new Set(), bundesland: new Set() };
+      document.querySelectorAll('.filter-item').forEach(el => el.classList.remove('aktiv'));
+      await ladeProjekte(item.dataset.id);
+      rendereAuftraege();
+    });
+  });
+}
+
+window.exportiereExcel = function() {
+  const projekte = gefilterteProjekte();
+  if (!projekte.length) { alert('Keine Projekte zum Exportieren.'); return; }
+  const zeilen = projekte.map(p => ({
+    'Titel': p.titel||'', 'Ort': p.ort||'', 'Bezirk': p.bezirk||'',
+    'Bundesland': p.bundesland||'', 'Kategorie': p.kategorie||'',
+    'Phase': p.phase||'', 'Volumen': p.volumen||'', 'Relevanz': p.relevanz||'',
+    'Quelle': p.quelle||'', 'Artikel URL': p.artikel_url||'',
+    'Beschreibung': p.beschreibung||'',
+    'Gefunden am': p.erstmals_gefunden ? new Date(p.erstmals_gefunden).toLocaleDateString('de-AT') : '',
+    'Ignoriert': p.ignorieren ? 'Ja' : 'Nein',
+  }));
+  const ws = XLSX.utils.json_to_sheet(zeilen);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ProjectScout Projekte');
+  ws['!cols'] = [{wch:40},{wch:20},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:10},{wch:20},{wch:50},{wch:60},{wch:15},{wch:10}];
+  XLSX.writeFile(wb, `ProjectScout_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function zeigeKeinZugang() {
+  document.body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;
+      background:var(--hell);font-family:'Inter',sans-serif;text-align:center;padding:40px;">
+      <div>
+        <div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;">
+          Project<span style="color:var(--blau);">Scout</span>
+        </div>
+        <div style="color:var(--text-dim);margin-top:12px;font-size:15px;">
+          Kein Zugang – bitte verwenden Sie den Link aus Ihrer E-Mail.
+        </div>
+        <a href="index.html" style="display:inline-block;margin-top:24px;background:var(--blau);
+          color:white;padding:12px 28px;border-radius:8px;font-weight:600;text-decoration:none;">
+          → Neuen Scout-Lauf starten
+        </a>
+      </div>
+    </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('aktiv'));
+      document.querySelectorAll('#tab-liste, #tab-karte').forEach(t => t.classList.remove('aktiv'));
+      tab.classList.add('aktiv');
+      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('aktiv');
+      if (tab.dataset.tab === 'karte') {
+        setTimeout(() => { if (karteInstanz) karteInstanz.invalidateSize(); else aktualisiereKarte(); }, 100);
+      }
+    });
+  });
+  document.getElementById('btn-excel')?.addEventListener('click', exportiereExcel);
+  document.getElementById('suche')?.addEventListener('input', rendereListe);
+  document.getElementById('sortierung')?.addEventListener('change', rendereListe);
+});
+
+init();
+</script>
+</body>
+</html>  text-transform: uppercase; letter-spacing: 1px;
   margin-top: 2px;
 }
 
