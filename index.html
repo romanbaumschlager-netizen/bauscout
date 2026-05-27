@@ -723,16 +723,8 @@
           <div class="check-box" id="ganz-oe-check">✓</div>
           🇦🇹 &nbsp;Ganz Österreich (alle 9 Bundesländer)
         </div>
-        <label>Bundesländer <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– einfach anklicken</span></label>
-        <div class="gewerke-grid" id="bl-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
-        <div id="bezirke-wrapper" style="display:none; margin-top:20px;">
-          <label>Bezirke <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– leer lassen = alle Bezirke</span></label>
-          <div class="gewerke-grid" id="bez-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));"></div>
-        </div>
-        <div id="gemeinden-wrapper" style="display:none; margin-top:20px;">
-          <label>Gemeinden <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– leer lassen = alle Gemeinden</span></label>
-          <div class="gewerke-grid" id="gem-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
-        </div>
+        <label>Bundesländer <span style="color:var(--text-dim); font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;">– Bezirke per Klick aufklappen</span></label>
+        <div id="bl-accordion"></div>
         <div id="gebiet-zusammenfassung" style="margin-top:16px;"></div>
         <div class="btn-row">
           <button class="btn-outline" onclick="zurueck(3)">← Zurück</button>
@@ -778,13 +770,22 @@
         <div id="zusammenfassung" style="margin-top:8px;"></div>
         <label style="margin-top:24px;">Zeitraum – Wie weit zurück soll gesucht werden?</label>
         <div class="zeitraum-grid">
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(1,this)"><div class="zt-tage">1</div><div class="zt-label">Tag</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(3,this)"><div class="zt-tage">3</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(7,this)"><div class="zt-tage">7</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(10,this)"><div class="zt-tage">10</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(20,this)"><div class="zt-tage">20</div><div class="zt-label">Tage</div></div>
           <div class="zeitraum-karte ausgewaehlt" onclick="zeitraumWaehlen(30,this)"><div class="zt-tage">30</div><div class="zt-label">Tage</div></div>
           <div class="zeitraum-karte" onclick="zeitraumWaehlen(60,this)"><div class="zt-tage">60</div><div class="zt-label">Tage</div></div>
           <div class="zeitraum-karte" onclick="zeitraumWaehlen(90,this)"><div class="zt-tage">90</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(180,this)"><div class="zt-tage">180</div><div class="zt-label">Tage</div></div>
+        </div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:13px; color:var(--text-mid); font-weight:500;">Eigene Anzahl Tage:</span>
+          <input type="number" id="zeitraum-eigene" min="10" max="365" placeholder="min. 10"
+            style="width:100px; padding:8px 12px; border:1.5px solid var(--rand); border-radius:8px;
+            font-family:'Inter',sans-serif; font-size:14px; font-weight:600; color:var(--text);
+            background:var(--weiss); outline:none;"
+            oninput="zeitraumEigeneEingabe(this.value)"
+            onfocus="this.style.borderColor='var(--blau)'"
+            onblur="this.style.borderColor='var(--rand)'">
+          <span style="font-size:13px; color:var(--text-dim);">Tage (min. 10)</span>
         </div>
         <div class="kosten-box" style="background:transparent; border:none; padding:6px 0 0 0;">
           <div style="text-align:left;">
@@ -966,6 +967,11 @@ function renderGewerke(offeneKats = new Set()) {
     titel.style.cssText = `flex:1; font-size:14px; font-weight:600; color:${alleAusgewaehlt ? 'var(--blau-dunkel)' : 'var(--text)'}; letter-spacing:-0.2px;`;
     titel.textContent = kat;
 
+    // Preis-Label
+    const preisLabel = document.createElement('div');
+    preisLabel.style.cssText = 'font-size:11px; color:var(--text-dim); font-family:\'DM Mono\',monospace; flex-shrink:0;';
+    preisLabel.textContent = '+€8';
+
     // Anzahl Badge
     const anzahl = gewerke.filter(g => ausgewaehlteGewerke.has(g)).length;
     const badge = document.createElement('div');
@@ -980,6 +986,7 @@ function renderGewerke(offeneKats = new Set()) {
 
     header.appendChild(katCheck);
     header.appendChild(titel);
+    header.appendChild(preisLabel);
     header.appendChild(badge);
     header.appendChild(pfeil);
 
@@ -1086,93 +1093,136 @@ let ausgewaehlteGem = new Set();
 const BUNDESLAENDER = ["Burgenland","Kärnten","Niederösterreich","Oberösterreich","Salzburg","Steiermark","Tirol","Vorarlberg","Wien"];
 
 function renderBundeslaender() {
-  const grid = document.getElementById('bl-grid');
-  grid.innerHTML = '';
+  const container = document.getElementById('bl-accordion');
+  if (!container) return;
+
+  // Offene Akkordeons merken
+  const offene = new Set();
+  container.querySelectorAll('[id$="_bl_body"]').forEach(b => {
+    if (b.style.display !== 'none') offene.add(b.id);
+  });
+  container.innerHTML = '';
+
   BUNDESLAENDER.forEach(bl => {
-    const div = document.createElement('div');
-    div.className = 'gewerk-check' + (ausgewaehlteBL.has(bl) ? ' ausgewaehlt' : '');
-    div.innerHTML = `<div class="check-box">${ausgewaehlteBL.has(bl) ? '✓' : ''}</div>${bl}`;
-    div.addEventListener('click', () => toggleBL(bl, div));
-    grid.appendChild(div);
+    if (!OESTERREICH[bl]) return;
+    const bezirke = Object.keys(OESTERREICH[bl]);
+    const blId = 'bl_' + bl.replace(/[^a-zA-Z0-9]/g, '_');
+    const istGewaehlt = ausgewaehlteBL.has(bl);
+    const anzBez = bezirke.filter(bez => ausgewaehlteBez.has(bl + '||' + bez)).length;
+    const alleBezGew = anzBez === bezirke.length && bezirke.length > 0;
+    const teilBez = anzBez > 0 && !alleBezGew;
+    const istOffen = offene.has(blId + '_bl_body');
+
+    const katDiv = document.createElement('div');
+    katDiv.style.cssText = 'border:1.5px solid var(--rand); border-radius:10px; margin-bottom:8px; overflow:hidden;';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer;
+      background:${istGewaehlt ? 'var(--blau-hell)' : 'var(--hell)'}; user-select:none;
+      border-bottom:${istOffen ? '1px solid var(--rand)' : '0px'};`;
+
+    // Checkbox Bundesland
+    const blCheck = document.createElement('div');
+    blCheck.style.cssText = `width:20px; height:20px; border:2px solid ${istGewaehlt ? 'var(--blau)' : 'var(--rand2)'};
+      border-radius:5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+      background:${istGewaehlt ? 'var(--blau)' : 'var(--weiss)'}; transition:all 0.15s;`;
+    blCheck.innerHTML = istGewaehlt ? '<span style="color:white;font-size:12px;font-weight:700;">✓</span>' : '';
+    blCheck.addEventListener('click', e => { e.stopPropagation(); toggleBL(bl); });
+
+    const titel = document.createElement('div');
+    titel.style.cssText = `flex:1; font-size:14px; font-weight:600; color:${istGewaehlt ? 'var(--blau-dunkel)' : 'var(--text)'};`;
+    titel.textContent = bl;
+
+    const preisTag = document.createElement('div');
+    preisTag.style.cssText = "font-size:11px; color:var(--text-dim); font-family:'DM Mono',monospace; flex-shrink:0;";
+    preisTag.textContent = '+€8';
+
+    const badge = document.createElement('div');
+    badge.style.cssText = `font-size:11px; font-weight:600; color:${anzBez > 0 ? 'var(--blau)' : 'var(--text-dim)'};
+      background:${anzBez > 0 ? 'rgba(37,99,235,0.1)' : 'transparent'}; padding:2px 8px; border-radius:10px; flex-shrink:0;`;
+    badge.textContent = anzBez > 0 ? `${anzBez}/${bezirke.length} Bezirke` : `${bezirke.length} Bezirke`;
+
+    const pfeil = document.createElement('div');
+    pfeil.id = blId + '_pfeil';
+    pfeil.style.cssText = 'font-size:12px; color:var(--text-dim); flex-shrink:0; transition:transform 0.2s;';
+    pfeil.textContent = '▾';
+    if (istOffen) pfeil.style.transform = 'rotate(180deg)';
+
+    header.appendChild(blCheck);
+    header.appendChild(titel);
+    header.appendChild(preisTag);
+    header.appendChild(badge);
+    header.appendChild(pfeil);
+
+    // Body – Bezirke direkt angebunden
+    const body = document.createElement('div');
+    body.id = blId + '_bl_body';
+    body.style.cssText = `display:${istOffen ? 'block' : 'none'}; padding:12px; background:var(--weiss); border-top:1px solid var(--rand);`;
+
+    const bezGrid = document.createElement('div');
+    bezGrid.className = 'gewerke-grid';
+    bezirke.forEach(bez => {
+      const key = bl + '||' + bez;
+      const item = document.createElement('div');
+      item.className = 'gewerk-check' + (ausgewaehlteBez.has(key) ? ' ausgewaehlt' : '');
+      item.innerHTML = `<div class="check-box">${ausgewaehlteBez.has(key) ? '✓' : ''}</div>${bez}`;
+      item.addEventListener('click', () => {
+        if (ausgewaehlteBez.has(key)) {
+          ausgewaehlteBez.delete(key);
+          item.classList.remove('ausgewaehlt');
+          item.querySelector('.check-box').textContent = '';
+        } else {
+          ausgewaehlteBez.add(key);
+          item.classList.add('ausgewaehlt');
+          item.querySelector('.check-box').textContent = '✓';
+        }
+        renderBundeslaender(); updateGebietZusammenfassung(); updatePreis();
+      });
+      bezGrid.appendChild(item);
+    });
+    body.appendChild(bezGrid);
+
+    header.addEventListener('click', e => {
+      if (e.target === blCheck || blCheck.contains(e.target)) return;
+      const offen = body.style.display !== 'none';
+      body.style.display = offen ? 'none' : 'block';
+      pfeil.style.transform = offen ? '' : 'rotate(180deg)';
+      header.style.borderBottom = offen ? '0px' : '1px solid var(--rand)';
+    });
+
+    katDiv.appendChild(header);
+    katDiv.appendChild(body);
+    container.appendChild(katDiv);
   });
 }
-function toggleBL(bl, el) {
+
+function toggleBL(bl) {
   if (ausgewaehlteBL.has(bl)) {
-    ausgewaehlteBL.delete(bl); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = '';
-    [...ausgewaehlteBez].filter(k => k.startsWith(bl+'||')).forEach(k => ausgewaehlteBez.delete(k));
-    [...ausgewaehlteGem].filter(k => k.startsWith(bl+'||')).forEach(k => ausgewaehlteGem.delete(k));
+    ausgewaehlteBL.delete(bl);
+    [...ausgewaehlteBez].filter(k => k.startsWith(bl + '||')).forEach(k => ausgewaehlteBez.delete(k));
   } else {
-    ausgewaehlteBL.add(bl); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓';
+    ausgewaehlteBL.add(bl);
+    // Alle Bezirke automatisch anwählen
+    Object.keys(OESTERREICH[bl] || {}).forEach(bez => ausgewaehlteBez.add(bl + '||' + bez));
     ganzOe = false;
     document.getElementById('ganz-oe-btn').classList.remove('ausgewaehlt');
     document.getElementById('ganz-oe-check').textContent = '';
   }
-  renderBezirke(); updateGebietZusammenfassung();
+  renderBundeslaender(); updateGebietZusammenfassung(); updatePreis();
 }
-function renderBezirke() {
-  const wrapper = document.getElementById('bezirke-wrapper');
-  const grid = document.getElementById('bez-grid');
-  grid.innerHTML = '';
-  if (ausgewaehlteBL.size === 0) { wrapper.style.display='none'; document.getElementById('gemeinden-wrapper').style.display='none'; return; }
-  wrapper.style.display = 'block';
-  ausgewaehlteBL.forEach(bl => {
-    if (!OESTERREICH[bl]) return;
-    if (ausgewaehlteBL.size > 1) {
-      const sep = document.createElement('div');
-      sep.style.cssText = 'grid-column:1/-1; font-size:10px; font-weight:600; color:var(--blau); letter-spacing:1.5px; padding:8px 0 4px; border-bottom:1px solid rgba(37,99,235,0.15); margin-bottom:4px; text-transform:uppercase;';
-      sep.textContent = bl; grid.appendChild(sep);
-    }
-    Object.keys(OESTERREICH[bl]).forEach(bez => {
-      const key = bl+'||'+bez;
-      const div = document.createElement('div');
-      div.className = 'gewerk-check'+(ausgewaehlteBez.has(key)?' ausgewaehlt':'');
-      div.innerHTML = `<div class="check-box">${ausgewaehlteBez.has(key)?'✓':''}</div>${bez}`;
-      div.addEventListener('click', () => toggleBez(bl, bez, key, div));
-      grid.appendChild(div);
-    });
-  });
-}
+
 function toggleBez(bl, bez, key, el) {
   if (ausgewaehlteBez.has(key)) {
     ausgewaehlteBez.delete(key); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = '';
-    [...ausgewaehlteGem].filter(k => k.startsWith(key+'||')).forEach(k => ausgewaehlteGem.delete(k));
   } else { ausgewaehlteBez.add(key); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓'; }
-  renderGemeinden(); updateGebietZusammenfassung();
-}
-function renderGemeinden() {
-  const wrapper = document.getElementById('gemeinden-wrapper');
-  const grid = document.getElementById('gem-grid');
-  grid.innerHTML = '';
-  if (ausgewaehlteBez.size === 0) { wrapper.style.display='none'; return; }
-  wrapper.style.display = 'block';
-  ausgewaehlteBez.forEach(key => {
-    const [bl, bez] = key.split('||');
-    if (!OESTERREICH[bl]?.[bez]) return;
-    if (ausgewaehlteBez.size > 1) {
-      const sep = document.createElement('div');
-      sep.style.cssText = 'grid-column:1/-1; font-size:10px; font-weight:600; color:var(--blau); letter-spacing:1.5px; padding:8px 0 4px; border-bottom:1px solid rgba(37,99,235,0.15); margin-bottom:4px; text-transform:uppercase;';
-      sep.textContent = bez; grid.appendChild(sep);
-    }
-    OESTERREICH[bl][bez].forEach(gem => {
-      const gemKey = key+'||'+gem;
-      const div = document.createElement('div');
-      div.className = 'gewerk-check'+(ausgewaehlteGem.has(gemKey)?' ausgewaehlt':'');
-      div.innerHTML = `<div class="check-box">${ausgewaehlteGem.has(gemKey)?'✓':''}</div>${gem}`;
-      div.addEventListener('click', () => toggleGem(gemKey, div));
-      grid.appendChild(div);
-    });
-  });
-}
-function toggleGem(key, el) {
-  if (ausgewaehlteGem.has(key)) { ausgewaehlteGem.delete(key); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = ''; }
-  else { ausgewaehlteGem.add(key); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓'; }
   updateGebietZusammenfassung();
 }
 function toggleGanzOe() {
   ganzOe = !ganzOe;
   document.getElementById('ganz-oe-btn').classList.toggle('ausgewaehlt', ganzOe);
   document.getElementById('ganz-oe-check').textContent = ganzOe ? '✓' : '';
-  if (ganzOe) { ausgewaehlteBL.clear(); ausgewaehlteBez.clear(); ausgewaehlteGem.clear(); renderBundeslaender(); document.getElementById('bezirke-wrapper').style.display='none'; document.getElementById('gemeinden-wrapper').style.display='none'; }
+  if (ganzOe) { ausgewaehlteBL.clear(); ausgewaehlteBez.clear(); ausgewaehlteGem.clear(); renderBundeslaender(); }
   updateGebietZusammenfassung();
 }
 function updateGebietZusammenfassung() {
@@ -1185,9 +1235,7 @@ function updateGebietZusammenfassung() {
     if (bezImBL.length === 0) tags += `<span class="tag">📍 ${bl} (alle Bezirke)</span>`;
     else bezImBL.forEach(bezKey => {
       const bez = bezKey.split('||')[1];
-      const gemImBez = [...ausgewaehlteGem].filter(k => k.startsWith(bezKey+'||'));
-      if (gemImBez.length === 0) tags += `<span class="tag">📍 ${bez}</span>`;
-      else gemImBez.forEach(gemKey => { tags += `<span class="tag">📍 ${gemKey.split('||')[2]}</span>`; });
+      tags += `<span class="tag">📍 ${bez}</span>`;
     });
   });
   el.innerHTML = tags ? `<div style="font-size:11px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.8px;">Auswahl:</div><div class="tag-liste">${tags}</div>` : '';
@@ -1199,60 +1247,88 @@ function zeitraumWaehlen(tage, el) {
   document.querySelectorAll('.zeitraum-karte').forEach(k => k.classList.remove('ausgewaehlt'));
   el.classList.add('ausgewaehlt');
   document.getElementById('kosten-zeitraum').textContent = tage + ' Tag' + (tage > 1 ? 'e' : '');
+  // Eigenes Eingabefeld leeren wenn Karte gewählt
+  const eigene = document.getElementById('zeitraum-eigene');
+  if (eigene) eigene.value = '';
   updatePreis();
 }
 
-// ── KOSTENKALKULATION ──
-const MINDESTPREIS = 9.90;
-const PREIS_FAKTOR = 5;
+function zeitraumEigeneEingabe(wert) {
+  const tage = parseInt(wert);
+  if (!tage || tage < 10) return;
+  gewaehlterZeitraum = tage;
+  document.querySelectorAll('.zeitraum-karte').forEach(k => k.classList.remove('ausgewaehlt'));
+  document.getElementById('kosten-zeitraum').textContent = tage + ' Tage';
+  updatePreis();
+}
 
-function berechneApiKosten() {
-  const anzahlBL = ganzOe ? 9 : Math.max(ausgewaehlteBL.size, 1);
-  const basisQuellen = ganzOe ? 151 : anzahlBL * 17;
-  const plattformAbrufe = ganzOe ? 120 : anzahlBL * 14;
-  const anzahlBez = ausgewaehlteBez.size;
-  const bezBonus = anzahlBez > 0 ? Math.round(anzahlBez * 2.5) : 0;
-  const gesamtAbrufe = basisQuellen + plattformAbrufe + bezBonus;
-  const zeitFaktor = 1 + (gewaehlterZeitraum / 100);
-  const seitenGesamt = Math.max(Math.round(gesamtAbrufe * zeitFaktor), gesamtAbrufe);
-  const anzahlGew = Math.max(ausgewaehlteGewerke.size, 1);
-  const gewFaktor = 1 + Math.min((anzahlGew - 1) * 0.015, 0.45);
-  const kostenHaikuUsd = (seitenGesamt * 1500 / 1e6) * 1.00 * gewFaktor
-                       + (seitenGesamt * 200  / 1e6) * 5.00 * gewFaktor;
-  const relevanteProjekte = Math.max(Math.round(seitenGesamt * 0.08 * gewFaktor), 2);
-  const kostenSonnetUsd = ((relevanteProjekte * 2000 + 3000) / 1e6) * 3.00
-                        + ((relevanteProjekte * 400  + 1500) / 1e6) * 15.00;
-  const gesamtEur = (kostenHaikuUsd + kostenSonnetUsd) / 1.08;
-  return { seitenGesamt, relevanteProjekte, gesamtEur: Math.round(gesamtEur * 100) / 100 };
+// ── KOSTENKALKULATION (Pauschalpreismodell) ──
+const PREIS_BASIS       = 6.90;   // Basis pro Lauf
+const PREIS_PRO_KAT     = 8.00;   // pro ausgewählter Gewerke-Kategorie
+const PREIS_PRO_BL      = 8.00;   // pro Bundesland
+const PREIS_PRO_30TAGE  = 6.00;   // nicht mehr verwendet
+const PREIS_PRO_TAG     = 0.50;   // pro Tag
+const PREIS_MAX         = 149.00; // Deckel
+
+function ermittleAnzahlKategorien() {
+  // Zählt wie viele der 12 Kategorien mindestens 1 Gewerk ausgewählt haben
+  let count = 0;
+  for (const [kat, gewerke] of Object.entries(GEWERKE)) {
+    if (gewerke.some(g => ausgewaehlteGewerke.has(g))) count++;
+  }
+  return count;
 }
 
 function berechnePreis() {
-  const k = berechneApiKosten();
-  const rohpreis = k.gesamtEur * PREIS_FAKTOR;
-  const gerundet = Math.round(rohpreis * 10) / 10;
-  return Math.max(gerundet, MINDESTPREIS);
+  const anzahlKat = ermittleAnzahlKategorien();
+  const anzahlBL  = ganzOe ? 9 : Math.max(ausgewaehlteBL.size, 1);
+
+  const rohpreis = PREIS_BASIS
+    + (anzahlKat * PREIS_PRO_KAT)
+    + (anzahlBL  * PREIS_PRO_BL)
+    + (gewaehlterZeitraum * PREIS_PRO_TAG);
+
+  return Math.min(rohpreis, PREIS_MAX);
 }
 
-
-
 function updatePreis() {
-  const k = berechneApiKosten();
   const preis = berechnePreis();
   const el = document.getElementById('preis-anzeige');
   const details = document.getElementById('preis-details');
   const aufschluss = document.getElementById('preis-aufschluss');
   if (!el) return;
+
   el.textContent = `€ ${preis.toFixed(2)}`;
-  const gebiet = ganzOe ? 'Ganz Österreich' : (ausgewaehlteBL.size > 0 ? [...ausgewaehlteBL].join(', ') : 'Noch kein Gebiet gewählt');
-  if (details) details.textContent = `${gebiet} · ${ausgewaehlteGewerke.size} Gewerke · ${gewaehlterZeitraum} Tage`;
+
+  const anzahlKat = ermittleAnzahlKategorien();
+  const anzahlBL  = ganzOe ? 9 : Math.max(ausgewaehlteBL.size, 1);
+  const gebiet    = ganzOe ? 'Ganz Österreich' : (ausgewaehlteBL.size > 0 ? [...ausgewaehlteBL].join(', ') : 'Noch kein Gebiet');
+
+  if (details) details.textContent = `${gebiet} · ${anzahlKat} Kategorien · ${gewaehlterZeitraum} Tage`;
+
   if (aufschluss) {
-    const istMindest = preis <= MINDESTPREIS;
+    const istMax = preis >= PREIS_MAX;
     aufschluss.innerHTML = `
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:4px 0;border-bottom:1px solid var(--rand);">
-        <span>~${k.seitenGesamt.toLocaleString()} Quellen · ~${k.relevanteProjekte} Projekte erwartet</span>
+      <div style="font-size:12px; color:var(--text-dim); border-bottom:1px solid var(--rand); padding-bottom:8px; margin-bottom:8px;">
+        <strong style="color:var(--text-mid);">Preiszusammensetzung</strong>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding:6px 0;">
-        <span style="color:var(--text);">Ihr Preis${istMindest ? ' (Mindestpreis)' : ''}</span>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;">
+        <span>Basis (jeder Lauf)</span><span>€ ${PREIS_BASIS.toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;">
+        <span>${anzahlKat} Gewerke-${anzahlKat === 1 ? 'Kategorie' : 'Kategorien'} × € ${PREIS_PRO_KAT.toFixed(2)}</span>
+        <span>€ ${(anzahlKat * PREIS_PRO_KAT).toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;">
+        <span>${anzahlBL} Bundesland${anzahlBL !== 1 ? '/Länder' : ''} × € ${PREIS_PRO_BL.toFixed(2)}</span>
+        <span>€ ${(anzahlBL * PREIS_PRO_BL).toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;">
+        <span>${gewaehlterZeitraum} Tage × € ${PREIS_PRO_TAG.toFixed(2)}</span>
+        <span>€ ${(gewaehlterZeitraum * PREIS_PRO_TAG).toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:2px 0;">
+        <span style="color:var(--text);">Gesamt${istMax ? ' (Maximalpreis)' : ''}</span>
         <span style="color:var(--blau);">€ ${preis.toFixed(2)}</span>
       </div>
     `;
@@ -1297,9 +1373,9 @@ async function initChat() {
   if (ganzOe) {
     gebietText = 'Ganz Österreich';
   } else {
-    const bl = [...ausgewaehlteBundeslaender].join(', ');
-    const bez = [...ausgewaehlteBezirke].join(', ');
-    const gem = [...ausgewaehlteGemeinden].join(', ');
+    const bl = [...ausgewaehlteBL].join(', ');
+    const bez = [...ausgewaehlteBez].join(', ');
+    const gem = [...ausgewaehlteGem].join(', ');
     const teile = [gem, bez, bl].filter(Boolean);
     gebietText = teile.length > 0 ? teile.join(' · ') : 'keine Region gewählt';
   }
@@ -1318,14 +1394,9 @@ async function initChat() {
     homepageZeile = `🌐 Homepage: nicht angegeben\n    → Tipp: Mit Ihrer Homepage erkennt der Agent automatisch Ihre Gewerke und Referenzen.`;
   }
 
-  const begruessung =
-`Hallo! Ich habe Ihre Konfiguration anhand der oben ausgewählten Kriterien geladen:
-
-📍 Gebiet: ${gebietText}
-🔧 Gewerke (${gewerkeAlle.length}): ${gewerkeText}
-${homepageZeile}
-
-Um die Suchergebnisse noch exakter abzustimmen, können Sie mir jetzt in Ihren eigenen Worten mitteilen, welche Projekte Sie suchen – zum Beispiel eine gewünschte Mindestgröße, bestimmte Materialien, spezielle Projekttypen oder einen konkreten Zeitraum. Oder schreiben Sie einfach „passt so" wenn Sie direkt starten möchten.`;
+  const begruessung = homepage
+    ? `Hallo! Ich habe Ihre Konfiguration anhand der oben ausgewählten Kriterien geladen.\n\n✅ Ihre Homepage (${homepage}) wurde erkannt und wird vom Agenten bei der Suche berücksichtigt.\n\nUm die Suchergebnisse noch exakter abzustimmen, können Sie mir jetzt in Ihren eigenen Worten mitteilen, welche Projekte Sie suchen.`
+    : `Hallo! Ich habe Ihre Konfiguration anhand der oben ausgewählten Kriterien geladen.\n\n💡 Tipp: Mit Ihrer Homepage erkennt der Agent automatisch Ihre Gewerke und Referenzen.\n\nUm die Suchergebnisse noch exakter abzustimmen, können Sie mir jetzt in Ihren eigenen Worten mitteilen, welche Projekte Sie suchen.`;
 
   document.getElementById('ki-begruessung').textContent = begruessung;
   chatVerlauf = [{ role: 'assistant', content: begruessung }];
@@ -1409,7 +1480,7 @@ async function bezahlen() {
     von.setDate(heute.getDate() - gewaehlterZeitraum);
     const bundeslaenderKuerzel = {"Burgenland":"BGR","Kärnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W"};
     const bundeslaenderListe = ganzOe ? ['W','NOE','OOE','SBG','STK','KTN','TIR','VBG','BGR'] : [...ausgewaehlteBL].map(bl => bundeslaenderKuerzel[bl] || bl);
-    const apiKosten = berechneApiKosten();
+    const apiKosten = { gesamtEur: berechnePreis() };
     const { data: suchanfrage, error: sFehler } = await db.from('suchanfragen').insert({
       kunden_id: kundenId, gewerke: [...ausgewaehlteGewerke], bundeslaender: bundeslaenderListe,
       bezirke: [...ausgewaehlteBez].map(k => k.split('||')[1]), gemeinden: [...ausgewaehlteGem].map(k => k.split('||')[2]),
@@ -1446,7 +1517,20 @@ function zeigeStatus(text, typ) {
 }
 
 // ── NAVIGATION ──
-function toggleSchritt(nr) {}
+function toggleSchritt(nr) {
+  const ziel = document.getElementById(`s${nr}`);
+  // Nur erledigte Schritte direkt anklickbar (nicht gesperrte)
+  if (!ziel.classList.contains('erledigt') && !ziel.classList.contains('aktiv')) return;
+  // Wenn schon aktiv → nichts tun
+  if (ziel.classList.contains('aktiv')) return;
+  // Aktuell aktiven Schritt schließen (Status behalten)
+  document.querySelectorAll('.schritt.aktiv').forEach(s => {
+    s.classList.remove('aktiv');
+  });
+  // Ziel-Schritt öffnen, als erledigt lassen
+  ziel.classList.add('aktiv');
+  ziel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 function weiter(nr) {
   if (nr === 1) {
     const email = document.getElementById('email').value;
