@@ -50,8 +50,9 @@ DASHBOARD_BASE_URL = "https://project-scout.at/dashboard.html"
 ADMIN_EMAIL        = "office@project-scout.at"
 
 MAX_ARTIKEL_PRO_QUELLE = 15
-REQUEST_TIMEOUT        = 15
-PAUSE_ZWISCHEN_QUELLEN = 1.0
+REQUEST_TIMEOUT        = 6   # Medien-Suche: kurzer Timeout damit 404-Seiten nicht 15s warten
+REQUEST_TIMEOUT_ARTIKEL = 10  # Artikel-Volltext: etwas mehr Zeit
+PAUSE_ZWISCHEN_QUELLEN = 0.3  # Weniger warten zwischen Quellen
 
 SUPABASE_HEADERS = {
     "apikey":        SUPABASE_KEY,
@@ -319,18 +320,24 @@ def crawle_suchergebnis(quelle: dict, suchbegriffe: list) -> list:
     alle_artikel = []
     gefundene_urls: set = set()
     limit_pro_kw = max(5, MAX_ARTIKEL_PRO_QUELLE // len(top_keywords))
+    quelle_hat_404 = False  # Wenn eine URL 404 gibt, Quelle sofort überspringen
     for keyword in top_keywords:
         if len(alle_artikel) >= MAX_ARTIKEL_PRO_QUELLE: break
+        if quelle_hat_404: break  # Quelle liefert keine Ergebnisse – nicht weiter probieren
         url = suchpfad + quote_plus(keyword)
         try:
             resp = requests.get(url, headers=headers_req, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if resp.status_code in (404, 410):
+                print(f"    ⚠️  {quelle['name']} [{keyword}]: HTTP {resp.status_code}")
+                quelle_hat_404 = True  # Suchpfad existiert nicht – restliche Keywords überspringen
+                continue
             if resp.status_code != 200:
                 print(f"    ⚠️  {quelle['name']} [{keyword}]: HTTP {resp.status_code}")
                 continue
             basis_url = f"{urlparse(resp.url).scheme}://{urlparse(resp.url).netloc}"
             neu = _extrahiere_links(resp.text, basis_url, gefundene_urls, quelle["name"], limit_pro_kw)
             alle_artikel.extend(neu)
-            if len(top_keywords) > 1: time.sleep(0.4)
+            if len(top_keywords) > 1: time.sleep(0.3)
         except requests.exceptions.Timeout:
             print(f"    ⏱️  {quelle['name']} [{keyword}]: Timeout")
         except Exception as e:
@@ -376,12 +383,19 @@ def crawle_gemeinde_protokolle(gemeinde: dict, suchbegriffe: list) -> list:
 
 def crawle_alle_gemeinden(bundeslaender: list, suchbegriffe: list) -> list:
     gemeinden = get_gemeinden_fuer_bundeslaender(bundeslaender)
+    # Auf max. 300 Gemeinden pro Lauf begrenzen um den 55-Min-Timeout nicht zu sprengen
+    MAX_GEMEINDEN = 300
+    if len(gemeinden) > MAX_GEMEINDEN:
+        import random
+        random.shuffle(gemeinden)
+        gemeinden = gemeinden[:MAX_GEMEINDEN]
+        print(f"  [Zufallsauswahl: {MAX_GEMEINDEN} von {len(get_gemeinden_fuer_bundeslaender(bundeslaender))} Gemeinden]")
     print(f"  [{len(gemeinden)} Gemeinden werden auf Protokolle durchsucht...]")
     alle_artikel = []
     for i, gemeinde in enumerate(gemeinden):
         artikel = crawle_gemeinde_protokolle(gemeinde, suchbegriffe)
         alle_artikel.extend(artikel)
-        if i > 0 and i % 10 == 0: time.sleep(1)
+        if i > 0 and i % 50 == 0: time.sleep(0.5)
     print(f"  [{len(gemeinden)} Gemeinden durchsucht | {len(alle_artikel)} Protokoll-Links]")
     return alle_artikel
 
@@ -392,7 +406,7 @@ def lade_artikel_text(artikel_url: str) -> str:
             "Accept": "text/html",
             "Accept-Language": "de-AT,de;q=0.9",
         }
-        resp = requests.get(artikel_url, headers=headers, timeout=REQUEST_TIMEOUT)
+        resp = requests.get(artikel_url, headers=headers, timeout=REQUEST_TIMEOUT_ARTIKEL)
         if resp.status_code != 200: return ""
         html = resp.text
         text = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.DOTALL | re.IGNORECASE)
