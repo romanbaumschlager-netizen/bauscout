@@ -27,6 +27,9 @@
   --orange-hell: #fffbeb;
   --rot:         #dc2626;
   --rot-hell:    #fef2f2;
+  --gold:        #d97706;
+  --gold-hell:   #fffbeb;
+  --gold-rand:   #fcd34d;
   --sidebar-w:   240px;
 }
 
@@ -40,7 +43,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ── LAYOUT ── */
 .layout { display: flex; min-height: 100vh; }
 
 /* ── SIDEBAR ── */
@@ -56,342 +58,200 @@ body {
   height: 100vh;
   overflow-y: auto;
 }
-
-.sidebar-logo {
-  padding: 20px 18px 16px;
-  border-bottom: 1px solid var(--rand);
-}
-.logo-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.3px;
-}
+.sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--rand); }
+.logo-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
 .logo-name span { color: var(--blau); }
-.logo-sub {
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 2px;
-  font-family: 'DM Mono', monospace;
-}
-
+.logo-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-family: 'DM Mono', monospace; }
 .sidebar-section { padding: 14px 18px 6px; }
-.sidebar-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
+.sidebar-label { font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 .sidebar-divider { border-top: 1px solid var(--rand); margin: 8px 0; }
 
-/* Filter */
 .filter-group { display: flex; flex-direction: column; gap: 2px; }
 .filter-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-mid);
-  user-select: none;
-  transition: background 0.15s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: var(--text-mid); user-select: none; transition: background 0.15s;
 }
 .filter-item:hover { background: var(--hell); }
 .filter-item.aktiv { background: var(--blau-hell); color: var(--blau); font-weight: 500; }
-.filter-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--rand2);
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
+.filter-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rand2); flex-shrink: 0; transition: background 0.15s; }
 .filter-item.aktiv .filter-dot { background: var(--blau); }
-.filter-count {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-dim);
-  font-family: 'DM Mono', monospace;
-}
+.filter-count { margin-left: auto; font-size: 11px; color: var(--text-dim); font-family: 'DM Mono', monospace; }
 
-/* Scout-Läufe */
-.lauf-item {
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-bottom: 2px;
-  transition: background 0.15s;
-}
+.lauf-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; margin-bottom: 2px; transition: background 0.15s; }
 .lauf-item:hover { background: var(--hell); }
 .lauf-item.aktiv { background: var(--blau-hell); }
 .lauf-datum { font-size: 12px; font-weight: 600; color: var(--text); }
 .lauf-titel { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
-/* ── HAUPTBEREICH ── */
+/* ── MAIN ── */
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
-/* Header */
 .header {
-  background: var(--weiss);
-  border-bottom: 1px solid var(--rand);
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  background: var(--weiss); border-bottom: 1px solid var(--rand);
+  padding: 16px 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
 .header-titel { flex: 1; min-width: 0; }
-.header-firma {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.header-firma { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-meta { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
 .header-stats { display: flex; gap: 12px; }
-.stat-box {
-  background: var(--hell);
-  border: 1px solid var(--rand);
-  border-radius: 8px;
-  padding: 8px 14px;
-  text-align: center;
-  min-width: 60px;
-}
+.stat-box { background: var(--hell); border: 1px solid var(--rand); border-radius: 8px; padding: 8px 14px; text-align: center; min-width: 60px; }
 .stat-zahl { font-size: 20px; font-weight: 700; color: var(--blau); font-family: 'DM Mono', monospace; }
+.stat-zahl.gold { color: var(--gold); }
 .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
 
 .btn-excel {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--gruen);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 9px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 7px;
+  background: var(--gruen); color: white; border: none; border-radius: 8px;
+  padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'Inter', sans-serif; white-space: nowrap;
 }
 .btn-excel:hover { background: #15803d; }
 .btn-excel svg { width: 15px; height: 15px; }
 
-/* Tabs */
+/* ── TABS ── */
 .tabs {
-  background: var(--weiss);
-  border-bottom: 1px solid var(--rand);
-  padding: 0 24px;
-  display: flex;
-  gap: 0;
+  background: var(--weiss); border-bottom: 1px solid var(--rand);
+  padding: 0 24px; display: flex; gap: 0;
 }
 .tab {
-  padding: 12px 18px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-dim);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: all 0.15s;
+  padding: 12px 18px; font-size: 14px; font-weight: 500; color: var(--text-dim);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s; display: flex; align-items: center; gap: 7px;
 }
 .tab:hover { color: var(--text); }
 .tab.aktiv { color: var(--blau); border-bottom-color: var(--blau); font-weight: 600; }
+.tab.aktiv.gold-tab { color: var(--gold); border-bottom-color: var(--gold); }
+.tab.gold-tab:not(.aktiv):hover { color: var(--gold); }
 
-/* Content */
-.content { flex: 1; padding: 20px 24px; }
-#tab-liste, #tab-karte { display: none; }
-#tab-liste.aktiv, #tab-karte.aktiv { display: block; }
-
-/* Suchleiste */
-.suchleiste {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
+.tab-badge {
+  background: var(--gold); color: white;
+  font-size: 11px; font-weight: 700; padding: 1px 7px;
+  border-radius: 10px; font-family: 'DM Mono', monospace;
+  display: none;
 }
+.tab-badge.sichtbar { display: inline-block; }
+
+/* ── CONTENT ── */
+.content { flex: 1; padding: 20px 24px; }
+.tab-inhalt { display: none; }
+.tab-inhalt.aktiv { display: block; }
+
+.suchleiste { display: flex; gap: 10px; margin-bottom: 16px; }
 .such-input {
-  flex: 1;
-  background: var(--weiss);
-  border: 1.5px solid var(--rand);
-  color: var(--text);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  padding: 9px 14px;
-  border-radius: 8px;
-  outline: none;
+  flex: 1; background: var(--weiss); border: 1.5px solid var(--rand);
+  color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
+  padding: 9px 14px; border-radius: 8px; outline: none;
 }
 .such-input:focus { border-color: var(--blau); }
 .sort-select {
-  background: var(--weiss);
-  border: 1.5px solid var(--rand);
-  color: var(--text);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  outline: none;
-  cursor: pointer;
+  background: var(--weiss); border: 1.5px solid var(--rand); color: var(--text);
+  font-family: 'Inter', sans-serif; font-size: 13px; padding: 9px 12px;
+  border-radius: 8px; outline: none; cursor: pointer;
 }
 
-/* Projekt-Karten */
+/* ── PROJEKT-KARTEN ── */
 .projekte-liste { display: flex; flex-direction: column; gap: 10px; }
 
 .projekt-karte {
-  background: var(--weiss);
-  border: 1px solid var(--rand);
-  border-radius: 10px;
-  padding: 16px 18px;
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  transition: border-color 0.15s, opacity 0.2s;
+  background: var(--weiss); border: 1px solid var(--rand); border-radius: 10px;
+  padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .projekt-karte:hover { border-color: var(--blau); }
 .projekt-karte.ignoriert { opacity: 0.4; }
+.projekt-karte.gemerkt { border-color: var(--gold-rand) !important; border-width: 1.5px; box-shadow: 0 0 0 3px rgba(217,119,6,0.07); }
 
 .relevanz-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: 'DM Mono', monospace;
-  flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center;
+  justify-content: center; font-size: 15px; font-weight: 700;
+  font-family: 'DM Mono', monospace; flex-shrink: 0;
 }
 .rel-hoch    { background: var(--gruen-hell); color: var(--gruen); border: 1px solid var(--gruen-rand); }
 .rel-mittel  { background: var(--orange-hell); color: var(--orange); border: 1px solid #fde68a; }
 .rel-niedrig { background: var(--rot-hell); color: var(--rot); border: 1px solid #fecaca; }
 
 .projekt-body { flex: 1; min-width: 0; }
-.projekt-titel {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
+.projekt-titel { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; line-height: 1.4; }
 .projekt-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
 
-.tag {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 3px 8px;
-  border-radius: 4px;
-}
+.tag { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 4px; }
 .tag-kat   { background: var(--blau-hell);   color: var(--blau); }
 .tag-phase { background: var(--gruen-hell);  color: var(--gruen); }
 .tag-bl    { background: var(--hell2);       color: var(--text-mid); }
 .tag-vol   { background: var(--orange-hell); color: var(--orange); }
+.tag-gemerkt { background: var(--gold-hell); color: var(--gold); border: 1px solid var(--gold-rand); }
 
-.projekt-beschreibung {
-  font-size: 13px;
-  color: var(--text-mid);
-  line-height: 1.6;
-  margin-bottom: 8px;
-}
+.projekt-beschreibung { font-size: 13px; color: var(--text-mid); line-height: 1.6; margin-bottom: 8px; }
 .projekt-ort { font-size: 12px; color: var(--text-dim); }
 
-.projekt-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
-}
+.projekt-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
 .btn-link {
-  display: inline-block;
-  background: var(--blau-hell);
-  color: var(--blau);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 6px;
-  white-space: nowrap;
-  text-align: center;
+  display: inline-block; background: var(--blau-hell); color: var(--blau);
+  text-decoration: none; font-size: 12px; font-weight: 600;
+  padding: 6px 12px; border-radius: 6px; white-space: nowrap; text-align: center;
 }
 .btn-link:hover { background: var(--blau); color: white; }
+
+.btn-merken {
+  background: var(--gold-hell); color: var(--gold);
+  border: 1px solid var(--gold-rand); font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 600; padding: 6px 12px;
+  border-radius: 6px; cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.btn-merken:hover { background: var(--gold); color: white; border-color: var(--gold); }
+.btn-merken.aktiv { background: var(--gold); color: white; border-color: var(--gold); }
+
 .btn-ignorieren {
-  background: var(--hell);
-  border: 1px solid var(--rand);
-  color: var(--text-dim);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
+  background: var(--hell); border: 1px solid var(--rand); color: var(--text-dim);
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;
 }
 .btn-ignorieren:hover { border-color: var(--rot); color: var(--rot); }
 .btn-ignorieren.aktiv { background: var(--rot-hell); border-color: #fecaca; color: var(--rot); }
 
-/* Karte */
+/* ── MERKLISTE ── */
+.merkliste-header {
+  background: var(--gold-hell); border: 1px solid var(--gold-rand);
+  border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.merkliste-header-icon { font-size: 22px; }
+.merkliste-header-text { font-size: 14px; font-weight: 600; color: #92400e; }
+.merkliste-header-sub { font-size: 12px; color: #b45309; margin-top: 2px; }
+
+/* ── KARTE ── */
 .karte-container { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--rand); }
 #karte { height: calc(100vh - 220px); min-height: 400px; }
 .karte-overlay {
-  position: absolute;
-  top: 12px; left: 12px;
-  z-index: 999;
-  background: var(--weiss);
-  border: 1px solid var(--rand);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-mid);
+  position: absolute; top: 12px; left: 12px; z-index: 999;
+  background: var(--weiss); border: 1px solid var(--rand); border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--text-mid);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-/* Laden */
-.laden {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 40px 20px;
-  color: var(--text-dim);
-  font-size: 14px;
-}
+/* ── STATES ── */
+.laden { display: flex; align-items: center; gap: 10px; padding: 40px 20px; color: var(--text-dim); font-size: 14px; }
 .laden-dots { display: flex; gap: 4px; }
-.laden-dots span {
-  width: 7px; height: 7px;
-  background: var(--blau);
-  border-radius: 50%;
-  animation: pulse 1.2s infinite;
-}
+.laden-dots span { width: 7px; height: 7px; background: var(--blau); border-radius: 50%; animation: pulse 1.2s infinite; }
 .laden-dots span:nth-child(2) { animation-delay: 0.2s; }
 .laden-dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes pulse {
-  0%,60%,100% { opacity: 0.25; transform: scale(1); }
-  30% { opacity: 1; transform: scale(1.3); }
-}
+@keyframes pulse { 0%,60%,100% { opacity: 0.25; transform: scale(1); } 30% { opacity: 1; transform: scale(1.3); } }
 
-/* Leer */
-.leer-state {
-  text-align: center;
-  padding: 60px 20px;
-}
+.leer-state { text-align: center; padding: 60px 20px; }
 .leer-icon { font-size: 40px; margin-bottom: 12px; }
 .leer-text { color: var(--text-dim); font-size: 15px; }
+.leer-sub { color: var(--text-dim); font-size: 13px; margin-top: 6px; }
 
-/* Mobil */
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .header { padding: 12px 16px; }
   .content { padding: 14px 16px; }
   .tabs { padding: 0 16px; }
   .projekt-karte { flex-direction: column; }
-  .projekt-actions { flex-direction: row; }
+  .projekt-actions { flex-direction: row; flex-wrap: wrap; }
 }
 </style>
 </head>
@@ -405,34 +265,29 @@ body {
       <div class="logo-name">Project<span>Scout</span></div>
       <div class="logo-sub">Ihr Projekt-Radar</div>
     </div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">Kategorie</div>
       <div class="filter-group" id="filter-kategorie"></div>
     </div>
     <div class="sidebar-divider"></div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">Phase</div>
       <div class="filter-group" id="filter-phase"></div>
     </div>
     <div class="sidebar-divider"></div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">Bundesland</div>
       <div class="filter-group" id="filter-bundesland"></div>
     </div>
     <div class="sidebar-divider"></div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">Scout-Läufe</div>
       <div id="laufe-liste"></div>
     </div>
   </aside>
 
-  <!-- HAUPTBEREICH -->
+  <!-- MAIN -->
   <div class="main">
-
     <div class="header">
       <div class="header-titel">
         <div class="header-firma" id="header-firma">Laden...</div>
@@ -451,6 +306,10 @@ body {
           <div class="stat-zahl" id="stat-hoch">–</div>
           <div class="stat-label">Top ≥8</div>
         </div>
+        <div class="stat-box">
+          <div class="stat-zahl gold" id="stat-merkliste">0</div>
+          <div class="stat-label">Merkliste</div>
+        </div>
       </div>
       <button class="btn-excel" id="btn-excel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -466,10 +325,16 @@ body {
     <div class="tabs">
       <div class="tab aktiv" data-tab="liste">📋 Projektliste</div>
       <div class="tab" data-tab="karte">🗺️ Karte</div>
+      <div class="tab" data-tab="merkliste" id="tab-merkliste">
+        ⭐ Merkliste
+        <span class="tab-badge" id="merkliste-badge">0</span>
+      </div>
     </div>
 
     <div class="content">
-      <div id="tab-liste" class="aktiv">
+
+      <!-- TAB: LISTE -->
+      <div id="tab-liste" class="tab-inhalt aktiv">
         <div class="suchleiste">
           <input type="text" class="such-input" id="suche" placeholder="Projekt suchen...">
           <select class="sort-select" id="sortierung">
@@ -486,14 +351,34 @@ body {
         </div>
       </div>
 
-      <div id="tab-karte">
+      <!-- TAB: KARTE -->
+      <div id="tab-karte" class="tab-inhalt">
         <div class="karte-container">
           <div class="karte-overlay" id="karte-overlay">Projekte werden geladen...</div>
           <div id="karte"></div>
         </div>
       </div>
-    </div>
 
+      <!-- TAB: MERKLISTE -->
+      <div id="tab-merkliste-inhalt" class="tab-inhalt">
+        <div id="merkliste-leer" class="leer-state">
+          <div class="leer-icon">⭐</div>
+          <div class="leer-text">Noch keine Projekte vorgemerkt</div>
+          <div class="leer-sub">Klicke bei einem Projekt auf „Merken" um es zur engeren Auswahl hinzuzufügen</div>
+        </div>
+        <div id="merkliste-inhalt" style="display:none;">
+          <div class="merkliste-header">
+            <div class="merkliste-header-icon">⭐</div>
+            <div>
+              <div class="merkliste-header-text">Ihre engere Auswahl</div>
+              <div class="merkliste-header-sub" id="merkliste-header-sub">0 Projekte zur Nachverfolgung vorgemerkt</div>
+            </div>
+          </div>
+          <div class="projekte-liste" id="merkliste-liste"></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -513,11 +398,13 @@ let karteInstanz   = null;
 let karteMarker    = [];
 let aktiveFilter   = { kategorie: new Set(), phase: new Set(), bundesland: new Set() };
 let ignoriertIds   = new Set();
+let gemerkteIds    = new Set();
 
 const params        = new URLSearchParams(window.location.search);
 const kundenId      = params.get('kunden_id');
 const suchanfrageId = params.get('suchanfrage_id');
 
+// ── INIT ──
 async function init() {
   if (!kundenId) { zeigeKeinZugang(); return; }
   await ladeDaten();
@@ -562,6 +449,7 @@ async function ladeProjekte(auftragId) {
 
   alleProjekte = projekte || [];
   ignoriertIds = new Set(alleProjekte.filter(p => p.ignorieren).map(p => p.id));
+  gemerkteIds  = new Set(alleProjekte.filter(p => p.gemerkt).map(p => p.id));
 
   if (aktiverAuftrag) {
     const datum = new Date(aktiverAuftrag.erstellt_am).toLocaleDateString('de-AT',
@@ -575,9 +463,11 @@ async function ladeProjekte(auftragId) {
   aktualisiereStats(alleProjekte);
   baueFilter(alleProjekte);
   rendereListe();
+  rendereMerkliste();
   aktualisiereKarte();
 }
 
+// ── STATS ──
 function aktualisiereStats(projekte) {
   const sichtbar = projekte.filter(p => !p.ignorieren);
   document.getElementById('stat-gesamt').textContent = sichtbar.length;
@@ -585,11 +475,29 @@ function aktualisiereStats(projekte) {
     sichtbar.filter(p => (Date.now() - new Date(p.erstmals_gefunden).getTime()) < 7*24*60*60*1000).length;
   document.getElementById('stat-hoch').textContent =
     sichtbar.filter(p => (p.relevanz || 0) >= 8).length;
+  aktualisiereMerklisteBadge();
 }
 
+function aktualisiereMerklisteBadge() {
+  const anzahl = gemerkteIds.size;
+  const badge  = document.getElementById('merkliste-badge');
+  const stat   = document.getElementById('stat-merkliste');
+  const tab    = document.getElementById('tab-merkliste');
+  stat.textContent  = anzahl;
+  badge.textContent = anzahl;
+  if (anzahl > 0) {
+    badge.classList.add('sichtbar');
+    tab.classList.add('gold-tab');
+  } else {
+    badge.classList.remove('sichtbar');
+    tab.classList.remove('gold-tab');
+  }
+}
+
+// ── FILTER ──
 function baueFilter(projekte) {
-  const kategorien   = [...new Set(projekte.map(p => p.kategorie).filter(Boolean))].sort();
-  const phasen       = [...new Set(projekte.map(p => p.phase).filter(Boolean))].sort();
+  const kategorien    = [...new Set(projekte.map(p => p.kategorie).filter(Boolean))].sort();
+  const phasen        = [...new Set(projekte.map(p => p.phase).filter(Boolean))].sort();
   const bundeslaender = [...new Set(projekte.map(p => p.bundesland).filter(Boolean))].sort();
   baueFilterGruppe('filter-kategorie',  kategorien,    'kategorie',  projekte);
   baueFilterGruppe('filter-phase',      phasen,        'phase',      projekte);
@@ -634,6 +542,7 @@ function gefilterteProjekte() {
   });
 }
 
+// ── LISTE RENDERN ──
 function rendereListe() {
   const container = document.getElementById('projekte-liste');
   const sort = document.getElementById('sortierung')?.value || 'relevanz';
@@ -646,59 +555,111 @@ function rendereListe() {
     container.innerHTML = '<div class="leer-state"><div class="leer-icon">🔍</div><div class="leer-text">Keine Projekte – Filter anpassen?</div></div>';
     return;
   }
-  container.innerHTML = projekte.map(p => projektKarteHTML(p)).join('');
-  container.querySelectorAll('.btn-ignorieren').forEach(btn => {
-    btn.addEventListener('click', async e => {
-      e.stopPropagation();
-      await toggleIgnorieren(btn.dataset.id, btn);
-    });
-  });
+  container.innerHTML = projekte.map(p => projektKarteHTML(p, false)).join('');
+  bindKarteEvents(container);
 }
 
-function projektKarteHTML(p) {
+// ── MERKLISTE RENDERN ──
+function rendereMerkliste() {
+  const leer    = document.getElementById('merkliste-leer');
+  const inhalt  = document.getElementById('merkliste-inhalt');
+  const liste   = document.getElementById('merkliste-liste');
+  const sub     = document.getElementById('merkliste-header-sub');
+  const gemerkt = alleProjekte.filter(p => gemerkteIds.has(p.id));
+
+  if (gemerkt.length === 0) {
+    leer.style.display   = 'block';
+    inhalt.style.display = 'none';
+  } else {
+    leer.style.display   = 'none';
+    inhalt.style.display = 'block';
+    sub.textContent = `${gemerkt.length} Projekt${gemerkt.length !== 1 ? 'e' : ''} zur Nachverfolgung vorgemerkt`;
+    liste.innerHTML = gemerkt.map(p => projektKarteHTML(p, true)).join('');
+    bindKarteEvents(liste);
+  }
+  aktualisiereMerklisteBadge();
+}
+
+// ── PROJEKT-KARTE HTML ──
+function projektKarteHTML(p, inMerkliste) {
   const rel = p.relevanz || 0;
-  const relKlasse = rel >= 8 ? 'rel-hoch' : rel >= 5 ? 'rel-mittel' : 'rel-niedrig';
-  const ignoriert = ignoriertIds.has(p.id);
+  const relKlasse  = rel >= 8 ? 'rel-hoch' : rel >= 5 ? 'rel-mittel' : 'rel-niedrig';
+  const ignoriert  = ignoriertIds.has(p.id);
+  const gemerkt    = gemerkteIds.has(p.id);
   return `
-  <div class="projekt-karte ${ignoriert ? 'ignoriert' : ''}" id="pk-${p.id}">
+  <div class="projekt-karte ${ignoriert ? 'ignoriert' : ''} ${gemerkt ? 'gemerkt' : ''}" id="pk-${p.id}">
     <div class="relevanz-badge ${relKlasse}">${rel}</div>
     <div class="projekt-body">
-      <div class="projekt-titel">${escHtml(p.titel || '–')}</div>
+      <div class="projekt-titel">${escHtml(p.titel || '–')}${gemerkt ? ' <span class="tag tag-gemerkt">⭐ Vorgemerkt</span>' : ''}</div>
       <div class="projekt-meta">
-        ${p.kategorie ? `<span class="tag tag-kat">${escHtml(p.kategorie)}</span>` : ''}
-        ${p.phase     ? `<span class="tag tag-phase">${escHtml(p.phase)}</span>` : ''}
-        ${p.bundesland? `<span class="tag tag-bl">${escHtml(p.bundesland)}</span>` : ''}
-        ${p.volumen   ? `<span class="tag tag-vol">${escHtml(p.volumen)}</span>` : ''}
+        ${p.kategorie  ? `<span class="tag tag-kat">${escHtml(p.kategorie)}</span>` : ''}
+        ${p.phase      ? `<span class="tag tag-phase">${escHtml(p.phase)}</span>` : ''}
+        ${p.bundesland ? `<span class="tag tag-bl">${escHtml(p.bundesland)}</span>` : ''}
+        ${p.volumen    ? `<span class="tag tag-vol">${escHtml(p.volumen)}</span>` : ''}
       </div>
       <div class="projekt-beschreibung">${escHtml(p.beschreibung || '')}</div>
       <div class="projekt-ort">📍 ${escHtml(p.ort || '')}${p.bezirk ? ' · ' + escHtml(p.bezirk) : ''}</div>
     </div>
     <div class="projekt-actions">
       ${p.artikel_url ? `<a href="${escHtml(p.artikel_url)}" target="_blank" class="btn-link">→ Artikel</a>` : ''}
-      <button class="btn-ignorieren ${ignoriert ? 'aktiv' : ''}" data-id="${p.id}">
-        ${ignoriert ? '✓ Ignoriert' : 'Ignorieren'}
+      <button class="btn-merken ${gemerkt ? 'aktiv' : ''}" data-id="${p.id}">
+        ${gemerkt ? '⭐ Vorgemerkt' : '☆ Merken'}
       </button>
+      ${!inMerkliste ? `<button class="btn-ignorieren ${ignoriert ? 'aktiv' : ''}" data-id="${p.id}">
+        ${ignoriert ? '✓ Ignoriert' : 'Ignorieren'}
+      </button>` : ''}
     </div>
   </div>`;
 }
 
-async function toggleIgnorieren(projektId, btn) {
+// ── EVENTS BINDEN ──
+function bindKarteEvents(container) {
+  container.querySelectorAll('.btn-merken').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      await toggleMerken(btn.dataset.id);
+    });
+  });
+  container.querySelectorAll('.btn-ignorieren').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      await toggleIgnorieren(btn.dataset.id);
+    });
+  });
+}
+
+// ── MERKEN TOGGLE ──
+async function toggleMerken(projektId) {
+  const neuGemerkt = !gemerkteIds.has(projektId);
+  await supabase.from('projekte').update({ gemerkt: neuGemerkt }).eq('id', projektId);
+  if (neuGemerkt) {
+    gemerkteIds.add(projektId);
+  } else {
+    gemerkteIds.delete(projektId);
+  }
+  rendereListe();
+  rendereMerkliste();
+}
+
+// ── IGNORIEREN TOGGLE ──
+async function toggleIgnorieren(projektId) {
   const neuIgnoriert = !ignoriertIds.has(projektId);
   await supabase.from('projekte').update({ ignorieren: neuIgnoriert }).eq('id', projektId);
   if (neuIgnoriert) {
     ignoriertIds.add(projektId);
-    btn.textContent = '✓ Ignoriert';
-    btn.classList.add('aktiv');
-    document.getElementById(`pk-${projektId}`)?.classList.add('ignoriert');
+    if (gemerkteIds.has(projektId)) {
+      gemerkteIds.delete(projektId);
+      await supabase.from('projekte').update({ gemerkt: false }).eq('id', projektId);
+    }
   } else {
     ignoriertIds.delete(projektId);
-    btn.textContent = 'Ignorieren';
-    btn.classList.remove('aktiv');
-    document.getElementById(`pk-${projektId}`)?.classList.remove('ignoriert');
   }
   aktualisiereStats(alleProjekte);
+  rendereListe();
+  rendereMerkliste();
 }
 
+// ── KARTE ──
 function aktualisiereKarte() {
   if (!karteInstanz) {
     karteInstanz = L.map('karte', { zoomControl: true }).setView([47.5, 14.0], 7);
@@ -706,7 +667,6 @@ function aktualisiereKarte() {
       attribution: '© OpenStreetMap', maxZoom: 18,
     }).addTo(karteInstanz);
   }
-
   karteMarker.forEach(m => m.remove());
   karteMarker = [];
 
@@ -723,16 +683,13 @@ function aktualisiereKarte() {
       );
       const data = await resp.json();
       if (!data[0]) return;
-
-      const rel = p.relevanz || 0;
+      const rel   = p.relevanz || 0;
       const farbe = rel >= 8 ? '#16a34a' : rel >= 5 ? '#d97706' : '#dc2626';
-
-      const icon = L.divIcon({
+      const icon  = L.divIcon({
         className: '',
         html: `<div style="width:13px;height:13px;border-radius:50%;background:${farbe};border:2px solid white;box-shadow:0 0 6px rgba(0,0,0,0.25);cursor:pointer;"></div>`,
         iconSize: [13, 13], iconAnchor: [6, 6],
       });
-
       const marker = L.marker([parseFloat(data[0].lat), parseFloat(data[0].lon)], { icon }).addTo(karteInstanz);
       marker.bindPopup(`
         <div style="font-family:'Inter',sans-serif;min-width:200px;">
@@ -741,7 +698,6 @@ function aktualisiereKarte() {
           <div style="font-size:12px;color:#666;margin-bottom:8px;">📍 ${escHtml(p.ort || '')}</div>
           ${p.artikel_url ? `<a href="${escHtml(p.artikel_url)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;">→ Zum Artikel</a>` : ''}
         </div>`, { maxWidth: 280 });
-
       karteMarker.push(marker);
       mitKoords++;
       document.getElementById('karte-overlay').textContent = `${mitKoords} Projekte auf Karte`;
@@ -749,6 +705,7 @@ function aktualisiereKarte() {
   });
 }
 
+// ── AUFTRÄGE ──
 function rendereAuftraege() {
   const container = document.getElementById('laufe-liste');
   if (!alleAuftraege.length) {
@@ -771,12 +728,14 @@ function rendereAuftraege() {
       aktiverAuftrag = alleAuftraege.find(a => a.id === item.dataset.id);
       aktiveFilter = { kategorie: new Set(), phase: new Set(), bundesland: new Set() };
       document.querySelectorAll('.filter-item').forEach(el => el.classList.remove('aktiv'));
+      gemerkteIds.clear();
       await ladeProjekte(item.dataset.id);
       rendereAuftraege();
     });
   });
 }
 
+// ── EXCEL EXPORT ──
 window.exportiereExcel = function() {
   const projekte = gefilterteProjekte();
   if (!projekte.length) { alert('Keine Projekte zum Exportieren.'); return; }
@@ -788,14 +747,16 @@ window.exportiereExcel = function() {
     'Beschreibung': p.beschreibung||'',
     'Gefunden am': p.erstmals_gefunden ? new Date(p.erstmals_gefunden).toLocaleDateString('de-AT') : '',
     'Ignoriert': p.ignorieren ? 'Ja' : 'Nein',
+    'Vorgemerkt': gemerkteIds.has(p.id) ? 'Ja' : 'Nein',
   }));
   const ws = XLSX.utils.json_to_sheet(zeilen);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ProjectScout Projekte');
-  ws['!cols'] = [{wch:40},{wch:20},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:10},{wch:20},{wch:50},{wch:60},{wch:15},{wch:10}];
+  ws['!cols'] = [{wch:40},{wch:20},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:10},{wch:20},{wch:50},{wch:60},{wch:15},{wch:10},{wch:12}];
   XLSX.writeFile(wb, `ProjectScout_${new Date().toISOString().slice(0,10)}.xlsx`);
 };
 
+// ── HILFSFUNKTIONEN ──
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -819,18 +780,23 @@ function zeigeKeinZugang() {
     </div>`;
 }
 
+// ── TABS ──
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('aktiv'));
-      document.querySelectorAll('#tab-liste, #tab-karte').forEach(t => t.classList.remove('aktiv'));
+      document.querySelectorAll('.tab-inhalt').forEach(t => t.classList.remove('aktiv'));
       tab.classList.add('aktiv');
-      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('aktiv');
-      if (tab.dataset.tab === 'karte') {
+      const t = tab.dataset.tab;
+      if (t === 'liste')     document.getElementById('tab-liste').classList.add('aktiv');
+      if (t === 'karte')     document.getElementById('tab-karte').classList.add('aktiv');
+      if (t === 'merkliste') document.getElementById('tab-merkliste-inhalt').classList.add('aktiv');
+      if (t === 'karte') {
         setTimeout(() => { if (karteInstanz) karteInstanz.invalidateSize(); else aktualisiereKarte(); }, 100);
       }
     });
   });
+
   document.getElementById('btn-excel')?.addEventListener('click', exportiereExcel);
   document.getElementById('suche')?.addEventListener('input', rendereListe);
   document.getElementById('sortierung')?.addEventListener('change', rendereListe);
