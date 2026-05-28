@@ -37,7 +37,7 @@ MEDIEN = [
     {
         "name": "Kurier",
         "url": "https://kurier.at",
-        "suchpfad": "https://kurier.at/suche?q=",
+        "suchpfad": "",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "bundesweit"
     },
@@ -58,14 +58,14 @@ MEDIEN = [
     {
         "name": "Österreich / oe24",
         "url": "https://www.oe24.at",
-        "suchpfad": "https://www.oe24.at/suche?q=",
+        "suchpfad": "",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "bundesweit"
     },
     {
         "name": "Heute",
         "url": "https://www.heute.at",
-        "suchpfad": "https://www.heute.at/s/suche?q=",
+        "suchpfad": "",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "bundesweit"
     },
@@ -76,70 +76,70 @@ MEDIEN = [
     {
         "name": "ORF.at",
         "url": "https://orf.at",
-        "suchpfad": "https://orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Wien",
         "url": "https://wien.orf.at",
-        "suchpfad": "https://wien.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["W"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Niederösterreich",
         "url": "https://noe.orf.at",
-        "suchpfad": "https://noe.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["NOE"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Oberösterreich",
         "url": "https://ooe.orf.at",
-        "suchpfad": "https://ooe.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["OOE"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Salzburg",
         "url": "https://salzburg.orf.at",
-        "suchpfad": "https://salzburg.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["SBG"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Steiermark",
         "url": "https://steiermark.orf.at",
-        "suchpfad": "https://steiermark.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["STK"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Kärnten",
         "url": "https://kaernten.orf.at",
-        "suchpfad": "https://kaernten.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["KTN"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Tirol",
         "url": "https://tirol.orf.at",
-        "suchpfad": "https://tirol.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["TIR"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Vorarlberg",
         "url": "https://vorarlberg.orf.at",
-        "suchpfad": "https://vorarlberg.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["VBG"],
         "typ": "oeffentlich"
     },
     {
         "name": "ORF Burgenland",
         "url": "https://burgenland.orf.at",
-        "suchpfad": "https://burgenland.orf.at/suche/?q=",
+        "suchpfad": "",
         "bundeslaender": ["BGR"],
         "typ": "oeffentlich"
     },
@@ -150,70 +150,70 @@ MEDIEN = [
     {
         "name": "meinBezirk.at (gesamt)",
         "url": "https://www.meinbezirk.at",
-        "suchpfad": "https://www.meinbezirk.at/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["W","NOE","OOE","SBG","STK","KTN","TIR","VBG","BGR"],
         "typ": "regional"
     },
     {
         "name": "meinBezirk Wien",
         "url": "https://www.meinbezirk.at/wien",
-        "suchpfad": "https://www.meinbezirk.at/wien/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["W"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Niederösterreich",
         "url": "https://www.meinbezirk.at/niederoesterreich",
-        "suchpfad": "https://www.meinbezirk.at/niederoesterreich/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["NOE"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Oberösterreich",
         "url": "https://www.meinbezirk.at/oberoesterreich",
-        "suchpfad": "https://www.meinbezirk.at/oberoesterreich/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Salzburg",
         "url": "https://www.meinbezirk.at/salzburg",
-        "suchpfad": "https://www.meinbezirk.at/salzburg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Steiermark",
         "url": "https://www.meinbezirk.at/steiermark",
-        "suchpfad": "https://www.meinbezirk.at/steiermark/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Kärnten",
         "url": "https://www.meinbezirk.at/kaernten",
-        "suchpfad": "https://www.meinbezirk.at/kaernten/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Tirol",
         "url": "https://www.meinbezirk.at/tirol",
-        "suchpfad": "https://www.meinbezirk.at/tirol/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Vorarlberg",
         "url": "https://www.meinbezirk.at/vorarlberg",
-        "suchpfad": "https://www.meinbezirk.at/vorarlberg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["VBG"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Burgenland",
         "url": "https://www.meinbezirk.at/burgenland",
-        "suchpfad": "https://www.meinbezirk.at/burgenland/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
@@ -231,7 +231,7 @@ MEDIEN = [
     {
         "name": "bz-Wiener Bezirkszeitung",
         "url": "https://www.meinbezirk.at/wien",
-        "suchpfad": "https://www.meinbezirk.at/wien/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["W"],
         "typ": "lokal"
     },
@@ -414,119 +414,119 @@ MEDIEN = [
     {
         "name": "BezirksRundSchau OÖ (gesamt)",
         "url": "https://www.meinbezirk.at/oberoesterreich",
-        "suchpfad": "https://www.meinbezirk.at/oberoesterreich/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "regional"
     },
     {
         "name": "BezirksRundSchau Braunau",
         "url": "https://www.meinbezirk.at/braunau-am-inn",
-        "suchpfad": "https://www.meinbezirk.at/braunau-am-inn/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Eferding",
         "url": "https://www.meinbezirk.at/grieskirchen-eferding",
-        "suchpfad": "https://www.meinbezirk.at/grieskirchen-eferding/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Freistadt",
         "url": "https://www.meinbezirk.at/freistadt",
-        "suchpfad": "https://www.meinbezirk.at/freistadt/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Gmunden",
         "url": "https://www.meinbezirk.at/gmunden",
-        "suchpfad": "https://www.meinbezirk.at/gmunden/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Grieskirchen",
         "url": "https://www.meinbezirk.at/grieskirchen-eferding",
-        "suchpfad": "https://www.meinbezirk.at/grieskirchen-eferding/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Kirchdorf",
         "url": "https://www.meinbezirk.at/kirchdorf-an-der-krems",
-        "suchpfad": "https://www.meinbezirk.at/kirchdorf-an-der-krems/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Linz-Land",
         "url": "https://www.meinbezirk.at/linz-land",
-        "suchpfad": "https://www.meinbezirk.at/linz-land/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Linz Stadt",
         "url": "https://www.meinbezirk.at/linz",
-        "suchpfad": "https://www.meinbezirk.at/linz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Perg",
         "url": "https://www.meinbezirk.at/perg",
-        "suchpfad": "https://www.meinbezirk.at/perg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Ried im Innkreis",
         "url": "https://www.meinbezirk.at/ried-im-innkreis",
-        "suchpfad": "https://www.meinbezirk.at/ried-im-innkreis/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Rohrbach",
         "url": "https://www.meinbezirk.at/rohrbach",
-        "suchpfad": "https://www.meinbezirk.at/rohrbach/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Schärding",
         "url": "https://www.meinbezirk.at/schaerding",
-        "suchpfad": "https://www.meinbezirk.at/schaerding/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Steyr",
         "url": "https://www.meinbezirk.at/steyr",
-        "suchpfad": "https://www.meinbezirk.at/steyr/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Urfahr-Umgebung",
         "url": "https://www.meinbezirk.at/urfahr-umgebung",
-        "suchpfad": "https://www.meinbezirk.at/urfahr-umgebung/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Vöcklabruck",
         "url": "https://www.meinbezirk.at/voecklabruck",
-        "suchpfad": "https://www.meinbezirk.at/voecklabruck/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
     {
         "name": "BezirksRundSchau Wels",
         "url": "https://www.meinbezirk.at/wels",
-        "suchpfad": "https://www.meinbezirk.at/wels/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
@@ -547,7 +547,7 @@ MEDIEN = [
     {
         "name": "meinBezirk Wels",
         "url": "https://www.meinbezirk.at/wels",
-        "suchpfad": "https://www.meinbezirk.at/wels/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["OOE"],
         "typ": "lokal"
     },
@@ -565,49 +565,49 @@ MEDIEN = [
     {
         "name": "BezirksBlätter Salzburg (gesamt)",
         "url": "https://www.meinbezirk.at/salzburg",
-        "suchpfad": "https://www.meinbezirk.at/salzburg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "regional"
     },
     {
         "name": "BezirksBlätter Hallein",
         "url": "https://www.meinbezirk.at/tennengau",
-        "suchpfad": "https://www.meinbezirk.at/tennengau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Salzburg Stadt",
         "url": "https://www.meinbezirk.at/salzburg-stadt",
-        "suchpfad": "https://www.meinbezirk.at/salzburg-stadt/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Salzburg Umgebung",
         "url": "https://www.meinbezirk.at/flachgau",
-        "suchpfad": "https://www.meinbezirk.at/flachgau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter St. Johann/Pongau",
         "url": "https://www.meinbezirk.at/pongau",
-        "suchpfad": "https://www.meinbezirk.at/pongau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Tamsweg/Lungau",
         "url": "https://www.meinbezirk.at/lungau",
-        "suchpfad": "https://www.meinbezirk.at/lungau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Zell am See/Pinzgau",
         "url": "https://www.meinbezirk.at/pinzgau",
-        "suchpfad": "https://www.meinbezirk.at/pinzgau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["SBG"],
         "typ": "lokal"
     },
@@ -625,98 +625,98 @@ MEDIEN = [
     {
         "name": "Woche Steiermark (gesamt)",
         "url": "https://www.meinbezirk.at/steiermark",
-        "suchpfad": "https://www.meinbezirk.at/steiermark/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "regional"
     },
     {
         "name": "Woche Graz",
         "url": "https://www.meinbezirk.at/graz",
-        "suchpfad": "https://www.meinbezirk.at/graz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Bruck-Mürzzuschlag",
         "url": "https://www.meinbezirk.at/bruck-muerzzuschlag",
-        "suchpfad": "https://www.meinbezirk.at/bruck-muerzzuschlag/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Deutschlandsberg",
         "url": "https://www.meinbezirk.at/deutschlandsberg",
-        "suchpfad": "https://www.meinbezirk.at/deutschlandsberg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Feldbach/Südoststeiermark",
         "url": "https://www.meinbezirk.at/suedoststeiermark",
-        "suchpfad": "https://www.meinbezirk.at/suedoststeiermark/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Fürstenfeld",
         "url": "https://www.meinbezirk.at/hartberg-fuerstenfeld",
-        "suchpfad": "https://www.meinbezirk.at/hartberg-fuerstenfeld/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Judenburg/Murtal",
         "url": "https://www.meinbezirk.at/murtal",
-        "suchpfad": "https://www.meinbezirk.at/murtal/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Leibnitz",
         "url": "https://www.meinbezirk.at/leibnitz",
-        "suchpfad": "https://www.meinbezirk.at/leibnitz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Leoben",
         "url": "https://www.meinbezirk.at/leoben",
-        "suchpfad": "https://www.meinbezirk.at/leoben/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Liezen",
         "url": "https://www.meinbezirk.at/liezen",
-        "suchpfad": "https://www.meinbezirk.at/liezen/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Murau",
         "url": "https://www.meinbezirk.at/murau",
-        "suchpfad": "https://www.meinbezirk.at/murau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Voitsberg",
         "url": "https://www.meinbezirk.at/voitsberg",
-        "suchpfad": "https://www.meinbezirk.at/voitsberg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Weiz",
         "url": "https://www.meinbezirk.at/weiz",
-        "suchpfad": "https://www.meinbezirk.at/weiz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
     {
         "name": "Woche Zeltweg",
         "url": "https://www.meinbezirk.at/murtal",
-        "suchpfad": "https://www.meinbezirk.at/murtal/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
@@ -730,7 +730,7 @@ MEDIEN = [
     {
         "name": "Grazer Woche",
         "url": "https://www.meinbezirk.at/graz",
-        "suchpfad": "https://www.meinbezirk.at/graz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["STK"],
         "typ": "lokal"
     },
@@ -748,70 +748,70 @@ MEDIEN = [
     {
         "name": "Woche Kärnten (gesamt)",
         "url": "https://www.meinbezirk.at/kaernten",
-        "suchpfad": "https://www.meinbezirk.at/kaernten/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "regional"
     },
     {
         "name": "Woche Klagenfurt",
         "url": "https://www.meinbezirk.at/klagenfurt",
-        "suchpfad": "https://www.meinbezirk.at/klagenfurt/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche Villach",
         "url": "https://www.meinbezirk.at/villach",
-        "suchpfad": "https://www.meinbezirk.at/villach/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche Hermagor/Gailtal",
         "url": "https://www.meinbezirk.at/hermagor",
-        "suchpfad": "https://www.meinbezirk.at/hermagor/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche Spittal/Drau",
         "url": "https://www.meinbezirk.at/spittal-an-der-drau",
-        "suchpfad": "https://www.meinbezirk.at/spittal-an-der-drau/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche St. Veit/Glan",
         "url": "https://www.meinbezirk.at/st-veit-an-der-glan",
-        "suchpfad": "https://www.meinbezirk.at/st-veit-an-der-glan/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche Völkermarkt",
         "url": "https://www.meinbezirk.at/voelkermarkt",
-        "suchpfad": "https://www.meinbezirk.at/voelkermarkt/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche Wolfsberg/Lavanttal",
         "url": "https://www.meinbezirk.at/wolfsberg",
-        "suchpfad": "https://www.meinbezirk.at/wolfsberg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "Woche Feldkirchen",
         "url": "https://www.meinbezirk.at/feldkirchen",
-        "suchpfad": "https://www.meinbezirk.at/feldkirchen/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Völkermarkt",
         "url": "https://www.meinbezirk.at/voelkermarkt",
-        "suchpfad": "https://www.meinbezirk.at/voelkermarkt/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["KTN"],
         "typ": "lokal"
     },
@@ -836,77 +836,77 @@ MEDIEN = [
     {
         "name": "BezirksBlätter Tirol (gesamt)",
         "url": "https://www.meinbezirk.at/tirol",
-        "suchpfad": "https://www.meinbezirk.at/tirol/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "regional"
     },
     {
         "name": "BezirksBlätter Innsbruck",
         "url": "https://www.meinbezirk.at/innsbruck",
-        "suchpfad": "https://www.meinbezirk.at/innsbruck/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Innsbruck-Land",
         "url": "https://www.meinbezirk.at/innsbruck-land",
-        "suchpfad": "https://www.meinbezirk.at/innsbruck-land/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Imst",
         "url": "https://www.meinbezirk.at/imst",
-        "suchpfad": "https://www.meinbezirk.at/imst/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Kitzbühel",
         "url": "https://www.meinbezirk.at/kitzbuehel",
-        "suchpfad": "https://www.meinbezirk.at/kitzbuehel/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Kufstein",
         "url": "https://www.meinbezirk.at/kufstein",
-        "suchpfad": "https://www.meinbezirk.at/kufstein/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Landeck",
         "url": "https://www.meinbezirk.at/landeck",
-        "suchpfad": "https://www.meinbezirk.at/landeck/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Lienz/Osttirol",
         "url": "https://www.meinbezirk.at/lienz",
-        "suchpfad": "https://www.meinbezirk.at/lienz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Reutte",
         "url": "https://www.meinbezirk.at/reutte",
-        "suchpfad": "https://www.meinbezirk.at/reutte/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Schwaz",
         "url": "https://www.meinbezirk.at/schwaz",
-        "suchpfad": "https://www.meinbezirk.at/schwaz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
     {
         "name": "meinBezirk Schwaz/Zillertal",
         "url": "https://www.meinbezirk.at/schwaz",
-        "suchpfad": "https://www.meinbezirk.at/schwaz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["TIR"],
         "typ": "lokal"
     },
@@ -931,35 +931,35 @@ MEDIEN = [
     {
         "name": "Regionalzeitung Vorarlberg (gesamt)",
         "url": "https://www.meinbezirk.at/vorarlberg",
-        "suchpfad": "https://www.meinbezirk.at/vorarlberg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["VBG"],
         "typ": "regional"
     },
     {
         "name": "Regionalzeitung Bludenz",
         "url": "https://www.meinbezirk.at/bludenz",
-        "suchpfad": "https://www.meinbezirk.at/bludenz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["VBG"],
         "typ": "lokal"
     },
     {
         "name": "Regionalzeitung Bregenz",
         "url": "https://www.meinbezirk.at/bregenz",
-        "suchpfad": "https://www.meinbezirk.at/bregenz/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["VBG"],
         "typ": "lokal"
     },
     {
         "name": "Regionalzeitung Dornbirn",
         "url": "https://www.meinbezirk.at/dornbirn",
-        "suchpfad": "https://www.meinbezirk.at/dornbirn/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["VBG"],
         "typ": "lokal"
     },
     {
         "name": "Regionalzeitung Feldkirch",
         "url": "https://www.meinbezirk.at/feldkirch",
-        "suchpfad": "https://www.meinbezirk.at/feldkirch/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["VBG"],
         "typ": "lokal"
     },
@@ -977,56 +977,56 @@ MEDIEN = [
     {
         "name": "BezirksBlätter Burgenland (gesamt)",
         "url": "https://www.meinbezirk.at/burgenland",
-        "suchpfad": "https://www.meinbezirk.at/burgenland/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "regional"
     },
     {
         "name": "BezirksBlätter Eisenstadt",
         "url": "https://www.meinbezirk.at/eisenstadt",
-        "suchpfad": "https://www.meinbezirk.at/eisenstadt/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Güssing",
         "url": "https://www.meinbezirk.at/guessing",
-        "suchpfad": "https://www.meinbezirk.at/guessing/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Jennersdorf",
         "url": "https://www.meinbezirk.at/jennersdorf",
-        "suchpfad": "https://www.meinbezirk.at/jennersdorf/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Mattersburg",
         "url": "https://www.meinbezirk.at/mattersburg",
-        "suchpfad": "https://www.meinbezirk.at/mattersburg/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Neusiedl am See",
         "url": "https://www.meinbezirk.at/neusiedl-am-see",
-        "suchpfad": "https://www.meinbezirk.at/neusiedl-am-see/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Oberpullendorf",
         "url": "https://www.meinbezirk.at/oberpullendorf",
-        "suchpfad": "https://www.meinbezirk.at/oberpullendorf/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
     {
         "name": "BezirksBlätter Oberwart",
         "url": "https://www.meinbezirk.at/oberwart",
-        "suchpfad": "https://www.meinbezirk.at/oberwart/suche?q=",
+        "suchpfad": "https://www.meinbezirk.at/tag/",
         "bundeslaender": ["BGR"],
         "typ": "lokal"
     },
