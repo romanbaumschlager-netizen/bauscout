@@ -8,191 +8,48 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --weiss: #ffffff;
-    --hell: #f8f7f4;
-    --rand: #e5e4e0;
-    --text: #111111;
-    --text-mid: #444444;
-    --text-dim: #888888;
-    --blau: #2563eb;
-    --blau-hell: #eff6ff;
-    --blau-dunkel: #1d4ed8;
-    --gruen: #16a34a;
-    --gruen-hell: #f0fdf4;
-    --gruen-rand: #bbf7d0;
+    --weiss:#ffffff; --hell:#f8f7f4; --rand:#e5e4e0;
+    --text:#111111; --text-mid:#444444; --text-dim:#888888;
+    --blau:#2563eb; --blau-hell:#eff6ff; --blau-dunkel:#1d4ed8;
+    --gruen:#16a34a; --gruen-hell:#f0fdf4; --gruen-rand:#bbf7d0;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--hell);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-  }
-
-  .card {
-    background: var(--weiss);
-    border: 1px solid var(--rand);
-    border-radius: 16px;
-    padding: 48px 40px;
-    max-width: 520px;
-    width: 100%;
-    text-align: center;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-  }
-
-  .check-circle {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: var(--gruen-hell);
-    border: 2px solid var(--gruen-rand);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 24px;
-    font-size: 32px;
-  }
-
-  .logo {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    margin-bottom: 20px;
-  }
-  .logo span { color: var(--blau); }
-
-  h1 {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.4px;
-    color: var(--text);
-    margin-bottom: 12px;
-  }
-
-  .intro {
-    font-size: 15px;
-    color: var(--text-mid);
-    line-height: 1.7;
-    margin-bottom: 28px;
-  }
-
-  .status-box {
-    background: var(--gruen-hell);
-    border: 1px solid var(--gruen-rand);
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-bottom: 20px;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .status-icon { font-size: 18px; flex-shrink: 0; }
-  .status-text { font-size: 14px; font-weight: 600; color: var(--gruen); }
-
-  .schritte {
-    background: var(--hell);
-    border: 1px solid var(--rand);
-    border-radius: 10px;
-    padding: 20px 20px;
-    margin-bottom: 24px;
-    text-align: left;
-  }
-  .schritte-titel {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 14px;
-  }
-  .schritt-zeile {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 10px;
-    font-size: 14px;
-    color: var(--text-mid);
-    line-height: 1.5;
-  }
-  .schritt-zeile:last-child { margin-bottom: 0; }
-  .schritt-nr {
-    width: 22px;
-    height: 22px;
-    background: var(--blau);
-    color: white;
-    border-radius: 50%;
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .loading {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 24px;
-  }
-  .loading-dot {
-    width: 7px;
-    height: 7px;
-    background: var(--blau);
-    border-radius: 50%;
-    animation: pulse 1.2s infinite;
-  }
-  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
-  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes pulse {
-    0%, 60%, 100% { opacity: 0.25; transform: scale(1); }
-    30% { opacity: 1; transform: scale(1.3); }
-  }
-  .loading-label {
-    font-size: 12px;
-    color: var(--text-dim);
-    font-family: 'DM Mono', monospace;
-    margin-left: 6px;
-  }
-
-  .hinweis {
-    font-size: 13px;
-    color: var(--text-dim);
-    line-height: 1.6;
-    margin-bottom: 24px;
-  }
-
-  .btn {
-    display: inline-block;
-    background: var(--blau);
-    color: white;
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    font-size: 14px;
-    padding: 12px 28px;
-    border-radius: 8px;
-    text-decoration: none;
-  }
-  .btn:hover { background: var(--blau-dunkel); }
-
-  @media (max-width: 480px) {
-    .card { padding: 32px 24px; }
-    h1 { font-size: 24px; }
-  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+  .card{background:var(--weiss);border:1px solid var(--rand);border-radius:16px;padding:48px 40px;max-width:520px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.06);}
+  .check-circle{width:72px;height:72px;border-radius:50%;background:var(--gruen-hell);border:2px solid var(--gruen-rand);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:32px;}
+  .logo{font-size:13px;font-weight:700;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;margin-bottom:20px;}
+  .logo span{color:var(--blau);}
+  h1{font-size:28px;font-weight:700;letter-spacing:-0.4px;color:var(--text);margin-bottom:12px;}
+  .intro{font-size:15px;color:var(--text-mid);line-height:1.7;margin-bottom:28px;}
+  .status-box{background:var(--gruen-hell);border:1px solid var(--gruen-rand);border-radius:10px;padding:14px 18px;margin-bottom:20px;text-align:left;display:flex;align-items:center;gap:12px;}
+  .status-icon{font-size:18px;flex-shrink:0;}
+  .status-text{font-size:14px;font-weight:600;color:var(--gruen);}
+  .schritte{background:var(--hell);border:1px solid var(--rand);border-radius:10px;padding:20px;margin-bottom:24px;text-align:left;}
+  .schritte-titel{font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+  .schritt-zeile{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;font-size:14px;color:var(--text-mid);line-height:1.5;}
+  .schritt-zeile:last-child{margin-bottom:0;}
+  .schritt-nr{width:22px;height:22px;background:var(--blau);color:white;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+  /* Dashboard-Link Box */
+  .dashboard-box{background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:16px 18px;margin-bottom:20px;text-align:left;}
+  .dashboard-box-titel{font-size:11px;font-weight:600;color:var(--blau);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+  .dashboard-box-text{font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.6;}
+  .dashboard-link-row{display:flex;gap:8px;align-items:center;}
+  .dashboard-link-url{font-family:'DM Mono',monospace;font-size:11px;color:var(--blau);background:var(--weiss);border:1px solid var(--rand);border-radius:6px;padding:8px 10px;flex:1;word-break:break-all;line-height:1.5;}
+  .btn-copy{background:var(--blau);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;flex-shrink:0;}
+  .btn-copy:hover{background:var(--blau-dunkel);}
+  .btn-copy.kopiert{background:var(--gruen);}
+  .loading{display:flex;gap:5px;align-items:center;justify-content:center;margin-bottom:24px;}
+  .loading-dot{width:7px;height:7px;background:var(--blau);border-radius:50%;animation:pulse 1.2s infinite;}
+  .loading-dot:nth-child(2){animation-delay:0.2s;}
+  .loading-dot:nth-child(3){animation-delay:0.4s;}
+  @keyframes pulse{0%,60%,100%{opacity:0.25;transform:scale(1);}30%{opacity:1;transform:scale(1.3);}}
+  .hinweis{font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:24px;}
+  .btn{display:inline-block;background:var(--blau);color:white;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;}
+  .btn:hover{background:var(--blau-dunkel);}
+  @media(max-width:480px){.card{padding:32px 24px;}h1{font-size:24px;}}
 </style>
 </head>
 <body>
-
 <div class="card">
   <div class="logo">Project<span>Scout</span></div>
   <div class="check-circle">✓</div>
@@ -204,23 +61,30 @@
     <div class="status-text" id="status-text">Zahlung bestätigt – Agent wird gestartet</div>
   </div>
 
+  <!-- Fixer Dashboard-Link -->
+  <div class="dashboard-box" id="dashboard-box" style="display:none;">
+    <div class="dashboard-box-titel">🔖 Ihr persönliches Dashboard</div>
+    <div class="dashboard-box-text">Speichern Sie diesen Link als Favorit – er bleibt für alle Ihre Scout-Läufe gleich und wächst mit jeder neuen Suche.</div>
+    <div class="dashboard-link-row">
+      <div class="dashboard-link-url" id="dashboard-link-url">wird geladen...</div>
+      <button class="btn-copy" id="btn-copy" onclick="linkKopieren()">Kopieren</button>
+    </div>
+  </div>
+
   <div class="schritte">
     <div class="schritte-titel">Was passiert jetzt?</div>
     <div class="schritt-zeile"><div class="schritt-nr">1</div><span>KI-Agent durchsucht alle Quellen (150+ österreichische Medien)</span></div>
     <div class="schritt-zeile"><div class="schritt-nr">2</div><span>Relevante Projekte werden gefiltert und bewertet</span></div>
-    <div class="schritt-zeile"><div class="schritt-nr">3</div><span>Sie erhalten einen E-Mail-Link zu Ihrem persönlichen Dashboard</span></div>
-    <div class="schritt-zeile"><div class="schritt-nr">4</div><span>Excel-Export steht zum Download bereit</span></div>
+    <div class="schritt-zeile"><div class="schritt-nr">3</div><span>Sie erhalten eine E-Mail – Ihr Dashboard-Link ist bereits oben</span></div>
+    <div class="schritt-zeile"><div class="schritt-nr">4</div><span>Neue Projekte werden bei jeder Suche automatisch hinzugefügt</span></div>
   </div>
 
   <div class="loading" id="loading">
-    <div class="loading-dot"></div>
-    <div class="loading-dot"></div>
-    <div class="loading-dot"></div>
-    <span class="loading-label">Agent läuft...</span>
+    <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
+    <span style="font-size:12px;color:var(--text-dim);font-family:'DM Mono',monospace;margin-left:6px;">Agent läuft...</span>
   </div>
 
-  <p class="hinweis">Sie erhalten eine E-Mail mit dem Link zu Ihrem Dashboard, sobald die Ergebnisse bereit sind.</p>
-
+  <p class="hinweis">Sie erhalten auch per E-Mail eine Benachrichtigung sobald die Ergebnisse bereit sind.</p>
   <a href="https://project-scout.at/" class="btn">← Zurück zur Startseite</a>
 </div>
 
@@ -231,40 +95,40 @@
     'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt'
   );
 
-  const params = new URLSearchParams(window.location.search);
+  const params    = new URLSearchParams(window.location.search);
   const sessionId = params.get('session_id');
 
-  let suchanfrageId = params.get('suchanfrage_id')
-                   || sessionStorage.getItem('bs_suchanfrage_id');
+  let suchanfrageId = params.get('suchanfrage_id') || sessionStorage.getItem('bs_suchanfrage_id');
+  let kundenId      = params.get('kunden_id')       || sessionStorage.getItem('bs_kunden_id');
 
+  // Fallback: via E-Mail suchen
   if (!suchanfrageId) {
     const email = sessionStorage.getItem('bs_email');
     if (email) {
-      const { data: kunde } = await supabase
-        .from('kunden').select('id').eq('email', email).single();
+      const { data: kunde } = await supabase.from('kunden').select('id').eq('email', email).single();
       if (kunde) {
+        kundenId = kunde.id;
         const { data: auftrag } = await supabase
           .from('suchanfragen').select('id')
-          .eq('kunden_id', kunde.id)
-          .eq('status', 'wartet_auf_zahlung')
-          .order('erstellt_am', { ascending: false })
-          .limit(1).single();
+          .eq('kunden_id', kunde.id).eq('status', 'wartet_auf_zahlung')
+          .order('erstellt_am', { ascending: false }).limit(1).single();
         if (auftrag) suchanfrageId = auftrag.id;
       }
     }
   }
 
+  // Letzter Fallback
   if (!suchanfrageId) {
-    const vor30min = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const vor30min = new Date(Date.now() - 30*60*1000).toISOString();
     const { data: auftrag } = await supabase
-      .from('suchanfragen').select('id')
+      .from('suchanfragen').select('id, kunden_id')
       .eq('status', 'wartet_auf_zahlung')
       .gte('erstellt_am', vor30min)
-      .order('erstellt_am', { ascending: false })
-      .limit(1).single();
-    if (auftrag) suchanfrageId = auftrag.id;
+      .order('erstellt_am', { ascending: false }).limit(1).single();
+    if (auftrag) { suchanfrageId = auftrag.id; kundenId = kundenId || auftrag.kunden_id; }
   }
 
+  // Status auf bezahlt setzen
   if (suchanfrageId) {
     await supabase.from('suchanfragen').update({
       status: 'bezahlt',
@@ -273,7 +137,7 @@
     }).eq('id', suchanfrageId);
     document.getElementById('status-text').textContent = 'Zahlung bestätigt – Agent startet in Kürze';
   } else {
-    const vor1h = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const vor1h = new Date(Date.now() - 60*60*1000).toISOString();
     await supabase.from('suchanfragen').update({
       status: 'bezahlt',
       bezahlt_am: new Date().toISOString(),
@@ -281,6 +145,27 @@
     }).eq('status', 'wartet_auf_zahlung').gte('erstellt_am', vor1h);
     document.getElementById('status-text').textContent = 'Zahlung bestätigt – Agent startet in Kürze';
   }
+
+  // Fixen Dashboard-Link anzeigen
+  if (kundenId) {
+    const dashboardUrl = `https://project-scout.at/dashboard.html?kunden_id=${kundenId}`;
+    document.getElementById('dashboard-link-url').textContent = dashboardUrl;
+    document.getElementById('dashboard-box').style.display = 'block';
+    window._dashboardUrl = dashboardUrl;
+  }
+</script>
+
+<script>
+function linkKopieren() {
+  const url = window._dashboardUrl;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('btn-copy');
+    btn.textContent = '✓ Kopiert!';
+    btn.classList.add('kopiert');
+    setTimeout(() => { btn.textContent = 'Kopieren'; btn.classList.remove('kopiert'); }, 2000);
+  });
+}
 </script>
 </body>
 </html>
