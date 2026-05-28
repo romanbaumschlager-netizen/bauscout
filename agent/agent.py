@@ -47,6 +47,7 @@ SMTP_USER         = os.environ.get("SMTP_USER", "")
 SMTP_PASS         = os.environ.get("SMTP_PASS", "")
 
 DASHBOARD_BASE_URL = "https://project-scout.at/dashboard.html"
+ADMIN_EMAIL        = "office@project-scout.at"
 
 MAX_ARTIKEL_PRO_QUELLE = 15
 REQUEST_TIMEOUT        = 15
@@ -662,6 +663,111 @@ ProjectScout – KI-gestützter Projekt-Scout für Österreich"""
         print(f"  ❌ E-Mail-Fehler: {e}")
         return False
 
+
+# =============================================================================
+# ADMIN-BENACHRICHTIGUNG
+# =============================================================================
+
+def sende_admin_benachrichtigung(
+    kunde: dict, auftrag: dict,
+    anzahl_neue: int, anzahl_gesamt: int,
+    dauer_sek: float, gesamt_artikel: int
+) -> bool:
+    """Sendet Benachrichtigung an office@project-scout.at nach jedem Scout-Lauf."""
+    if not SMTP_USER or not SMTP_PASS:
+        print("  ⚠️  Admin-Mail: SMTP nicht konfiguriert")
+        return False
+
+    jetzt     = datetime.now().strftime("%d.%m.%Y um %H:%M:%S Uhr")
+    dauer_str = f"{int(dauer_sek//60)} Min {int(dauer_sek%60)} Sek"
+    vorname   = kunde.get("vorname", "–")
+    nachname  = kunde.get("nachname", "–")
+    firma     = kunde.get("firmenname") or "–"
+    email     = kunde.get("email", "–")
+
+    bundeslaender = auftrag.get("bundeslaender") or []
+    if auftrag.get("ganz_oesterreich"):
+        gebiet_str = "Ganz Österreich (alle 9 Bundesländer)"
+    else:
+        gebiet_str = ", ".join(bundeslaender) if isinstance(bundeslaender, list) else str(bundeslaender)
+
+    gewerke = auftrag.get("gewerke") or []
+    gewerke_str = ", ".join(gewerke) if isinstance(gewerke, list) and gewerke else "–"
+
+    zeitraum_tage = auftrag.get("zeitraum_tage", "–")
+    zeitraum_von  = auftrag.get("zeitraum_von", "–")
+    zeitraum_bis  = auftrag.get("zeitraum_bis", "–")
+    kosten        = auftrag.get("kosten_geschaetzt", 0)
+    dashboard_url = f"{DASHBOARD_BASE_URL}?kunden_id={auftrag['kunden_id']}"
+
+    betreff = f"🔔 ProjectScout – Scout-Lauf abgeschlossen | {vorname} {nachname}"
+
+    html_body = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="background:#f8f7f4;font-family:Arial,sans-serif;padding:24px;max-width:600px;margin:0 auto;">
+  <div style="background:white;border:1px solid #e5e4e0;border-radius:12px;padding:24px;margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:600;color:#2563eb;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;">🔔 Scout-Lauf abgeschlossen</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;flex:1;text-align:center;">
+        <div style="font-size:24px;font-weight:700;color:#16a34a;">{anzahl_neue}</div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;">Neue Projekte</div>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;flex:1;text-align:center;">
+        <div style="font-size:24px;font-weight:700;color:#2563eb;">{anzahl_gesamt}</div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;">Gesamt Dashboard</div>
+      </div>
+      <div style="background:#f8f7f4;border:1px solid #e5e4e0;border-radius:8px;padding:10px;flex:1;text-align:center;">
+        <div style="font-size:16px;font-weight:700;color:#444;">{dauer_str}</div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;">Laufzeit</div>
+      </div>
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #f1f0ec;"><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;width:130px;">Zeitpunkt</td><td style="padding:7px 0;color:#111;">{jetzt}</td></tr>
+      <tr><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;">Artikel</td><td style="padding:7px 0;color:#111;">{gesamt_artikel} analysiert</td></tr>
+    </table>
+  </div>
+  <div style="background:white;border:1px solid #e5e4e0;border-radius:12px;padding:24px;margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">👤 Kunde</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #f1f0ec;"><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;width:130px;">Name</td><td style="padding:7px 0;color:#111;font-weight:500;">{vorname} {nachname}</td></tr>
+      <tr style="border-bottom:1px solid #f1f0ec;"><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;">Firma</td><td style="padding:7px 0;color:#111;">{firma}</td></tr>
+      <tr><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;">E-Mail</td><td style="padding:7px 0;"><a href="mailto:{email}" style="color:#2563eb;">{email}</a></td></tr>
+    </table>
+  </div>
+  <div style="background:white;border:1px solid #e5e4e0;border-radius:12px;padding:24px;margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">🔍 Suchanfrage</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #f1f0ec;"><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;width:130px;">Gebiet</td><td style="padding:7px 0;color:#111;">{gebiet_str}</td></tr>
+      <tr style="border-bottom:1px solid #f1f0ec;"><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;">Zeitraum</td><td style="padding:7px 0;color:#111;">{zeitraum_tage} Tage &nbsp;·&nbsp; {zeitraum_von} – {zeitraum_bis}</td></tr>
+      <tr style="border-bottom:1px solid #f1f0ec;"><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;">Preis</td><td style="padding:7px 0;color:#111;font-weight:600;">€ {kosten:.2f}</td></tr>
+      <tr><td style="padding:7px 0;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;vertical-align:top;">Gewerke</td><td style="padding:7px 0;color:#111;font-size:12px;">{gewerke_str}</td></tr>
+    </table>
+  </div>
+  <div style="text-align:center;">
+    <a href="{dashboard_url}" style="background:#2563eb;color:white;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">→ Kunden-Dashboard öffnen</a>
+  </div>
+</body></html>"""
+
+    text_body = f"Scout-Lauf abgeschlossen\n{jetzt}\nKunde: {vorname} {nachname} ({email})\nFirma: {firma}\nGebiet: {gebiet_str}\nZeitraum: {zeitraum_tage} Tage\nNeue Projekte: {anzahl_neue}\nGesamt: {anzahl_gesamt}\nDauer: {dauer_str}\nDashboard: {dashboard_url}"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = betreff
+    msg["From"]    = f"ProjectScout <{SMTP_USER}>"
+    msg["To"]      = ADMIN_EMAIL
+    msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html",  "utf-8"))
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.ehlo(); server.starttls(); server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_USER, ADMIN_EMAIL, msg.as_string())
+        print(f"  📧 Admin-Benachrichtigung gesendet an {ADMIN_EMAIL}")
+        return True
+    except Exception as e:
+        print(f"  ⚠️  Admin-Mail Fehler: {e}")
+        return False
+
+
 # =============================================================================
 # HAUPTFUNKTION
 # =============================================================================
@@ -676,6 +782,7 @@ def verarbeite_auftrag(auftrag: dict) -> None:
     print(f"{'='*60}")
 
     sb_patch("suchanfragen", {"id": f"eq.{sid}"}, {"status": "agent_laeuft"})
+    start_zeit = time.time()
 
     try:
         kunde = lade_kundendaten(auftrag["kunden_id"])
@@ -755,6 +862,17 @@ def verarbeite_auftrag(auftrag: dict) -> None:
         # E-Mail mit den NEUEN Projekten dieses Laufs (nicht alle)
         email_projekte = neue_projekte if neue_projekte else alle_projekte_kunde[:10]
         sende_email(kunde, auftrag, email_projekte)
+
+        # Admin-Benachrichtigung
+        dauer = time.time() - start_zeit
+        sende_admin_benachrichtigung(
+            kunde=kunde,
+            auftrag=auftrag,
+            anzahl_neue=len(neue_projekte),
+            anzahl_gesamt=len(alle_projekte_kunde),
+            dauer_sek=dauer,
+            gesamt_artikel=gesamt_artikel,
+        )
 
         print(f"\n  ✅ Auftrag {sid} abgeschlossen")
         print(f"     Neu in diesem Lauf: {len(neue_projekte)}")
