@@ -26,6 +26,8 @@
 {"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://project-scout.at/#organization","name":"ProjectScout","url":"https://project-scout.at","description":"KI-gestützte Plattform zur automatischen Suche nach Projekten, Ausschreibungen und Grundstücken in Österreich.","areaServed":{"@type":"Country","name":"Austria"},"contactPoint":{"@type":"ContactPoint","email":"office@project-scout.at","contactType":"customer support","availableLanguage":"German"}},{"@type":"SoftwareApplication","@id":"https://project-scout.at/#software","name":"ProjectScout","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://project-scout.at","description":"KI-Agent durchsucht automatisch 151+ österreichische Medienquellen, Gemeinden und Ausschreibungsplattformen nach Projekten, Vergaben und Grundstücken.","featureList":["KI-gestützte Projektsuche in ganz Österreich","151+ österreichische Medienquellen und Gemeinden","Alle Branchen: Bau, Energie, Infrastruktur, Immobilien, Industrie, Landwirtschaft","Ergebnisse als Dashboard und Excel-Export","E-Mail-Benachrichtigung bei Fertigstellung","Einmalzahlung, kein Abo"],"inLanguage":"de","availableCountry":"AT"},{"@type":"WebSite","@id":"https://project-scout.at/#website","url":"https://project-scout.at","name":"ProjectScout","description":"KI-gestützter Projekt-Scout für Österreich","inLanguage":"de"}]}
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Supabase robust per Script-Tag laden (kein dynamischer Import = kein esm.sh-Fehler) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --weiss:#ffffff;--hell:#f8f7f4;--hell2:#f1f0ec;--rand:#e5e4e0;--rand2:#d0cfc9;
@@ -568,14 +570,15 @@
 <script>
 const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
+// Supabase wird per <script>-Tag im <head> geladen (kein dynamischer Import mehr)
 let _supabase = null;
-async function getSupabase() {
+function getSupabase() {
   if (_supabase) return _supabase;
-  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-  _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   return _supabase;
 }
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVd6rIciKaWv9dT5kk00';
+// Dynamische Checkout-Session statt fixem Payment Link
+const CREATE_CHECKOUT_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co/functions/v1/create-checkout';
 
 const GEWERKE = {
   "🏗️ Bau & Rohbau":["Erdbau / Aushub","Spezialtiefbau","Betonbau / Stahlbeton","Maurerarbeiten","Abbruch / Demontage","Sprengungen","Bohrpfähle / Baugrubensicherung","Bodenverbesserung","Hangsicherungen","Hochwasserschutz","Zimmerei / Holzbau","Trockenbau","Estrich / Boden","Fliesen / Naturstein","Maler / Anstreicher","Schlosser / Metallbau","Fenster / Türen / Verglasungen","Innenausbau"],
@@ -709,14 +712,26 @@ async function bezahlen() {
     sessionStorage.setItem('bs_kunden_id', kundenId);
     sessionStorage.setItem('bs_suchanfrage_id', suchanfrage.id);
     sessionStorage.setItem('bs_email', email);
-    sessionStorage.setItem('bs_kundenpreis', berechnePreis().toString());
+    const preis = berechnePreis();
+    sessionStorage.setItem('bs_kundenpreis', preis.toString());
     zeigeStatus('✅ Gespeichert! Weiterleitung zu Stripe...', 'erfolg');
     btn.textContent = '⏳ Weiterleitung...';
     await new Promise(r => setTimeout(r, 800));
-    const stripeUrl = new URL(STRIPE_PAYMENT_LINK);
-    stripeUrl.searchParams.set('client_reference_id', suchanfrage.id);
-    stripeUrl.searchParams.set('prefilled_email', email);
-    window.location.href = stripeUrl.toString();
+    // Dynamische Checkout Session mit exaktem Preis erstellen
+    const preisInCent = Math.round(preis * 100);
+    const checkoutRes = await fetch(CREATE_CHECKOUT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suchanfrage_id: suchanfrage.id,
+        kunden_id: kundenId,
+        email: email,
+        preis_cent: preisInCent,
+      }),
+    });
+    if (!checkoutRes.ok) throw new Error('Checkout konnte nicht erstellt werden.');
+    const { url } = await checkoutRes.json();
+    window.location.href = url;
   } catch(fehler) {
     console.error('❌ Fehler:', fehler.message);
     zeigeStatus('❌ Fehler: ' + fehler.message, 'fehler');
