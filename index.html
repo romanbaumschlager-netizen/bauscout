@@ -461,8 +461,8 @@
       </div>
       <div class="schritt-inhalt">
         <label>Schnellauswahl</label>
-        <div class="gewerk-check ausgewaehlt" id="ganz-oe-btn" onclick="toggleGanzOe()" style="display:inline-flex;padding:12px 20px;font-size:14px;margin-bottom:20px;">
-          <div class="check-box" id="ganz-oe-check">✓</div>
+        <div class="gewerk-check" id="ganz-oe-btn" onclick="toggleGanzOe()" style="display:inline-flex;padding:12px 20px;font-size:14px;margin-bottom:20px;">
+          <div class="check-box" id="ganz-oe-check"></div>
           🇦🇹 &nbsp;Ganz Österreich (alle 9 Bundesländer)
         </div>
         <label>Bundesländer <span style="color:var(--text-dim);font-style:italic;text-transform:none;letter-spacing:0;font-weight:400;">– Bezirke per Klick aufklappen</span></label>
@@ -613,7 +613,7 @@ const GEWERKE = {
 };
 
 let ausgewaehlteGewerke = new Set();
-let ganzOe = true;
+let ganzOe = false;
 let chatVerlauf = [];
 let chatVerfeinerung = "";
 let gewaehlterZeitraum = 30;
