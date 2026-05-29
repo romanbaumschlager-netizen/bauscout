@@ -58,7 +58,7 @@ ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 # Beide Strings sind erprobt. Zum Erzwingen einfach MODELL_FIX setzen.
 MODELL_SONNET = "claude-sonnet-4-5"
 MODELL_HAIKU  = "claude-haiku-4-5-20251001"
-MODELL_FIX    = None   # None = adaptiv (Sonnet≤3 BL, Haiku≥4 BL)
+MODELL_FIX    = None   # z.B. MODELL_SONNET um immer Sonnet zu verwenden
 
 def _modell_fuer_scope(anzahl_bundeslaender: int) -> str:
     if MODELL_FIX:
@@ -312,27 +312,31 @@ def baue_suchbegriffe(auftrag: dict) -> list[str]:
     return ergebnis
 
 
-
 # =============================================================================
 # SCHRITT 3 + 4 + 5: MEHRGLEISIGE KI-SUCHE MIT WEB_SEARCH-TOOL
 #
-# Claude sucht SELBST aktiv im Internet (web_search) – pro Bundesland über
-# mehrere unabhängige "Suchgleise", jedes ein eigener API-Call:
-#   1./2. Projektsuche  – Bau/Tiefbau bzw. Energie (gewerk-fokussiert)
-#   3.    Vergabeportale – ANKÖ, TED, regionales {bl}.vergabeportal.at
-#   4.    Kommunal       – Gemeinderatsbeschlüsse via REGIONALE NACHRICHTEN,
-#                          mit echten Ortsnamen + WEITEREM ZEITFENSTER (60 Tage)
-#                          weil Gemeinden monatlich tagen & Berichterstattung
-#                          mit Verzögerung erscheint.
+# Kernidee: Claude sucht SELBST aktiv im Internet (web_search-Tool) – pro
+# Bundesland aus MEHREREN unabhängigen Blickwinkeln ("Suchgleisen"):
+#   1. Projektsuche  – Bau/Tiefbau/Infrastruktur (gewerk-fokussiert)
+#   2. Projektsuche  – Energie/Haustechnik (nur wenn solche Gewerke gewählt)
+#   3. Vergabeportale – dedizierte Ausschreibungs-/Vergabesuche (ankoe, TED, ...)
+#   4. Kommunal       – Gemeinderats-/Stadtratsbeschlüsse PRO BEZIRK mit echten
+#                       Ortsnamen aus der Gemeinden-Datenbank
+#
+# Jedes Gleis ist ein eigener API-Call mit bis zu WEB_SEARCH_MAX_USES Suchen.
+# Dadurch deutlich mehr und vielfältigere Treffer als mit einer Pauschalsuche.
 # =============================================================================
 
 def berechne_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
+
 def waehle_quellen(auftrag: dict) -> list:
-    """Alt-Funktion – nicht mehr für Crawling verwendet."""
+    """Alt-Funktion (Crawling) – nicht mehr verwendet, nur Abwärtskompatibilität."""
     return []
 
+
+# Gewerke die zur Energie/Haustechnik-Gruppe gehören
 _ENERGIE_GEWERKE = {
     "PV-Anlagen / Photovoltaik", "Wärmepumpen", "Erdwärmebohrungen",
     "Windkraftanlagen", "E-Ladeinfrastruktur", "Biomasse / Nahwärme",
@@ -343,142 +347,104 @@ _ENERGIE_GEWERKE = {
 }
 
 def _gruppiere_gewerke_fuer_suche(gewerke: list) -> dict:
+    """
+    Teilt die gewählten Gewerke in max. 2 fokussierte Projekt-Suchgruppen:
+      - "Bau, Tiefbau & Infrastruktur"
+      - "Energie, Haustechnik & Sanierung"
+    Eine eigene, fokussierte Suche je Gruppe liefert bessere Treffer als eine
+    breite Pauschalsuche. Vergabe- und Kommunalsuche laufen davon unabhängig.
+    """
     bau     = [g for g in gewerke if g not in _ENERGIE_GEWERKE]
     energie = [g for g in gewerke if g in _ENERGIE_GEWERKE]
+
     gruppen = {}
-    if bau:     gruppen["Bau, Tiefbau & Infrastruktur"] = bau
-    if energie: gruppen["Energie, Haustechnik & Sanierung"] = energie
+    if bau:
+        gruppen["Bau, Tiefbau & Infrastruktur"] = bau
+    if energie:
+        gruppen["Energie, Haustechnik & Sanierung"] = energie
     if not gruppen:
+        # Kunde hat keine Gewerke gewählt → breite Standardsuche
         gruppen["Bauprojekte allgemein"] = ["Neubau", "Sanierung", "Spatenstich", "Ausschreibung"]
     return gruppen
 
-# ---------------------------------------------------------------------------
-# Österreich-Geografiedaten (Live-verifiziert Mai 2026)
-# ---------------------------------------------------------------------------
 
-REGIONALE_QUELLEN = {
-    "W":   ["meinbezirk.at", "wien.orf.at", "kurier.at", "heute.at"],
-    "NOE": ["meinbezirk.at", "noe.orf.at", "NÖN (noen.at)", "tips.at"],
-    "OOE": ["meinbezirk.at", "nachrichten.at (OÖN)", "tips.at", "ooe.orf.at", "salzi.at"],
-    "SBG": ["meinbezirk.at", "salzburg.orf.at", "Salzburger Nachrichten (sn.at)", "salzburg24.at"],
-    "STK": ["meinbezirk.at", "steiermark.orf.at", "Kleine Zeitung"],
-    "KTN": ["meinbezirk.at", "kaernten.orf.at", "Kleine Zeitung Kärnten", "5min.at"],
-    "TIR": ["meinbezirk.at", "tirol.orf.at", "Tiroler Tageszeitung (tt.com)"],
-    "VBG": ["meinbezirk.at", "vorarlberg.orf.at", "Vorarlberger Nachrichten (vol.at)"],
-    "BGR": ["meinbezirk.at", "burgenland.orf.at", "BVZ (bvz.at)"],
-}
-
-VERGABE_SUBDOMAIN = {
-    "W": "wien", "NOE": "noe", "OOE": "ooe", "SBG": "sbg", "STK": "stmk",
-    "KTN": "ktn", "TIR": "tirol", "VBG": "vbg", "BGR": "bgld",
-}
-
-# Wien fehlt in der Gemeinden-DB → Bezirke verwenden
-WIEN_BEZIRKE = [
-    "Innere Stadt", "Leopoldstadt", "Landstraße", "Wieden", "Margareten",
-    "Mariahilf", "Neubau", "Josefstadt", "Alsergrund", "Favoriten",
-    "Simmering", "Meidling", "Hietzing", "Penzing", "Rudolfsheim-Fünfhaus",
-    "Ottakring", "Hernals", "Währing", "Döbling", "Brigittenau",
-    "Floridsdorf", "Donaustadt", "Liesing",
-]
-
-# Eindeutig deutsche/ausländische Quellen
-_AUSLAND_STARK = (
-    "ris-portal.de", "orts.app", "bad-saulgau", "heiligenberg", "epfenbach",
-    "gemarkung", "flst.nr", "flst-nr", "landkreis", "ortsgemeinde",
-    "baden-württemberg", "bayern", "sachsen", "thüringen", "hessen",
-    "rheinland-pfalz", "nordrhein", "brandenburg", "mecklenburg",
-    "niedersachsen", "schleswig-holstein", "saarland",
-)
-_AUSLAND_SCHWACH_DOMAINS = (".de/", ".de\"", ".de ", "://de.", ".ch/", ".it/")
-_AT_SIGNALE = (
-    "österreich", "oesterreich", "austria", "in-oesterreich", ".at/", ".at\"",
-    ".gv.at", "vergabe.gv.at", "ankoe", "meinbezirk", "orf.at",
-)
-
-def _ist_ausland(projekt: dict) -> bool:
-    url  = str(projekt.get("artikel_url", "")).lower()
-    text = (str(projekt.get("titel", "")) + " " +
-            str(projekt.get("beschreibung", "")) + " " +
-            str(projekt.get("ort", "")) + " " +
-            str(projekt.get("quelle_name", ""))).lower()
-    blob = url + " " + text
-    if any(m in blob for m in _AUSLAND_STARK):
-        return True
-    at_bezug = any(s in blob for s in _AT_SIGNALE)
-    if not at_bezug:
-        if any(d in url for d in _AUSLAND_SCHWACH_DOMAINS):
-            return True
-        if re.search(r"\b\d{5}\b", text):
-            return True
-    return False
-
-def _repraesentative_orte(bundesland: str, anzahl: int = 25) -> list:
+def _bezirke_mit_orten(bundesland: str, max_bezirke: int = 14,
+                       orte_pro_bezirk: int = 5) -> dict:
     """
-    Echte Ortsnamen für die Kommunalsuche.
-    Die Gemeinden-DB hat KEIN bezirk-Feld – nur name+url. Die alte
-    _bezirke_mit_orten-Funktion lief daher immer leer. Diese hier gibt
-    direkt Ortsnamen zurück: größte Orte + zufällige Streuung kleinerer.
-    Wien fehlt in der DB → Bezirke verwenden.
+    Baut {Bezirk: [Ortsnamen]} aus der Gemeinden-Datenbank für ein Bundesland.
+    Liefert echte Ortsnamen, mit denen die Kommunalsuche gezielt arbeiten kann.
     """
-    if bundesland == "W":
-        return WIEN_BEZIRKE[:anzahl]
     try:
         gemeinden = get_gemeinden_fuer_bundeslaender([bundesland])
     except Exception:
-        return []
-    namen = [str(g.get("name", "")).strip() for g in gemeinden if g.get("name")]
-    namen = [n for n in namen if n]
-    if not namen:
-        return []
-    if len(namen) <= anzahl:
-        return namen
-    import random
-    kopf = max(4, anzahl // 3)
-    fixe = namen[:kopf]
-    rest = namen[kopf:]
-    random.shuffle(rest)
-    return fixe + rest[:(anzahl - kopf)]
+        return {}
+    bezirke: dict = {}
+    for g in gemeinden:
+        bez = (g.get("bezirk") or "").strip()
+        name = (g.get("name") or "").strip()
+        if not bez or not name:
+            continue
+        bezirke.setdefault(bez, [])
+        if len(bezirke[bez]) < orte_pro_bezirk:
+            bezirke[bez].append(name)
+    # Auf max_bezirke begrenzen (größte zuerst, damit Ballungsräume dabei sind)
+    sortiert = sorted(bezirke.items(), key=lambda kv: len(kv[1]), reverse=True)
+    return dict(sortiert[:max_bezirke])
 
-def _quellen_hinweis(bundesland: str) -> str:
-    return ", ".join(REGIONALE_QUELLEN.get(bundesland, ["meinbezirk.at", "ORF regional"]))
 
-# ---------------------------------------------------------------------------
-# System-Prompt (verschärfte Geo-Eingrenzung + Auslands-Ausschluss)
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Gemeinsames System-Prompt + robuster JSON-Parser + zentraler API-Aufruf
+# -----------------------------------------------------------------------------
 
-SUCHE_SYSTEM_PROMPT = """Du bist ein professioneller Projekt-Scout für ProjectScout, eine österreichische B2B-Plattform. Unternehmen BEZAHLEN dafür, relevante Bau-, Infrastruktur- und Energieprojekte sowie öffentliche Ausschreibungen frühzeitig zu finden.
+SUCHE_SYSTEM_PROMPT = """Du bist ein professioneller Projekt-Scout für ProjectScout, eine österreichische B2B-Plattform. Unternehmen BEZAHLEN dafür, relevante Bau-, Infrastruktur- und Energieprojekte sowie öffentliche Ausschreibungen frühzeitig zu finden. Je mehr brauchbare Treffer du lieferst, desto wertvoller ist dein Ergebnis.
 
-⛔ ZWEI ABSOLUTE REGELN:
-1. NUR ÖSTERREICH. Deutschland, Schweiz, Italien etc. strikt ignorieren. Deutsche Portale (ris-portal.de, .de-Adressen ohne AT-Bezug, "Gemarkung", "Flst.Nr.", "Landkreis") sofort verwerfen.
-2. NUR DAS ANGEFRAGTE BUNDESLAND. Sammelseiten (z.B. meinbezirk.at/tag/...) mischen ganz Österreich – pick NUR Treffer des verlangten Bundeslands heraus.
+ARBEITSWEISE (WICHTIG):
+- Nutze das web_search-Tool INTENSIV und führe MEHRERE verschiedene Suchen durch – nicht nur eine einzige.
+- Variiere Suchbegriffe systematisch: kombiniere Ortsnamen + Gewerk + Signalwort (Spatenstich, Baustart, Baubeginn, Ausschreibung, Vergabe, Gemeinderat, Bebauungsplan, Investition, Erweiterung, Neubau, Sanierung).
+- Öffne vielversprechende Treffer und lies Details heraus.
+- Sammle ALLE konkreten Projekte, auch kleinere oder regionale. Lieber 12 Projekte als 3.
 
-ARBEITSWEISE: Nutze web_search INTENSIV, führe MEHRERE verschiedene Suchen durch. Variiere: Ortsname + Gewerk + Signalwort (Spatenstich, Baustart, Ausschreibung, Vergabe, Gemeinderat beschließt, Neubau, Erweiterung). Öffne Treffer und lies Details heraus. Lieber 12 Treffer als 3.
+WAS ZÄHLT ALS TREFFER:
+- Neubau, Umbau, Sanierung, Erweiterung von Gebäuden/Anlagen
+- Infrastruktur: Straße, Brücke, Kanal, Wasserleitung, Bahn, Tunnel, Radweg
+- Energie: PV, Windkraft, Wärmepumpe, Nahwärme/Fernwärme, Stromnetz, Speicher
+- Öffentliche Ausschreibungen/Vergaben mit Bauleistung
+- Gemeinderats-/Stadtratsbeschlüsse zu Bauvorhaben (Schule, Kindergarten, Feuerwehr, Bauhof, Amtsgebäude, Kanal, Wasser)
+- Gewerbe-/Industrieansiedlungen und -erweiterungen
+- Grundstücksentwicklungen mit Bauabsicht, Um-/Widmungen
 
-WAS ZÄHLT: Neubau/Umbau/Sanierung/Erweiterung · Infrastruktur (Straße, Brücke, Kanal, Wasser, Bahn) · Energie (PV, Wind, Wärmepumpe, Nahwärme) · öffentliche Ausschreibungen · Gemeinderatsbeschlüsse zu Bauvorhaben · Gewerbe-/Industrieansiedlungen · Grundstücksentwicklungen mit Bauabsicht.
+WAS NICHT ZÄHLT: Unfälle, Brände, Kriminalität, Meinungsartikel, Veranstaltungen, Personalnachrichten, reine Statistiken, bereits abgeschlossene Projekte ohne neue Bauphase.
 
-WAS NICHT ZÄHLT: Unfälle, Meinungsartikel, Veranstaltungen, Personalien, reine Statistik, private Einfamilienhäuser.
-
-AUSGABE: NUR ein JSON-Array, kein Text davor/danach, kein Markdown.
+AUSGABE: AUSSCHLIESSLICH ein JSON-Array. Kein Text davor/danach, kein Markdown, keine Backticks.
 [
   {
     "titel": "Prägnanter Projekttitel (max 80 Zeichen)",
-    "beschreibung": "2-3 Sätze: WAS wird gebaut, WO, WANN, WER, WIE GROSS.",
-    "ort": "Gemeinde/Stadt in Österreich",
+    "beschreibung": "2-3 Sätze: WAS wird gebaut, WO genau, WANN (Zeitplan), WER ist Bauherr/Auftraggeber, WIE GROSS (Volumen/Fläche).",
+    "ort": "Gemeinde/Stadt",
     "bezirk": "politischer Bezirk oder leer",
     "bundesland": "W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR",
     "kategorie": "Hochbau/Tiefbau/Energie/Infrastruktur/Immobilien/Öffentlich/Industrie/Sonstiges",
-    "volumen": "z.B. '12 Mio. Euro' oder leer",
+    "volumen": "z.B. '12 Mio. Euro' oder '3.500 m²' oder leer",
     "phase": "Planung/Ausschreibung/Vergabe/Bau/Fertigstellung",
     "relevanz": 7,
-    "datum": "YYYY-MM-DD wenn bekannt, sonst leer",
-    "artikel_url": "vollständige https-URL",
+    "datum": "YYYY-MM-DD des Berichts/Beschlusses wenn bekannt, sonst leer",
+    "artikel_url": "vollständige https-URL der Quelle",
     "quelle_name": "z.B. meinbezirk.at, OÖN, ankoe.at"
   }
 ]
-RELEVANZ: 10=laufende Ausschreibung · 8-9=beschlossenes Projekt · 6-7=konkret geplant · 4-5=angekündigt · 1-3=vage. [] wenn wirklich nichts passt."""
+
+RELEVANZ-SKALA:
+10 = laufende Ausschreibung mit Vergabesumme · 8-9 = beschlossenes Projekt mit Budget+Termin · 6-7 = konkret geplant mit Details · 4-5 = angekündigt/erste Infos · 1-3 = vage.
+
+Gib lieber mehr Treffer zurück. Findest du wirklich nichts: []"""
+
 
 def _parse_json_array(text: str) -> list:
+    """
+    Robuster Parser: extrahiert ein JSON-Array auch wenn die Antwort
+    abgeschnitten ist (max_tokens) oder Zusatztext enthält. Fällt auf das
+    Einsammeln einzelner vollständiger {...}-Objekte zurück.
+    """
     if not text:
         return []
     start = text.find("[")
@@ -492,25 +458,35 @@ def _parse_json_array(text: str) -> list:
                 return ergebnis
         except json.JSONDecodeError:
             pass
+    # Fallback: einzelne Objekte herausschneiden (toleriert Abbruch/Trailing-Kommas)
     objekte = []
     tiefe = 0
     obj_start = -1
     for i in range(start, len(text)):
         c = text[i]
         if c == "{":
-            if tiefe == 0: obj_start = i
+            if tiefe == 0:
+                obj_start = i
             tiefe += 1
         elif c == "}":
             if tiefe > 0:
                 tiefe -= 1
                 if tiefe == 0 and obj_start >= 0:
-                    try: objekte.append(json.loads(text[obj_start:i + 1]))
-                    except json.JSONDecodeError: pass
+                    try:
+                        objekte.append(json.loads(text[obj_start:i + 1]))
+                    except json.JSONDecodeError:
+                        pass
                     obj_start = -1
     return objekte
 
+
 def _websearch_aufruf(prompt: str, modell: str,
                       max_searches: int = WEB_SEARCH_MAX_USES) -> list:
+    """
+    Zentraler web_search-gestützter API-Aufruf. Gibt die geparste Projektliste
+    zurück. Fehler werden abgefangen und als leere Liste zurückgegeben, damit
+    ein einzelner fehlgeschlagener Call nie den ganzen Lauf abbricht.
+    """
     try:
         response = ANTHROPIC_CLIENT.messages.create(
             model=modell,
@@ -523,12 +499,14 @@ def _websearch_aufruf(prompt: str, modell: str,
             }],
             messages=[{"role": "user", "content": prompt}],
         )
+        # Token-/Kosten-Statistik
         try:
             _TOKEN_STATS["input"]  += response.usage.input_tokens
             _TOKEN_STATS["output"] += response.usage.output_tokens
         except Exception:
             pass
         _TOKEN_STATS["calls"] += 1
+
         text = " ".join(
             b.text for b in response.content
             if getattr(b, "type", None) == "text" and getattr(b, "text", "")
@@ -539,126 +517,143 @@ def _websearch_aufruf(prompt: str, modell: str,
         print(f"    ❌ web_search Fehler: {str(ex)[:140]}")
         return []
 
-# ---------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Die vier Suchgleise
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 def suche_projekte(bundesland: str, kategorie_name: str, gewerke_liste: list,
                    suchbegriffe: list, cutoff: str, heute: str, modell: str) -> list:
-    bl_name  = BL_NAMEN.get(bundesland, bundesland)
-    gew_txt  = ", ".join(gewerke_liste[:14]) if gewerke_liste else kategorie_name
-    signale  = ", ".join(suchbegriffe[:10])
-    quellen  = _quellen_hinweis(bundesland)
-    prompt = f"""Suche aktuelle Bauprojekte im Bereich "{kategorie_name}" NUR im österreichischen Bundesland {bl_name}.
+    """Suchgleis 1/2: gewerk-fokussierte Projekt-/Bausuche in Medien."""
+    bl_name     = BL_NAMEN.get(bundesland, bundesland)
+    gewerke_txt = ", ".join(gewerke_liste[:14]) if gewerke_liste else kategorie_name
+    signale     = ", ".join(suchbegriffe[:10])
 
-⛔ NUR {bl_name}. Sammelseiten zeigen ganz Österreich – nimm nur {bl_name}-Projekte.
-ZEITRAUM: {cutoff} bis {heute}.
-GEWERKE: {gew_txt}
-SIGNALWÖRTER: {signale}
+    prompt = f"""Suche aktuelle Projekte im Bereich "{kategorie_name}" in {bl_name} (Österreich).
 
-MEHRERE SUCHEN, z.B.: "Spatenstich {bl_name} 2026", "Baustart {bl_name}", "Neubau {bl_name} Investition", "[Ort in {bl_name}] Neubau", "[Gewerk] {bl_name}".
-QUELLEN: {quellen}, derstandard.at, diepresse.com, industriemagazin.at
+ZEITRAUM: Nur Projekte/Meldungen vom {cutoff} bis {heute}. Ältere Berichte ignorieren.
 
-Antworte als JSON-Array (nur {bl_name})."""
+GESUCHTE GEWERKE DES KUNDEN: {gewerke_txt}
+NÜTZLICHE SIGNALWÖRTER: {signale}
+
+FÜHRE MEHRERE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
+- "Spatenstich {bl_name} 2026"
+- "Baustart Neubau {bl_name}"
+- "Bauprojekt {bl_name} Investition Millionen"
+- "[größere Stadt in {bl_name}] Neubau Projekt"
+- einzelne Gewerke aus der Liste + Ortsname in {bl_name}
+- "Betriebserweiterung {bl_name}" / "Gewerbepark {bl_name}"
+
+QUELLEN u.a.: meinbezirk.at, nachrichten.at (OÖN), tips.at, ots.at, krone.at,
+diepresse.com, derstandard.at, industriemagazin.at, wirtschaftszeit,
+Bezirksblätter, Landespresse.
+
+Sammle ALLE konkreten Treffer (auch kleinere). Antworte als JSON-Array."""
     return _websearch_aufruf(prompt, modell)
+
 
 def suche_vergaben(bundesland: str, suchbegriffe: list,
                    cutoff: str, heute: str, modell: str) -> list:
-    bl_name   = BL_NAMEN.get(bundesland, bundesland)
-    subdomain = VERGABE_SUBDOMAIN.get(bundesland, "")
-    regio     = f"{subdomain}.vergabeportal.at" if subdomain else "vergabeportal.at"
-    prompt = f"""Suche ÖFFENTLICHE AUSSCHREIBUNGEN und VERGABEN für Bauleistungen NUR in {bl_name} (Österreich).
+    """Suchgleis 3: dedizierte Suche auf österreichischen Vergabeportalen."""
+    bl_name = BL_NAMEN.get(bundesland, bundesland)
+    signale = ", ".join(suchbegriffe[:8])
 
-⛔ NUR Ausschreibungen mit Erfüllungsort in {bl_name}.
-ZEITRAUM: aktiv/veröffentlicht {cutoff} bis {heute}.
+    prompt = f"""Suche AKTUELLE ÖFFENTLICHE AUSSCHREIBUNGEN und VERGABEN für Bauleistungen in {bl_name} (Österreich).
 
-PORTALE (mehrere Suchen!):
-- ankoe.at / vergabe.gv.at
-- {regio} (Regionalportal {bl_name})
-- auftrag.at, offenevergaben.at, lieferanzeiger.at
-- ted.europa.eu (EU-Ausschreibungen {bl_name})
-- bbg.gv.at
+ZEITRAUM: Ausschreibungen aktiv oder veröffentlicht vom {cutoff} bis {heute}.
 
-SUCHE z.B.: "Bauausschreibung {bl_name}", "Vergabe Bauleistung {bl_name}", "Hochbau Ausschreibung {bl_name}".
-Antworte als JSON-Array (nur {bl_name})."""
+DURCHSUCHE GEZIELT DIESE VERGABEPORTALE (mehrere Suchen!):
+- ankoe.at und vergabe.gv.at (offizielles österreichisches Vergabeportal)
+- auftrag.at
+- lieferanzeiger.at
+- offenevergaben.at
+- ted.europa.eu (EU-Ausschreibungen, Land = Österreich)
+- bbg.gv.at (Bundesbeschaffung)
+- Vergabe-/Beschaffungsplattformen der Länder und größeren Städte
+
+SUCHE u.a. NACH: "Bauausschreibung {bl_name}", "Vergabe Bauleistung {bl_name}",
+"Generalunternehmer Ausschreibung {bl_name}", "Hochbau/Tiefbau Ausschreibung {bl_name}",
+sowie {signale} jeweils + "{bl_name}".
+
+Für jeden Treffer: Auftraggeber, Gewerk, geschätzte Auftragssumme, Frist.
+Diese Treffer sind besonders wertvoll → phase="Ausschreibung" oder "Vergabe",
+relevanz typischerweise 8-10. Antworte als JSON-Array."""
     return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
 
-def suche_kommunal(bundesland: str, orte: list, suchbegriffe: list,
+
+def suche_kommunal(bundesland: str, bezirke_orte: dict, suchbegriffe: list,
                    cutoff: str, heute: str, modell: str) -> list:
-    """
-    Kommunale Bauprojekte & Gemeinderatsbeschlüsse.
+    """Suchgleis 4: kommunale Bauprojekte & Gemeinderats-/Stadtratsbeschlüsse."""
+    bl_name = BL_NAMEN.get(bundesland, bundesland)
+    if bezirke_orte:
+        bezirke_txt = "; ".join(
+            f"{bez} (z.B. {', '.join(orte[:4])})"
+            for bez, orte in list(bezirke_orte.items())[:12]
+        )
+    else:
+        bezirke_txt = f"alle Bezirke von {bl_name}"
 
-    WICHTIG: Gemeinden tagen typischerweise MONATLICH, Berichterstattung
-    erscheint oft mit Verzögerung. Daher verwendet diese Suche ein WEITERES
-    ZEITFENSTER als die anderen Gleise (cutoff kommt bereits entsprechend
-    angepasst von verarbeite_auftrag).
+    prompt = f"""Suche KOMMUNALE BAUPROJEKTE und GEMEINDERATS-/STADTRATSBESCHLÜSSE in {bl_name} (Österreich).
 
-    Österreichische Protokoll-PDFs sind kaum suchbar → wir suchen gezielt
-    nach REGIONALER NACHRICHTENBERICHTERSTATTUNG über Beschlüsse.
-    """
-    bl_name      = BL_NAMEN.get(bundesland, bundesland)
-    quellen      = _quellen_hinweis(bundesland)
-    orte_txt     = ", ".join(orte[:22]) if orte else f"Gemeinden in {bl_name}"
+ZEITRAUM: Beschlüsse/Meldungen vom {cutoff} bis {heute}.
 
-    prompt = f"""Suche KOMMUNALE BAUPROJEKTE und GEMEINDERATSBESCHLÜSSE im österreichischen Bundesland {bl_name}.
+BEZIRKE & BEISPIELORTE (decke möglichst viele ab):
+{bezirke_txt}
 
-WICHTIG: Österreichische Gemeindeprotokolle sind kaum direkt auffindbar. Suche daher nach REGIONALEN NACHRICHTENBERICHTEN über Gemeinderatsbeschlüsse – das funktioniert gut!
+FÜHRE VIELE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
+- "Gemeinderat beschließt [Ort] Bau"
+- "[Ort] Spatenstich Gemeinde 2026"
+- "[Bezirk] Gemeinde Bauprojekt 2026"
+- "Stadtrat [Stadt] Neubau Beschluss"
+- "[Ort] Kindergarten Neubau" / "[Ort] Schule Erweiterung" / "[Ort] Feuerwehrhaus"
+- "[Ort] Bauhof Neubau" / "[Ort] Amtsgebäude" / "[Ort] Gemeindezentrum"
+- "[Ort] Kanal Wasserleitung Sanierung" / "[Ort] Ortsstraße Sanierung"
 
-ZEITRAUM: {cutoff} bis {heute} (weites Fenster weil Gemeinden monatlich tagen).
-⛔ Nur Österreich / nur {bl_name}. Deutsche Portale (ris-portal.de, .de-Seiten ohne AT-Bezug) IGNORIEREN.
+QUELLEN: meinbezirk.at (nach Bezirk gegliedert!), lokale Bezirksblätter,
+Gemeinde-Websites (.gv.at), tips.at, Landespresse {bl_name}.
 
-ECHTE ORTE IN {bl_name} (nutze diese in Suchen):
-{orte_txt}
+Kommunale Projekte sind oft kleiner – nimm sie TROTZDEM auf (relevanz 4-7).
+Ziel: möglichst viele konkrete kommunale Vorhaben. Antworte als JSON-Array."""
+    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
 
-FÜHRE VIELE VERSCHIEDENE SUCHEN DURCH:
-- "Gemeinderat [Ort] beschließt Neubau" / "[Ort] einstimmig Bau beschlossen"
-- "[Ort] Spatenstich 2026" / "[Ort] Baubeginn Gemeinde"
-- "[Ort] Kindergarten Neubau" / "[Ort] Volksschule Erweiterung"
-- "[Ort] Feuerwehrhaus Neubau" / "[Ort] Bauhof Neubau" / "[Ort] Gemeindeamt"
-- "[Ort] Kanal Sanierung" / "[Ort] Wasserleitung" / "[Ort] Ortsstraße"
-- "[Ort] Wohnbau gemeinnützig" / "[Ort] Sozialzentrum"
-- "Gemeinderatsbeschluss Bauprojekt {bl_name} 2026"
 
-BESTE QUELLEN FÜR KOMMUNALES: {quellen}
-(diese berichten regelmäßig über Gemeinderatsbeschlüsse – ideal!)
-
-Kommunale Projekte sind oft kleiner (ab 500.000 €) – nimm sie TROTZDEM auf (relevanz 4-7).
-Antworte als JSON-Array. Leeres Array [] nur wenn wirklich NICHTS gefunden."""
-    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 2)
-
-# ---------------------------------------------------------------------------
-# Validierung & Normalisierung
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Validierung & Normalisierung eines einzelnen Treffers
+# -----------------------------------------------------------------------------
 
 def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
                                         min_relevanz: int = 4) -> dict | None:
+    """
+    Prüft Plausibilität und normalisiert ein gefundenes Projekt.
+    - Titel + Beschreibung vorhanden und lang genug?
+    - Relevanz >= min_relevanz?
+    - Bundesland plausibel (robuste Normalisierung; nur bei klarer Abweichung verwerfen)?
+    Gibt None zurück, wenn der Treffer nicht aufgenommen werden soll.
+    """
     if not isinstance(projekt, dict):
         return None
+
     titel        = str(projekt.get("titel") or "").strip()
     beschreibung = str(projekt.get("beschreibung") or "").strip()
     if len(titel) < 5 or len(beschreibung) < 15:
         return None
-    if _ist_ausland(projekt):
-        return None
+
     try:
         relevanz = int(projekt.get("relevanz", 5))
     except (ValueError, TypeError):
         relevanz = 5
     if relevanz < min_relevanz:
         return None
+
     bl = _normalisiere_bundesland(str(projekt.get("bundesland") or ""))
-    if bundesland_erwartet:
-        if bl and bl != bundesland_erwartet:
-            return None
-        if bundesland_erwartet != "W":
-            ort_l = str(projekt.get("ort") or "").lower()
-            if "wien" in ort_l or any(b.lower() in ort_l for b in WIEN_BEZIRKE if len(b) > 6):
-                return None
-        if not bl:
-            bl = bundesland_erwartet
+    # Bundesland-Filter nur bei spezifischer (Einzel-)Suche und klarer Abweichung
+    if bundesland_erwartet and bl and bl != bundesland_erwartet:
+        return None
+
     url = str(projekt.get("artikel_url") or "").strip()
     if url and not url.startswith("http"):
         url = ""
+
     return {
         "titel":       titel[:200],
         "beschreibung": beschreibung,
@@ -673,13 +668,19 @@ def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
         "quelle_name": str(projekt.get("quelle_name") or "web_search").strip(),
     }
 
+
 def _verarbeite_treffer(raw_liste: list, bundesland: str, min_relevanz: int,
                         gesehen: set, neue_projekte: list, auftrag: dict) -> int:
+    """
+    Validiert, dedupliziert (innerhalb des Laufs) und speichert eine Liste roher
+    Treffer in Supabase. Gibt die Anzahl NEU gespeicherter Projekte zurück.
+    """
     gespeichert = 0
     for raw in raw_liste:
         projekt = validiere_und_normalisiere_projekt(raw, bundesland, min_relevanz)
         if not projekt:
             continue
+        # Dedup-Schlüssel: URL, sonst Titel+Ort (kleingeschrieben)
         key = projekt["artikel_url"].lower() if projekt["artikel_url"] \
               else f"{projekt['titel'].lower()}|{projekt['ort'].lower()}"
         if key in gesehen:
@@ -695,8 +696,6 @@ def _verarbeite_treffer(raw_liste: list, bundesland: str, min_relevanz: int,
             neue_projekte.append(projekt)
             gespeichert += 1
     return gespeichert
-
-
 
 # SCHRITT 6: PROJEKTE IN SUPABASE SPEICHERN
 # WICHTIG: Duplikat-Check LAUFÜBERGREIFEND – kein suchanfrage_id Filter!
@@ -766,61 +765,115 @@ def erstelle_email_html(kunde: dict, auftrag: dict, projekte_liste: list[dict]) 
 
     top_projekte = sorted(projekte_liste, key=lambda p: p.get("relevanz", 0), reverse=True)[:5]
 
+    # Phasen-Farben (hell)
+    def phase_style(phase: str):
+        p = (phase or "").lower()
+        if "ausschreibung" in p or "vergabe" in p:
+            return "background:#fef3c7;color:#92400e;"   # amber
+        if "bau" in p or "fertigstellung" in p:
+            return "background:#dcfce7;color:#166534;"   # grün
+        return "background:#dbeafe;color:#1e40af;"       # blau (Planung)
+
     projekt_html = ""
     for p in top_projekte:
-        relevanz_sterne = "★" * min(int(int(p.get("relevanz", 5)) / 2), 5)
+        relevanz     = int(p.get("relevanz", 5))
+        sterne       = "★" * min(relevanz // 2, 5)
+        ph_style     = phase_style(p.get("phase", ""))
+        artikel_link = (
+            f'<a href="{p.get("artikel_url","#")}" '
+            f'style="color:#2563eb;font-size:12px;font-weight:600;">→ Zum Artikel</a>'
+            if p.get("artikel_url") else
+            '<span style="font-size:12px;color:#94a3b8;">Kein Link verfügbar</span>'
+        )
+        bezirk_txt = f" · {p.get('bezirk')}" if p.get("bezirk") else ""
+        volumen_txt = f" · {p.get('volumen')}" if p.get("volumen") else ""
         projekt_html += f"""
-        <div style="background:#1a1a2e;border:1px solid #d4a017;border-radius:6px;padding:16px;margin-bottom:12px;">
-          <div style="font-size:11px;color:#d4a017;font-family:monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
-            {p.get('kategorie','Sonstiges')} · {p.get('phase','unbekannt')} · {relevanz_sterne}
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:12px;border-left:4px solid #2563eb;">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;">{p.get('kategorie','Sonstiges')}</span>
+            <span style="font-size:10px;color:#cbd5e1;">·</span>
+            <span style="{ph_style}padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">{p.get('phase','Planung')}</span>
+            <span style="font-size:10px;color:#f59e0b;margin-left:2px;">{sterne}</span>
           </div>
-          <div style="font-size:16px;font-weight:600;color:#f0f0f0;margin-bottom:6px;">{p.get('titel','')}</div>
-          <div style="font-size:13px;color:#8b949e;margin-bottom:8px;">
-            📍 {p.get('ort','')} {('· ' + p.get('bezirk','')) if p.get('bezirk') else ''} · {p.get('bundesland','')}
-            {(' · 💶 ' + p.get('volumen','')) if p.get('volumen') else ''}
+          <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:6px;line-height:1.4;">{p.get('titel','')}</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px;">
+            📍 {p.get('ort','')}{bezirk_txt} · {p.get('bundesland','')}{volumen_txt}
           </div>
-          <div style="font-size:13px;color:#c9d1d9;margin-bottom:10px;">{p.get('beschreibung','')}</div>
-          <a href="{p.get('artikel_url','#')}" style="color:#d4a017;font-size:12px;">→ Zum Artikel</a>
+          <div style="font-size:13px;color:#334155;line-height:1.6;margin-bottom:10px;">{p.get('beschreibung','')}</div>
+          {artikel_link}
         </div>"""
 
+    # Dashboard-Button (wiederverwendet an zwei Stellen)
+    btn = (f'<a href="{dashboard_url}" '
+           f'style="background:#2563eb;color:#ffffff;font-weight:700;font-size:14px;'
+           f'padding:13px 28px;border-radius:8px;text-decoration:none;display:inline-block;">'
+           f'📊 Alle {anzahl} Projekte im Dashboard ansehen</a>')
+
     return f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="background:#0a0a0a;color:#e6edf3;font-family:'DM Sans',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 16px;">
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1f5f9">
+<tr><td align="center" style="padding:32px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
 
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="font-size:32px;font-weight:900;letter-spacing:4px;color:#d4a017;">ProjectScout</div>
-    <div style="font-size:13px;color:#8b949e;margin-top:4px;">KI-Projekt-Scout für Österreich</div>
-  </div>
+  <!-- HEADER -->
+  <tr><td style="background:#2563eb;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:2px;color:#bfdbfe;text-transform:uppercase;margin-bottom:6px;">PROJECT<span style="color:#ffffff;">SCOUT</span></div>
+    <div style="font-size:13px;color:#bfdbfe;">KI-Projekt-Scout für Österreich</div>
+  </td></tr>
 
-  <div style="background:#161b22;border:1px solid #238636;border-radius:8px;padding:24px;margin-bottom:24px;text-align:center;">
-    <div style="font-size:40px;font-weight:900;color:#d4a017;">{anzahl}</div>
-    <div style="font-size:16px;color:#e6edf3;margin-top:4px;">Neue Projekte gefunden</div>
-    <div style="font-size:13px;color:#8b949e;margin-top:8px;">für {kunde.get('firmenname','Ihr Unternehmen')}</div>
-  </div>
+  <!-- KENNZAHLEN-BOX -->
+  <tr><td style="background:#ffffff;padding:28px 32px 20px;border-bottom:1px solid #e2e8f0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="text-align:center;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;">
+          <div style="font-size:36px;font-weight:900;color:#2563eb;">{anzahl}</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Neue Projekte</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px;">für {kunde.get('firmenname','Ihr Unternehmen')}</div>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:14px;color:#475569;margin:16px 0 0;line-height:1.6;">
+      Ihr Scout-Lauf ist abgeschlossen. Hier sind die <strong>{min(anzahl,5)} relevantesten</strong> neuen Projekte – alle weiteren finden Sie im Dashboard.
+    </p>
+  </td></tr>
 
-  <p style="color:#8b949e;font-size:14px;margin-bottom:20px;">
-    Ihr Scout-Lauf ist abgeschlossen. Hier sind die {min(anzahl,5)} relevantesten neuen Projekte:
-  </p>
+  <!-- BUTTON OBEN -->
+  <tr><td style="background:#ffffff;padding:20px 32px;text-align:center;border-bottom:1px solid #e2e8f0;">
+    {btn}
+  </td></tr>
 
-  {projekt_html}
+  <!-- PROJEKTE -->
+  <tr><td style="background:#f8fafc;padding:24px 32px;">
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;">TOP-PROJEKTE DIESES LAUFS</div>
+    {projekt_html}
+  </td></tr>
 
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{dashboard_url}"
-       style="background:#d4a017;color:#0a0a0a;font-weight:700;font-size:15px;padding:14px 32px;border-radius:4px;text-decoration:none;display:inline-block;">
-      → Alle {anzahl} Projekte im Dashboard ansehen
-    </a>
-  </div>
+  <!-- BUTTON UNTEN -->
+  <tr><td style="background:#ffffff;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+    {btn}
+  </td></tr>
 
-  <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px;font-size:12px;color:#8b949e;margin-top:24px;">
-    <strong style="color:#e6edf3;">🔖 Ihr persönlicher Dashboard-Link:</strong><br>
-    <a href="{dashboard_url}" style="color:#d4a017;word-break:break-all;">{dashboard_url}</a><br><br>
-    Speichern Sie diesen Link als Favorit – er bleibt bei allen zukünftigen Scout-Läufen gleich.<br><br>
-    Excel-Export steht im Dashboard zum Download bereit.<br>
-    Fragen? Antworten Sie auf diese E-Mail.<br>
-    <a href="https://project-scout.at/" style="color:#d4a017;">project-scout.at</a>
-  </div>
+  <!-- FOOTER -->
+  <tr><td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:20px 32px;">
+    <p style="font-size:12px;color:#64748b;margin:0 0 8px;"><strong style="color:#374151;">🔖 Ihr persönlicher Dashboard-Link:</strong></p>
+    <p style="margin:0 0 12px;"><a href="{dashboard_url}" style="color:#2563eb;font-size:12px;word-break:break-all;">{dashboard_url}</a></p>
+    <p style="font-size:11px;color:#94a3b8;margin:0;line-height:1.6;">
+      Speichern Sie diesen Link als Favorit – er bleibt bei allen Scout-Läufen gleich und wächst mit jeder Suche. ·
+      Excel-Export im Dashboard verfügbar. ·
+      Fragen? Einfach auf diese E-Mail antworten. ·
+      <a href="https://project-scout.at/" style="color:#2563eb;">project-scout.at</a>
+    </p>
+  </td></tr>
 
+</table>
+</td></tr>
+</table>
 </body>
 </html>"""
 
@@ -1093,19 +1146,14 @@ def verarbeite_auftrag(auftrag: dict) -> None:
             # ── Gleis 4: Kommunal / Gemeinderats- & Stadtratsbeschlüsse ──
             if not zeit_aufgebraucht():
                 print(f"\n  🏘️  [{bl}] Kommunal- & Gemeinderatssuche")
-                orte = _repraesentative_orte(bl, anzahl=25)
-                if orte:
-                    print(f"     ({len(orte)} echte Ortsnamen aus der Gemeinde-DB)")
-                # Gemeinden tagen monatlich → weites Zeitfenster (min. 60 Tage)
-                # damit auch Beschlüsse der letzten 2 Monate gefunden werden.
-                kommunal_tage   = max(zeitraum_tage * 2, 60)
-                kommunal_cutoff = (heute_dt - timedelta(days=kommunal_tage)).strftime("%d.%m.%Y")
-                print(f"     (Kommunal-Zeitfenster: {kommunal_cutoff} – {heute_str}, {kommunal_tage} Tage)")
+                bezirke_orte = _bezirke_mit_orten(bl)
+                if bezirke_orte:
+                    print(f"     ({len(bezirke_orte)} Bezirke mit echten Ortsnamen)")
                 time.sleep(1.5)
                 # Kommunalprojekte sind oft kleiner → min_relevanz=3
                 roh = suche_kommunal(
-                    bundesland=bl, orte=orte,
-                    suchbegriffe=suchbegriffe, cutoff=kommunal_cutoff,
+                    bundesland=bl, bezirke_orte=bezirke_orte,
+                    suchbegriffe=suchbegriffe, cutoff=cutoff_str,
                     heute=heute_str, modell=modell,
                 )
                 gesamt_gefunden += len(roh)
