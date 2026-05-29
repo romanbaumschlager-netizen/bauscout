@@ -441,14 +441,7 @@
           <button class="btn-outline" onclick="zurueck(2)">← Zurück</button>
           <button class="btn-gold" onclick="weiter(2)">Weiter →</button>
         </div>
-        <div id="mini-preisrechner-gewerke" style="margin-top:16px;background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:14px 18px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:12px;font-weight:600;color:var(--blau);text-transform:uppercase;letter-spacing:0.8px;">Laufender Preis</span>
-            <span style="font-size:22px;font-weight:700;color:var(--blau);font-family:'DM Mono',monospace;" id="mini-preis-gesamt-gewerke">€ –</span>
-          </div>
-          <div id="mini-preis-zeilen-gewerke" style="display:flex;flex-direction:column;gap:3px;"></div>
-          <div style="font-size:11px;color:var(--blau);margin-top:8px;opacity:0.7;">Bundesland &amp; Zeitraum aus den anderen Schritten fließen ein · Max. € 149</div>
-        </div>
+
       </div>
     </div>
 
@@ -469,14 +462,7 @@
         <div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-mid);line-height:1.7;">💶 <strong style="color:var(--text);">Mengenrabatt:</strong> 1. Bundesland <strong>€ 8,00</strong> · 2. BL <strong>€ 7,50</strong> · 3. BL <strong>€ 7,00</strong> · ... jedes weitere um € 0,50 günstiger · <span style="color:var(--blau);font-weight:600;">Ganz Österreich pauschal € 50,00</span></div>
         <div id="bl-accordion"></div>
         <div id="gebiet-zusammenfassung" style="margin-top:16px;"></div>
-        <div id="mini-preisrechner" style="margin-top:16px;background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:14px 18px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:12px;font-weight:600;color:var(--blau);text-transform:uppercase;letter-spacing:0.8px;">Laufender Preis</span>
-            <span style="font-size:22px;font-weight:700;color:var(--blau);font-family:'DM Mono',monospace;" id="mini-preis-gesamt">€ –</span>
-          </div>
-          <div id="mini-preis-zeilen" style="display:flex;flex-direction:column;gap:3px;"></div>
-          <div style="font-size:11px;color:var(--blau);margin-top:8px;opacity:0.7;">Gewerke &amp; Zeitraum aus den anderen Schritten fließen ein · Max. € 149</div>
-        </div>
+
         <div class="btn-row">
           <button class="btn-outline" onclick="zurueck(3)">← Zurück</button>
           <button class="btn-gold" onclick="weiter(3)">Weiter →</button>
@@ -647,23 +633,7 @@ const PREIS_PRO_KAT=7.00,PREIS_PRO_TAG=0.50,PREIS_MAX=149.00,PREIS_GANZ_OE_BL=50
 function berechneBLKosten(n){let t=0;for(let i=0;i<n;i++)t+=Math.max(8.00-i*0.50,0);return Math.round(t*100)/100;}
 function ermittleAnzahlKategorien(){let count=0;for(const[kat,gewerke]of Object.entries(GEWERKE)){if(gewerke.some(g=>ausgewaehlteGewerke.has(g)))count++;}return count;}
 function berechnePreis(){const kat=ermittleAnzahlKategorien();const nBL=ganzOe?9:ausgewaehlteBL.size;const bl=ganzOe?PREIS_GANZ_OE_BL:(nBL>0?berechneBLKosten(nBL):0);return Math.min((kat*PREIS_PRO_KAT)+bl+(gewaehlterZeitraum*PREIS_PRO_TAG),PREIS_MAX);}
-function updatePreis(){const preis=berechnePreis();const el=document.getElementById('preis-anzeige');const details=document.getElementById('preis-details');const aufschluss=document.getElementById('preis-aufschluss');if(!el)return;el.textContent=`€ ${preis.toFixed(2)}`;const anzahlKat=ermittleAnzahlKategorien();const anzahlBL=ganzOe?9:Math.max(ausgewaehlteBL.size,1);const gebiet=ganzOe?'Ganz Österreich':(ausgewaehlteBL.size>0?[...ausgewaehlteBL].join(', '):'Noch kein Gebiet');if(details)details.textContent=`${gebiet} · ${anzahlKat} Kategorien · ${gewaehlterZeitraum} Tage`;if(aufschluss){const istMax=preis>=PREIS_MAX;aufschluss.innerHTML='<div style="font-size:12px;color:var(--text-dim);border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;"><strong style="color:var(--text-mid);">Preiszusammensetzung</strong></div>'+'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;"><span>'+anzahlKat+' Gewerke × € '+PREIS_PRO_KAT.toFixed(2)+'</span><span>€ '+(anzahlKat*PREIS_PRO_KAT).toFixed(2)+'</span></div>'+'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;"><span>'+(ganzOe?'Ganz Österreich (Pauschal)':anzahlBL+' Bundesland'+(anzahlBL!==1?'/-länder (Rabatt)':''))+'</span><span>€ '+(ganzOe?PREIS_GANZ_OE_BL:berechneBLKosten(anzahlBL)).toFixed(2)+'</span></div>'+'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;"><span>'+gewaehlterZeitraum+' Tage × € '+PREIS_PRO_TAG.toFixed(2)+'</span><span>€ '+(gewaehlterZeitraum*PREIS_PRO_TAG).toFixed(2)+'</span></div>'+'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:2px 0;"><span style="color:var(--text);">Gesamt'+(istMax?' (Maximalpreis)':'')+'</span><span style="color:var(--blau);">€ '+preis.toFixed(2)+'</span></div>';}
-  // Mini-Rechner aktualisieren (Schritt 2 + Schritt 3)
-  ['mini-preisrechner-gewerke','mini-preisrechner'].forEach(function(id){
-    var box=document.getElementById(id);
-    var gest=document.getElementById(id==='mini-preisrechner-gewerke'?'mini-preis-gesamt-gewerke':'mini-preis-gesamt');
-    var zln=document.getElementById(id==='mini-preisrechner-gewerke'?'mini-preis-zeilen-gewerke':'mini-preis-zeilen');
-    if(!box||!gest||!zln)return;
-    box.style.display='block';
-    gest.textContent='€ '+preis.toFixed(2);
-    var blK=ganzOe?PREIS_GANZ_OE_BL:(ausgewaehlteBL.size>0?berechneBLKosten(ausgewaehlteBL.size):0);
-    var blLbl=ganzOe?'Ganz Österreich (Pauschal)':(ausgewaehlteBL.size>1?ausgewaehlteBL.size+' Bundesländer (Rabatt)':ausgewaehlteBL.size===1?'1 Bundesland':'Kein Bundesland');
-    var html='';
-    if(anzahlKat>0)html+='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--blau-dunkel);padding:2px 0;"><span>'+anzahlKat+' Gewerke × €'+PREIS_PRO_KAT.toFixed(2)+'</span><span>€ '+(anzahlKat*PREIS_PRO_KAT).toFixed(2)+'</span></div>';
-    html+='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--blau-dunkel);padding:2px 0;"><span>'+blLbl+'</span><span>€ '+blK.toFixed(2)+'</span></div>';
-    if(gewaehlterZeitraum>0)html+='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--blau-dunkel);padding:2px 0;"><span>'+gewaehlterZeitraum+' Tage × €'+PREIS_PRO_TAG.toFixed(2)+'</span><span>€ '+(gewaehlterZeitraum*PREIS_PRO_TAG).toFixed(2)+'</span></div>';
-    zln.innerHTML=html;
-  });}
+function updatePreis(){const preis=berechnePreis();const el=document.getElementById('preis-anzeige');const details=document.getElementById('preis-details');const aufschluss=document.getElementById('preis-aufschluss');if(!el)return;el.textContent=`€ ${preis.toFixed(2)}`;const anzahlKat=ermittleAnzahlKategorien();const anzahlBL=ganzOe?9:Math.max(ausgewaehlteBL.size,1);const gebiet=ganzOe?'Ganz Österreich':(ausgewaehlteBL.size>0?[...ausgewaehlteBL].join(', '):'Noch kein Gebiet');if(details)details.textContent=`${gebiet} · ${anzahlKat} Kategorien · ${gewaehlterZeitraum} Tage`;if(aufschluss){const istMax=preis>=PREIS_MAX;aufschluss.innerHTML='<div style="font-size:12px;color:var(--text-dim);border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;"><strong style="color:var(--text-mid);">Preiszusammensetzung</strong></div>'+'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;"><span>'+anzahlKat+' Gewerke × € '+PREIS_PRO_KAT.toFixed(2)+'</span><span>€ '+(anzahlKat*PREIS_PRO_KAT).toFixed(2)+'</span></div>'+'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;"><span>'+(ganzOe?'Ganz Österreich (Pauschal)':anzahlBL+' Bundesland'+(anzahlBL!==1?'/-länder (Rabatt)':''))+'</span><span>€ '+(ganzOe?PREIS_GANZ_OE_BL:berechneBLKosten(anzahlBL)).toFixed(2)+'</span></div>'+'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;"><span>'+gewaehlterZeitraum+' Tage × € '+PREIS_PRO_TAG.toFixed(2)+'</span><span>€ '+(gewaehlterZeitraum*PREIS_PRO_TAG).toFixed(2)+'</span></div>'+'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:2px 0;"><span style="color:var(--text);">Gesamt'+(istMax?' (Maximalpreis)':'')+'</span><span style="color:var(--blau);">€ '+preis.toFixed(2)+'</span></div>';}}
 
 // ── ZUSAMMENFASSUNG (NEU) ──
 function renderZusammenfassung() {
@@ -795,6 +765,7 @@ function weiter(nr) {
     }
   }
   if (nr === 2) { if (ausgewaehlteGewerke.size === 0) { alert('Bitte mindestens ein Gewerk auswählen.'); return; } }
+  if (nr === 3) { if (!ganzOe && ausgewaehlteBL.size === 0) { alert('Bitte mindestens ein Bundesland auswählen oder „Ganz Österreich" wählen.'); return; } }
   const aktuell = document.getElementById(`s${nr}`);
   aktuell.classList.remove('aktiv'); aktuell.classList.add('erledigt');
   document.getElementById(`s${nr}-status`).textContent = '✓ erledigt';
