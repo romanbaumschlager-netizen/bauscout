@@ -822,9 +822,27 @@ def erstelle_email_html(kunde: dict, auftrag: dict, projekte_liste: list[dict]) 
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
 
   <!-- HEADER -->
-  <tr><td style="background:#2563eb;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
-    <div style="font-size:13px;font-weight:700;letter-spacing:2px;color:#bfdbfe;text-transform:uppercase;margin-bottom:6px;">PROJECT<span style="color:#ffffff;">SCOUT</span></div>
-    <div style="font-size:13px;color:#bfdbfe;">KI-Projekt-Scout für Österreich</div>
+  <tr><td style="background:#2563eb;border-radius:12px 12px 0 0;padding:24px 32px;text-align:center;">
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+      <tr>
+        <td style="vertical-align:middle;padding-right:12px;">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="17" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.35"/>
+            <circle cx="20" cy="20" r="17" stroke="#bfdbfe" stroke-width="1" fill="none"/>
+            <polygon points="20,5 23,20 20,17 17,20" fill="#ffffff"/>
+            <polygon points="20,35 23,20 20,23 17,20" fill="#bfdbfe" opacity="0.55"/>
+            <polygon points="5,20 20,17 17,20 20,23" fill="#bfdbfe" opacity="0.55"/>
+            <polygon points="35,20 20,17 23,20 20,23" fill="#bfdbfe" opacity="0.55"/>
+            <circle cx="20" cy="20" r="2.5" fill="#ffffff"/>
+            <circle cx="20" cy="20" r="5" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.3"/>
+          </svg>
+        </td>
+        <td style="vertical-align:middle;text-align:left;">
+          <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;line-height:1.1;">Project<span style="color:#bfdbfe;">Scout</span></div>
+          <div style="font-size:11px;color:#bfdbfe;margin-top:3px;letter-spacing:0.2px;">Intelligentes Scouting · Österreich</div>
+        </td>
+      </tr>
+    </table>
   </td></tr>
 
   <!-- KENNZAHLEN-BOX -->
