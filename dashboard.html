@@ -220,12 +220,12 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
 </div>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=DEIN_NEUER_GOOGLE_MAPS_KEY&language=de&region=AT"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+<script>
 const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let alleProjekte  = [];
 let alleAuftraege = [];
