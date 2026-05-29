@@ -219,7 +219,7 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
   </div>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA7JsqGDYcLNAn1fHWP2xwKMd1GpwyLL0M&language=de&region=AT"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=DEIN_NEUER_GOOGLE_MAPS_KEY&language=de&region=AT"></script>
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (t === 'liste')     document.getElementById('tab-liste').classList.add('aktiv');
       if (t === 'karte')     document.getElementById('tab-karte').classList.add('aktiv');
       if (t === 'merkliste') document.getElementById('tab-merkliste-inhalt').classList.add('aktiv');
-      if (t === 'karte') setTimeout(() => { if (karteInstanz) karteInstanz.invalidateSize(); else aktualisiereKarte(); }, 100);
+      if (t === 'karte') setTimeout(() => aktualisiereKarte(), 100);
     });
   });
   document.getElementById('btn-excel')?.addEventListener('click', exportiereExcel);
