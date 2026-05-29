@@ -6,7 +6,7 @@
 <title>ProjectScout – Dashboard</title>
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <style>
 :root {
   --weiss:#ffffff; --hell:#f8f7f4; --hell2:#f1f0ec; --rand:#e5e4e0; --rand2:#d0cfc9;
@@ -103,7 +103,7 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
 .merkliste-header-text{font-size:14px;font-weight:600;color:#92400e;}
 .merkliste-header-sub{font-size:12px;color:#b45309;margin-top:2px;}
 .karte-container{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--rand);}
-#karte{height:calc(100vh - 220px);min-height:400px;}
+#karte{height:calc(100vh - 220px);min-height:400px;background:#f1f0ec;}
 .karte-overlay{position:absolute;top:12px;left:12px;z-index:999;background:var(--weiss);border:1px solid var(--rand);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text-mid);box-shadow:0 2px 8px rgba(0,0,0,0.08);}
 .laden{display:flex;align-items:center;gap:10px;padding:40px 20px;color:var(--text-dim);font-size:14px;}
 .laden-dots{display:flex;gap:4px;}
@@ -219,7 +219,7 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA7JsqGDYcLNAn1fHWP2xwKMd1GpwyLL0M&language=de&region=AT"></script>
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -446,27 +446,91 @@ async function toggleIgnorieren(id) {
 
 // ── KARTE ──
 function aktualisiereKarte() {
-  if (!karteInstanz) {
-    karteInstanz = L.map('karte', { zoomControl: true }).setView([47.5, 14.0], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(karteInstanz);
-  }
-  karteMarker.forEach(m => m.remove()); karteMarker = [];
+  const karteDiv = document.getElementById('karte');
+  if (!karteDiv) return;
   const projekte = gefilterteProjekte().filter(p => !p.ignorieren);
-  document.getElementById('karte-overlay').textContent = `${projekte.length} Projekte werden geladen...`;
+  const overlay  = document.getElementById('karte-overlay');
+  overlay.textContent = 'Karte wird geladen...';
+
+  // Karte initialisieren falls noch nicht vorhanden
+  if (!karteInstanz) {
+    karteInstanz = new google.maps.Map(karteDiv, {
+      center: { lat: 47.5, lng: 14.0 },
+      zoom: 7,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
+      styles: [
+        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+      ]
+    });
+  }
+
+  // Alte Marker entfernen
+  karteMarker.forEach(m => m.setMap(null));
+  karteMarker = [];
+
+  if (!projekte.length) {
+    overlay.textContent = 'Keine Projekte für diese Filterauswahl';
+    return;
+  }
+
+  const geocoder = new google.maps.Geocoder();
+  const infoWindow = new google.maps.InfoWindow();
   let mitKoords = 0;
-  projekte.forEach(async p => {
+
+  projekte.forEach(p => {
     if (!p.ort) return;
-    try {
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(p.ort+', Österreich')}&format=json&limit=1&countrycodes=at`, { headers: { 'Accept-Language': 'de' } });
-      const data = await resp.json();
-      if (!data[0]) return;
-      const farbe = (p.relevanz||0) >= 8 ? '#16a34a' : (p.relevanz||0) >= 5 ? '#d97706' : '#dc2626';
-      const icon = L.divIcon({ className: '', html: `<div style="width:13px;height:13px;border-radius:50%;background:${farbe};border:2px solid white;box-shadow:0 0 6px rgba(0,0,0,0.25);"></div>`, iconSize:[13,13], iconAnchor:[6,6] });
-      const marker = L.marker([parseFloat(data[0].lat), parseFloat(data[0].lon)], { icon }).addTo(karteInstanz);
-      marker.bindPopup(`<div style="font-family:'Inter',sans-serif;min-width:200px;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">${escHtml(p.kategorie||'')} · Relevanz ${p.relevanz||0}/10</div><div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#111;">${escHtml(p.titel||'')}</div><div style="font-size:12px;color:#666;margin-bottom:8px;">📍 ${escHtml(p.ort||'')}</div>${p.artikel_url?`<a href="${escHtml(p.artikel_url)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;">→ Zum Artikel</a>`:''}</div>`, { maxWidth: 280 });
-      karteMarker.push(marker); mitKoords++;
-      document.getElementById('karte-overlay').textContent = `${mitKoords} Projekte auf Karte`;
-    } catch(e) {}
+    geocoder.geocode({ address: p.ort + ', Österreich', region: 'AT' }, (results, status) => {
+      if (status !== 'OK' || !results[0]) return;
+
+      const farbe  = (p.relevanz||0) >= 8 ? '#16a34a' : (p.relevanz||0) >= 5 ? '#d97706' : '#dc2626';
+      const pos    = results[0].geometry.location;
+
+      const marker = new google.maps.Marker({
+        position: pos,
+        map: karteInstanz,
+        title: p.titel || '',
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: farbe,
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        }
+      });
+
+      marker.addListener('click', () => {
+        const inhalt = `
+          <div style="font-family:'Inter',sans-serif;max-width:260px;padding:4px 0;">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">
+              ${escHtml(p.kategorie||'')} · Relevanz ${p.relevanz||0}/10
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#111;line-height:1.4;">
+              ${escHtml(p.titel||'')}
+            </div>
+            <div style="font-size:12px;color:#555;margin-bottom:4px;">
+              📍 ${escHtml(p.ort||'')}${p.bezirk ? ' · ' + escHtml(p.bezirk) : ''}
+            </div>
+            <div style="font-size:12px;color:#555;margin-bottom:8px;">
+              ${escHtml(p.phase||'')}${p.volumen ? ' · ' + escHtml(p.volumen) : ''}
+            </div>
+            ${p.artikel_url
+              ? `<a href="${escHtml(p.artikel_url)}" target="_blank"
+                   style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">
+                   → Zum Artikel
+                 </a>`
+              : ''}
+          </div>`;
+        infoWindow.setContent(inhalt);
+        infoWindow.open(karteInstanz, marker);
+      });
+
+      karteMarker.push(marker);
+      mitKoords++;
+      overlay.textContent = `${mitKoords} Projekte auf Karte`;
+    });
   });
 }
 
