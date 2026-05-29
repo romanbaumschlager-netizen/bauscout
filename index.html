@@ -801,6 +801,8 @@ function weiter(nr) {
   const naechster = document.getElementById(`s${nr+1}`);
   if (naechster) {
     naechster.classList.add('aktiv');
+    if (nr+1 === 2) renderGewerke();
+    if (nr+1 === 3) renderBundeslaender();
     if (nr+1 === 4) initChat();
     if (nr+1 === 5) renderZusammenfassung();
   }
