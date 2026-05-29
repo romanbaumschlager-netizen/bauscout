@@ -315,16 +315,16 @@ def baue_suchbegriffe(auftrag: dict) -> list[str]:
 # =============================================================================
 # SCHRITT 3 + 4 + 5: MEHRGLEISIGE KI-SUCHE MIT WEB_SEARCH-TOOL
 #
-# Kernidee: Claude sucht SELBST aktiv im Internet (web_search-Tool) – pro
-# Bundesland aus MEHREREN unabhängigen Blickwinkeln ("Suchgleisen"):
-#   1. Projektsuche  – Bau/Tiefbau/Infrastruktur (gewerk-fokussiert)
-#   2. Projektsuche  – Energie/Haustechnik (nur wenn solche Gewerke gewählt)
-#   3. Vergabeportale – dedizierte Ausschreibungs-/Vergabesuche (ankoe, TED, ...)
-#   4. Kommunal       – Gemeinderats-/Stadtratsbeschlüsse PRO BEZIRK mit echten
-#                       Ortsnamen aus der Gemeinden-Datenbank
+# Claude sucht SELBST aktiv im Internet (web_search) – pro Bundesland über
+# mehrere unabhängige "Suchgleise", jedes ein eigener API-Call:
+#   1./2. Projektsuche  – Bau/Tiefbau bzw. Energie (gewerk-fokussiert, regionale Medien)
+#   3.    Vergabeportale – ANKÖ, TED, regionales {bl}.vergabeportal.at
+#   4.    Kommunal       – Gemeinderatsbeschlüsse via REGIONALE NACHRICHTEN,
+#                          mit echten Ortsnamen aus der Gemeinden-DB
 #
-# Jedes Gleis ist ein eigener API-Call mit bis zu WEB_SEARCH_MAX_USES Suchen.
-# Dadurch deutlich mehr und vielfältigere Treffer als mit einer Pauschalsuche.
+# Geografische Strenge: jeder Treffer wird gegen das angefragte Bundesland
+# geprüft; ausländische (v.a. deutsche) Treffer werden zuverlässig verworfen.
+# Zeitfenster wird als konkretes Datum übergeben (kein vages "letzte X Tage").
 # =============================================================================
 
 def berechne_hash(text: str) -> str:
@@ -368,76 +368,173 @@ def _gruppiere_gewerke_fuer_suche(gewerke: list) -> dict:
     return gruppen
 
 
-def _bezirke_mit_orten(bundesland: str, max_bezirke: int = 14,
-                       orte_pro_bezirk: int = 5) -> dict:
+# -----------------------------------------------------------------------------
+# ÖSTERREICH-GEOGRAFIE: regionale Quellen, Wien-Bezirke, Auslandserkennung
+# Diese Daten steuern die web_search-Prompts und die geografische Validierung.
+# Per Live-Check (Mai 2026) verifiziert: diese Quellen sind via Suche erreichbar.
+# -----------------------------------------------------------------------------
+
+# Bewährte regionale Nachrichtenquellen je Bundesland (Namen, keine URLs nötig –
+# web_search findet sie). Sie werden in die Such-Prompts eingestreut, damit
+# Claude gezielt die richtigen regionalen Medien durchsucht.
+REGIONALE_QUELLEN = {
+    "W":   ["meinbezirk.at", "wien.orf.at", "kurier.at", "heute.at", "DerStandard", "Die Presse"],
+    "NOE": ["meinbezirk.at", "noe.orf.at", "NÖN (Niederösterreichische Nachrichten)", "noen.at", "tips.at"],
+    "OOE": ["meinbezirk.at", "nachrichten.at (OÖN)", "tips.at", "ooe.orf.at", "salzi.at", "Volksblatt OÖ", "dorftv"],
+    "SBG": ["meinbezirk.at", "salzburg.orf.at", "Salzburger Nachrichten (sn.at)", "salzburg24.at", "salzi.at"],
+    "STK": ["meinbezirk.at", "steiermark.orf.at", "Kleine Zeitung", "meinbezirk.at Steiermark"],
+    "KTN": ["meinbezirk.at", "kaernten.orf.at", "Kleine Zeitung Kärnten", "5min.at", "kä rnten.at"],
+    "TIR": ["meinbezirk.at", "tirol.orf.at", "Tiroler Tageszeitung (tt.com)", "meinbezirk.at Tirol", "unsertirol24"],
+    "VBG": ["meinbezirk.at", "vorarlberg.orf.at", "Vorarlberger Nachrichten (VN/vol.at)", "vol.at", "Neue Vorarlberger Tageszeitung"],
+    "BGR": ["meinbezirk.at", "burgenland.orf.at", "BVZ (Burgenländische Volkszeitung)", "bvz.at", "meinbezirk.at Burgenland"],
+}
+
+# Regionale Vergabeportal-Subdomains (Live-Check: ooe.vergabeportal.at existiert)
+VERGABE_SUBDOMAIN = {
+    "W": "wien", "NOE": "noe", "OOE": "ooe", "SBG": "sbg", "STK": "stmk",
+    "KTN": "ktn", "TIR": "tirol", "VBG": "vbg", "BGR": "bgld",
+}
+
+# Wien ist in der Gemeinden-DB nicht enthalten und besteht nicht aus eigenen
+# Gemeinden, sondern aus 23 Bezirken. Für die Kommunalsuche nutzen wir diese.
+WIEN_BEZIRKE = [
+    "Innere Stadt", "Leopoldstadt", "Landstraße", "Wieden", "Margareten",
+    "Mariahilf", "Neubau", "Josefstadt", "Alsergrund", "Favoriten",
+    "Simmering", "Meidling", "Hietzing", "Penzing", "Rudolfsheim-Fünfhaus",
+    "Ottakring", "Hernals", "Währing", "Döbling", "Brigittenau",
+    "Floridsdorf", "Donaustadt", "Liesing",
+]
+
+# Erkennungsmerkmale für AUSLÄNDISCHE (v.a. deutsche) Treffer, die web_search
+# manchmal mitliefert (deutsche Gemeinde-RIS-Portale ranken stark). Diese
+# werden in der Validierung verworfen.
+#
+# WICHTIG: Manche AT-Inhalte liegen auf .de-Domains (z.B. aboutamazon.de/news/
+# amazon-in-oesterreich/...). Darum ist die reine Domain-Endung KEIN sicheres
+# Signal. Wir trennen deshalb in (a) eindeutige Auslands-Marker und (b) schwache
+# Marker, die nur greifen wenn KEIN Österreich-Bezug erkennbar ist.
+
+# (a) Eindeutig deutsche/ausländische Quellen & Begriffe → immer verwerfen
+_AUSLAND_STARK = (
+    "ris-portal.de", "orts.app", "bad-saulgau", "heiligenberg", "epfenbach",
+    "gemarkung", "flst.nr", "flst-nr", "landkreis", "ortsgemeinde",
+    "baden-württemberg", "bayern", "sachsen", "thüringen", "hessen",
+    "rheinland-pfalz", "nordrhein", "brandenburg", "mecklenburg",
+    "niedersachsen", "schleswig-holstein", "saarland",
+)
+
+# (b) Schwache Marker (Domain-Endung / dt. PLZ) → nur Ausland wenn KEIN AT-Bezug
+_AUSLAND_SCHWACH_DOMAINS = (".de/", ".de\"", ".de ", "://de.", ".ch/", ".it/")
+
+# Positive Österreich-Signale, die einen schwachen Auslands-Marker aufheben
+_AT_SIGNALE = (
+    "österreich", "oesterreich", "austria", "in-oesterreich", ".at/", ".at\"",
+    ".gv.at", "vergabe.gv.at", "ankoe", "meinbezirk", "orf.at",
+)
+
+def _ist_ausland(projekt: dict) -> bool:
     """
-    Baut {Bezirk: [Ortsnamen]} aus der Gemeinden-Datenbank für ein Bundesland.
-    Liefert echte Ortsnamen, mit denen die Kommunalsuche gezielt arbeiten kann.
+    True, wenn ein Treffer mit hoher Wahrscheinlichkeit NICHT aus Österreich ist.
+    .de-Domains allein zählen NICHT als Ausland, solange ein Österreich-Bezug
+    erkennbar ist (sonst würden AT-Inhalte auf aboutamazon.de o.ä. fälschlich
+    verworfen).
     """
+    url  = str(projekt.get("artikel_url", "")).lower()
+    text = (str(projekt.get("titel", "")) + " " +
+            str(projekt.get("beschreibung", "")) + " " +
+            str(projekt.get("ort", "")) + " " +
+            str(projekt.get("quelle_name", ""))).lower()
+    blob = url + " " + text
+
+    # (a) eindeutige Auslands-Marker → sofort verwerfen
+    if any(m in blob for m in _AUSLAND_STARK):
+        return True
+
+    # Gibt es einen klaren Österreich-Bezug?
+    at_bezug = any(s in blob for s in _AT_SIGNALE)
+
+    # (b) schwache Marker nur ohne Österreich-Bezug
+    if not at_bezug:
+        if any(d in url for d in _AUSLAND_SCHWACH_DOMAINS):
+            return True
+        # deutsche 5-stellige PLZ (AT hat 4-stellige)
+        if re.search(r"\b\d{5}\b", text):
+            return True
+    return False
+
+
+def _repraesentative_orte(bundesland: str, anzahl: int = 25) -> list:
+    """
+    Liefert eine repräsentative Auswahl ECHTER Ortsnamen eines Bundeslandes für
+    die Kommunalsuche. Strategie: die größten Orte (Index-Anfang der DB) PLUS
+    eine zufällige Streuung kleinerer Orte – denn gerade die kleineren Gemeinden
+    sind der Mehrwert (große Städte deckt die Mediensuche ohnehin ab).
+
+    WICHTIG: Die Gemeinden-DB hat KEIN bezirk-Feld, nur name+url. Darum geben
+    wir hier reine Ortsnamen zurück (kein Bezirks-Mapping) – das hat die alte
+    _bezirke_mit_orten-Funktion stillschweigend leer laufen lassen.
+    """
+    # Wien fehlt in der Gemeinden-DB → Bezirke verwenden
+    if bundesland == "W":
+        return WIEN_BEZIRKE[:anzahl]
+
     try:
         gemeinden = get_gemeinden_fuer_bundeslaender([bundesland])
     except Exception:
-        return {}
-    bezirke: dict = {}
-    for g in gemeinden:
-        bez = (g.get("bezirk") or "").strip()
-        name = (g.get("name") or "").strip()
-        if not bez or not name:
-            continue
-        bezirke.setdefault(bez, [])
-        if len(bezirke[bez]) < orte_pro_bezirk:
-            bezirke[bez].append(name)
-    # Auf max_bezirke begrenzen (größte zuerst, damit Ballungsräume dabei sind)
-    sortiert = sorted(bezirke.items(), key=lambda kv: len(kv[1]), reverse=True)
-    return dict(sortiert[:max_bezirke])
+        return []
+    namen = [str(g.get("name", "")).strip() for g in gemeinden if g.get("name")]
+    namen = [n for n in namen if n]
+    if not namen:
+        return []
+    if len(namen) <= anzahl:
+        return namen
 
+    # Hälfte größte Orte (Anfang der Liste), Hälfte zufällig gestreut
+    import random
+    kopf = max(4, anzahl // 3)
+    fixe = namen[:kopf]
+    rest = namen[kopf:]
+    random.shuffle(rest)
+    auswahl = fixe + rest[: (anzahl - kopf)]
+    return auswahl
 
-# -----------------------------------------------------------------------------
-# Gemeinsames System-Prompt + robuster JSON-Parser + zentraler API-Aufruf
-# -----------------------------------------------------------------------------
+SUCHE_SYSTEM_PROMPT = """Du bist ein professioneller Projekt-Scout für ProjectScout, eine österreichische B2B-Plattform. Unternehmen BEZAHLEN dafür, relevante Bau-, Infrastruktur- und Energieprojekte sowie öffentliche Ausschreibungen frühzeitig zu finden. Je mehr brauchbare ECHTE Treffer du lieferst, desto wertvoller ist dein Ergebnis.
 
-SUCHE_SYSTEM_PROMPT = """Du bist ein professioneller Projekt-Scout für ProjectScout, eine österreichische B2B-Plattform. Unternehmen BEZAHLEN dafür, relevante Bau-, Infrastruktur- und Energieprojekte sowie öffentliche Ausschreibungen frühzeitig zu finden. Je mehr brauchbare Treffer du lieferst, desto wertvoller ist dein Ergebnis.
+⛔ ZWEI ABSOLUTE REGELN (Verstoß = unbrauchbares Ergebnis):
+1. NUR ÖSTERREICH. Niemals Deutschland, Schweiz, Italien o.a. Deutsche Gemeinde-Portale (ris-portal.de, .de-Adressen, deutsche PLZ mit 5 Stellen, Begriffe wie „Gemarkung", „Flst.Nr.", „Landkreis") sofort verwerfen.
+2. NUR DAS ANGEFRAGTE BUNDESLAND. Wird z.B. Oberösterreich verlangt, NUR Projekte die PHYSISCH in Oberösterreich liegen. Viele Sammelseiten (z.B. meinbezirk.at/tag/...) mischen ganz Österreich – pick NUR die Treffer des verlangten Bundeslands heraus, verwirf den Rest (Wien, NÖ, Tirol usw.).
 
-ARBEITSWEISE (WICHTIG):
-- Nutze das web_search-Tool INTENSIV und führe MEHRERE verschiedene Suchen durch – nicht nur eine einzige.
-- Variiere Suchbegriffe systematisch: kombiniere Ortsnamen + Gewerk + Signalwort (Spatenstich, Baustart, Baubeginn, Ausschreibung, Vergabe, Gemeinderat, Bebauungsplan, Investition, Erweiterung, Neubau, Sanierung).
-- Öffne vielversprechende Treffer und lies Details heraus.
-- Sammle ALLE konkreten Projekte, auch kleinere oder regionale. Lieber 12 Projekte als 3.
+ARBEITSWEISE:
+- Nutze das web_search-Tool INTENSIV, führe MEHRERE verschiedene Suchen durch (nicht nur eine).
+- Variiere systematisch: Ortsname + Gewerk + Signalwort (Spatenstich, Baustart, Baubeginn, Ausschreibung, Vergabe, Gemeinderat beschließt, Bebauungsplan, Investition, Erweiterung, Neubau, Sanierung).
+- Öffne vielversprechende Treffer und lies Details (Ort, Volumen, Zeitplan, Bauherr) heraus.
+- Sammle ALLE konkreten österreichischen Projekte im richtigen Bundesland – lieber 12 als 3.
 
-WAS ZÄHLT ALS TREFFER:
-- Neubau, Umbau, Sanierung, Erweiterung von Gebäuden/Anlagen
-- Infrastruktur: Straße, Brücke, Kanal, Wasserleitung, Bahn, Tunnel, Radweg
-- Energie: PV, Windkraft, Wärmepumpe, Nahwärme/Fernwärme, Stromnetz, Speicher
-- Öffentliche Ausschreibungen/Vergaben mit Bauleistung
-- Gemeinderats-/Stadtratsbeschlüsse zu Bauvorhaben (Schule, Kindergarten, Feuerwehr, Bauhof, Amtsgebäude, Kanal, Wasser)
-- Gewerbe-/Industrieansiedlungen und -erweiterungen
-- Grundstücksentwicklungen mit Bauabsicht, Um-/Widmungen
+WAS ZÄHLT: Neubau/Umbau/Sanierung/Erweiterung von Gebäuden & Anlagen · Infrastruktur (Straße, Brücke, Kanal, Wasser, Bahn, Tunnel, Radweg) · Energie (PV, Wind, Wärmepumpe, Nah-/Fernwärme, Netz, Speicher) · öffentliche Ausschreibungen/Vergaben mit Bauleistung · Gemeinderats-/Stadtratsbeschlüsse zu Bauvorhaben (Schule, Kindergarten, Feuerwehr, Bauhof, Amtsgebäude, Kanal, Wasser) · Gewerbe-/Industrieansiedlungen · Grundstücksentwicklungen & Um-/Widmungen mit Bauabsicht.
 
-WAS NICHT ZÄHLT: Unfälle, Brände, Kriminalität, Meinungsartikel, Veranstaltungen, Personalnachrichten, reine Statistiken, bereits abgeschlossene Projekte ohne neue Bauphase.
+WAS NICHT ZÄHLT: Unfälle, Brände, Kriminalität, Meinungen, Veranstaltungen, Personalien, reine Statistik, bereits vor langer Zeit abgeschlossene Projekte ohne neue Bauphase, private Einfamilienhäuser.
 
 AUSGABE: AUSSCHLIESSLICH ein JSON-Array. Kein Text davor/danach, kein Markdown, keine Backticks.
 [
   {
     "titel": "Prägnanter Projekttitel (max 80 Zeichen)",
-    "beschreibung": "2-3 Sätze: WAS wird gebaut, WO genau, WANN (Zeitplan), WER ist Bauherr/Auftraggeber, WIE GROSS (Volumen/Fläche).",
-    "ort": "Gemeinde/Stadt",
+    "beschreibung": "2-3 Sätze: WAS wird gebaut, WO genau (Ort + Bundesland), WANN, WER ist Bauherr/Auftraggeber, WIE GROSS (Volumen/Fläche).",
+    "ort": "Gemeinde/Stadt in Österreich",
     "bezirk": "politischer Bezirk oder leer",
-    "bundesland": "W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR",
+    "bundesland": "MUSS das angefragte Kürzel sein: W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR",
     "kategorie": "Hochbau/Tiefbau/Energie/Infrastruktur/Immobilien/Öffentlich/Industrie/Sonstiges",
     "volumen": "z.B. '12 Mio. Euro' oder '3.500 m²' oder leer",
     "phase": "Planung/Ausschreibung/Vergabe/Bau/Fertigstellung",
     "relevanz": 7,
     "datum": "YYYY-MM-DD des Berichts/Beschlusses wenn bekannt, sonst leer",
-    "artikel_url": "vollständige https-URL der Quelle",
-    "quelle_name": "z.B. meinbezirk.at, OÖN, ankoe.at"
+    "artikel_url": "vollständige https-URL der österreichischen Quelle",
+    "quelle_name": "z.B. meinbezirk.at, OÖN, ankoe.at, salzi.at"
   }
 ]
 
-RELEVANZ-SKALA:
-10 = laufende Ausschreibung mit Vergabesumme · 8-9 = beschlossenes Projekt mit Budget+Termin · 6-7 = konkret geplant mit Details · 4-5 = angekündigt/erste Infos · 1-3 = vage.
+RELEVANZ: 10 = laufende Ausschreibung mit Vergabesumme · 8-9 = beschlossenes Projekt mit Budget+Termin · 6-7 = konkret geplant mit Details · 4-5 = angekündigt/erste Infos · 1-3 = vage.
 
-Gib lieber mehr Treffer zurück. Findest du wirklich nichts: []"""
-
+Gib lieber mehr Treffer zurück. Findest du wirklich nichts Passendes im richtigen Bundesland: []"""
 
 def _parse_json_array(text: str) -> list:
     """
@@ -522,98 +619,114 @@ def _websearch_aufruf(prompt: str, modell: str,
 # Die vier Suchgleise
 # -----------------------------------------------------------------------------
 
+# -----------------------------------------------------------------------------
+# Die vier Suchgleise (jeweils ein web_search-API-Call mit mehreren Suchen)
+# -----------------------------------------------------------------------------
+
+def _quellen_hinweis(bundesland: str) -> str:
+    quellen = REGIONALE_QUELLEN.get(bundesland, ["meinbezirk.at", "ORF regional"])
+    return ", ".join(quellen)
+
+
 def suche_projekte(bundesland: str, kategorie_name: str, gewerke_liste: list,
                    suchbegriffe: list, cutoff: str, heute: str, modell: str) -> list:
-    """Suchgleis 1/2: gewerk-fokussierte Projekt-/Bausuche in Medien."""
+    """Suchgleis 1/2: gewerk-fokussierte Projekt-/Bausuche in regionalen Medien."""
     bl_name     = BL_NAMEN.get(bundesland, bundesland)
     gewerke_txt = ", ".join(gewerke_liste[:14]) if gewerke_liste else kategorie_name
     signale     = ", ".join(suchbegriffe[:10])
+    quellen     = _quellen_hinweis(bundesland)
 
-    prompt = f"""Suche aktuelle Projekte im Bereich "{kategorie_name}" in {bl_name} (Österreich).
+    prompt = f"""Suche aktuelle Bauprojekte im Bereich "{kategorie_name}" AUSSCHLIESSLICH im österreichischen Bundesland {bl_name}.
 
-ZEITRAUM: Nur Projekte/Meldungen vom {cutoff} bis {heute}. Ältere Berichte ignorieren.
+⛔ GEOGRAFIE: NUR Projekte die physisch in {bl_name} liegen. KEINE aus anderen Bundesländern, KEINE aus Deutschland/Ausland. Sammelseiten mischen oft ganz Österreich – nimm NUR {bl_name}-Treffer.
+ZEITRAUM: Nur Meldungen vom {cutoff} bis {heute}.
 
-GESUCHTE GEWERKE DES KUNDEN: {gewerke_txt}
-NÜTZLICHE SIGNALWÖRTER: {signale}
+GESUCHTE GEWERKE: {gewerke_txt}
+SIGNALWÖRTER: {signale}
 
-FÜHRE MEHRERE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
+FÜHRE MEHRERE WEB-SUCHEN DURCH, z.B.:
 - "Spatenstich {bl_name} 2026"
 - "Baustart Neubau {bl_name}"
 - "Bauprojekt {bl_name} Investition Millionen"
-- "[größere Stadt in {bl_name}] Neubau Projekt"
-- einzelne Gewerke aus der Liste + Ortsname in {bl_name}
-- "Betriebserweiterung {bl_name}" / "Gewerbepark {bl_name}"
+- "[größere Stadt in {bl_name}] Neubau"
+- einzelne Gewerke + Ortsname in {bl_name}
+- "Betriebsansiedlung {bl_name}" / "Gewerbepark {bl_name}"
 
-QUELLEN u.a.: meinbezirk.at, nachrichten.at (OÖN), tips.at, ots.at, krone.at,
-diepresse.com, derstandard.at, industriemagazin.at, wirtschaftszeit,
-Bezirksblätter, Landespresse.
+REGIONALE QUELLEN FÜR {bl_name}: {quellen}
+(auch überregional: derstandard.at, diepresse.com, industriemagazin.at, immobilien-redaktion.com)
 
-Sammle ALLE konkreten Treffer (auch kleinere). Antworte als JSON-Array."""
+Sammle ALLE konkreten {bl_name}-Treffer. Antworte als JSON-Array."""
     return _websearch_aufruf(prompt, modell)
 
 
 def suche_vergaben(bundesland: str, suchbegriffe: list,
                    cutoff: str, heute: str, modell: str) -> list:
     """Suchgleis 3: dedizierte Suche auf österreichischen Vergabeportalen."""
-    bl_name = BL_NAMEN.get(bundesland, bundesland)
-    signale = ", ".join(suchbegriffe[:8])
+    bl_name   = BL_NAMEN.get(bundesland, bundesland)
+    subdomain = VERGABE_SUBDOMAIN.get(bundesland, "")
+    regio_portal = f"{subdomain}.vergabeportal.at" if subdomain else "vergabeportal.at"
 
-    prompt = f"""Suche AKTUELLE ÖFFENTLICHE AUSSCHREIBUNGEN und VERGABEN für Bauleistungen in {bl_name} (Österreich).
+    prompt = f"""Suche AKTUELLE ÖFFENTLICHE AUSSCHREIBUNGEN und VERGABEN für Bauleistungen AUSSCHLIESSLICH im österreichischen Bundesland {bl_name}.
 
-ZEITRAUM: Ausschreibungen aktiv oder veröffentlicht vom {cutoff} bis {heute}.
+⛔ GEOGRAFIE: NUR Ausschreibungen mit Erfüllungsort in {bl_name}. Das ANKÖ-Portal listet ganz Österreich – filtere strikt auf {bl_name} (oft als NUTS-Code AT* oder im Auftraggeber-Ort erkennbar).
+ZEITRAUM: aktiv/veröffentlicht vom {cutoff} bis {heute}.
 
-DURCHSUCHE GEZIELT DIESE VERGABEPORTALE (mehrere Suchen!):
-- ankoe.at und vergabe.gv.at (offizielles österreichisches Vergabeportal)
-- auftrag.at
-- lieferanzeiger.at
-- offenevergaben.at
-- ted.europa.eu (EU-Ausschreibungen, Land = Österreich)
+DURCHSUCHE GEZIELT (mehrere Suchen!):
+- ankoe.at / vergabe.gv.at (offizielles Vergabeportal)
+- {regio_portal} (Regionalportal {bl_name})
+- auftrag.at, lieferanzeiger.at, offenevergaben.at
+- ted.europa.eu (EU-Ausschreibungen, NUTS-Code für {bl_name})
 - bbg.gv.at (Bundesbeschaffung)
-- Vergabe-/Beschaffungsplattformen der Länder und größeren Städte
+- Beschaffungsseiten der Stadt-/Landesverwaltung {bl_name}
 
-SUCHE u.a. NACH: "Bauausschreibung {bl_name}", "Vergabe Bauleistung {bl_name}",
-"Generalunternehmer Ausschreibung {bl_name}", "Hochbau/Tiefbau Ausschreibung {bl_name}",
-sowie {signale} jeweils + "{bl_name}".
+SUCHE u.a.: "Bauausschreibung {bl_name}", "Vergabe Bauleistung {bl_name}",
+"Hochbau Ausschreibung {bl_name}", "Tiefbau Ausschreibung {bl_name}",
+"Land {bl_name} Ausschreibung Bau".
 
-Für jeden Treffer: Auftraggeber, Gewerk, geschätzte Auftragssumme, Frist.
-Diese Treffer sind besonders wertvoll → phase="Ausschreibung" oder "Vergabe",
-relevanz typischerweise 8-10. Antworte als JSON-Array."""
+Pro Treffer: Auftraggeber, Gewerk, Auftragssumme, Frist. Diese Treffer sind
+besonders wertvoll → phase="Ausschreibung"/"Vergabe", relevanz meist 8-10.
+Antworte als JSON-Array (nur {bl_name})."""
     return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
 
 
-def suche_kommunal(bundesland: str, bezirke_orte: dict, suchbegriffe: list,
+def suche_kommunal(bundesland: str, orte: list, suchbegriffe: list,
                    cutoff: str, heute: str, modell: str) -> list:
-    """Suchgleis 4: kommunale Bauprojekte & Gemeinderats-/Stadtratsbeschlüsse."""
+    """
+    Suchgleis 4: kommunale Bauprojekte & Gemeinderats-/Stadtratsbeschlüsse.
+    WICHTIG (Live-Check-Erkenntnis): Österreichische Gemeindeprotokolle sind als
+    PDF kaum suchbar; deutsche RIS-Portale ranken stark und müssen ausgeschlossen
+    werden. Der zuverlässige Weg sind REGIONALE NACHRICHTEN über Beschlüsse
+    ("Gemeinderat beschließt …", "einstimmig beschlossen"). Genau darauf zielt
+    dieser Prompt – mit ECHTEN Ortsnamen des Bundeslands.
+    """
     bl_name = BL_NAMEN.get(bundesland, bundesland)
-    if bezirke_orte:
-        bezirke_txt = "; ".join(
-            f"{bez} (z.B. {', '.join(orte[:4])})"
-            for bez, orte in list(bezirke_orte.items())[:12]
-        )
-    else:
-        bezirke_txt = f"alle Bezirke von {bl_name}"
+    quellen = _quellen_hinweis(bundesland)
+    # Ortsnamen in handliche Stichprobe für den Prompt
+    orte_beispiele = ", ".join(orte[:22]) if orte else f"Gemeinden in {bl_name}"
 
-    prompt = f"""Suche KOMMUNALE BAUPROJEKTE und GEMEINDERATS-/STADTRATSBESCHLÜSSE in {bl_name} (Österreich).
+    prompt = f"""Suche KOMMUNALE BAUPROJEKTE und GEMEINDERATS-/STADTRATSBESCHLÜSSE AUSSCHLIESSLICH im österreichischen Bundesland {bl_name}.
 
+⛔ NUR ÖSTERREICH / NUR {bl_name}: Deutsche Gemeinderats-Portale (ris-portal.de, .de, „Gemarkung", „Flst.Nr.", deutsche PLZ) strikt ignorieren! Nur Beschlüsse echter {bl_name}-Gemeinden.
 ZEITRAUM: Beschlüsse/Meldungen vom {cutoff} bis {heute}.
 
-BEZIRKE & BEISPIELORTE (decke möglichst viele ab):
-{bezirke_txt}
+WICHTIG: Österreichische Gemeindeprotokolle sind selten direkt auffindbar. Suche daher v.a. nach REGIONALER NACHRICHTENBERICHTERSTATTUNG über Gemeinderatsbeschlüsse.
 
-FÜHRE VIELE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
-- "Gemeinderat beschließt [Ort] Bau"
+ECHTE ORTE IN {bl_name} (nutze diese in den Suchen):
+{orte_beispiele}
+
+FÜHRE VIELE SUCHEN DURCH, z.B.:
+- "Gemeinderat beschließt [Ort] Neubau"
+- "[Ort] einstimmig beschlossen Bau"
 - "[Ort] Spatenstich Gemeinde 2026"
-- "[Bezirk] Gemeinde Bauprojekt 2026"
-- "Stadtrat [Stadt] Neubau Beschluss"
-- "[Ort] Kindergarten Neubau" / "[Ort] Schule Erweiterung" / "[Ort] Feuerwehrhaus"
+- "[Ort] Kindergarten Neubau" / "[Ort] Schule Erweiterung" / "[Ort] Feuerwehrhaus neu"
 - "[Ort] Bauhof Neubau" / "[Ort] Amtsgebäude" / "[Ort] Gemeindezentrum"
-- "[Ort] Kanal Wasserleitung Sanierung" / "[Ort] Ortsstraße Sanierung"
+- "[Ort] Kanal Wasserleitung Sanierung" / "[Ort] Ortsstraße"
 
-QUELLEN: meinbezirk.at (nach Bezirk gegliedert!), lokale Bezirksblätter,
-Gemeinde-Websites (.gv.at), tips.at, Landespresse {bl_name}.
+REGIONALE QUELLEN FÜR {bl_name}: {quellen}
+(diese berichten über Gemeinderatsbeschlüsse – ideal!)
 
 Kommunale Projekte sind oft kleiner – nimm sie TROTZDEM auf (relevanz 4-7).
-Ziel: möglichst viele konkrete kommunale Vorhaben. Antworte als JSON-Array."""
+Ziel: möglichst viele konkrete kommunale {bl_name}-Vorhaben. Antworte als JSON-Array."""
     return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
 
 
@@ -624,11 +737,11 @@ Ziel: möglichst viele konkrete kommunale Vorhaben. Antworte als JSON-Array."""
 def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
                                         min_relevanz: int = 4) -> dict | None:
     """
-    Prüft Plausibilität und normalisiert ein gefundenes Projekt.
-    - Titel + Beschreibung vorhanden und lang genug?
-    - Relevanz >= min_relevanz?
-    - Bundesland plausibel (robuste Normalisierung; nur bei klarer Abweichung verwerfen)?
-    Gibt None zurück, wenn der Treffer nicht aufgenommen werden soll.
+    Plausibilitätsprüfung + Normalisierung. Verwirft:
+      - zu kurze/leere Treffer
+      - Relevanz < min_relevanz
+      - AUSLÄNDISCHE Treffer (v.a. deutsche RIS-Portale)
+      - Treffer aus dem FALSCHEN Bundesland (bei spezifischer Suche)
     """
     if not isinstance(projekt, dict):
         return None
@@ -636,6 +749,10 @@ def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
     titel        = str(projekt.get("titel") or "").strip()
     beschreibung = str(projekt.get("beschreibung") or "").strip()
     if len(titel) < 5 or len(beschreibung) < 15:
+        return None
+
+    # Ausland zuverlässig verwerfen
+    if _ist_ausland(projekt):
         return None
 
     try:
@@ -646,9 +763,23 @@ def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
         return None
 
     bl = _normalisiere_bundesland(str(projekt.get("bundesland") or ""))
-    # Bundesland-Filter nur bei spezifischer (Einzel-)Suche und klarer Abweichung
-    if bundesland_erwartet and bl and bl != bundesland_erwartet:
-        return None
+
+    # Bundesland-Filter bei spezifischer Suche:
+    if bundesland_erwartet:
+        # a) klar abweichendes Bundesland → verwerfen
+        if bl and bl != bundesland_erwartet:
+            return None
+        # b) Wien-Sonderfall: wenn NICHT Wien gesucht, aber Ort ist ein Wiener
+        #    Gemeindebezirk → verwerfen (fängt Fälle ab, wo bundesland leer/falsch
+        #    ist, der Ort aber eindeutig Wien zuzuordnen ist).
+        if bundesland_erwartet != "W":
+            ort_l = str(projekt.get("ort") or "").lower()
+            if "wien" in ort_l or any(b.lower() in ort_l for b in WIEN_BEZIRKE if len(b) > 6):
+                return None
+        # c) fehlt das Bundesland ganz, behalten wir den Treffer (der Ort wird
+        #    beim Speichern mitgegeben) – aber setzen es auf das erwartete.
+        if not bl:
+            bl = bundesland_erwartet
 
     url = str(projekt.get("artikel_url") or "").strip()
     if url and not url.startswith("http"):
@@ -672,15 +803,14 @@ def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
 def _verarbeite_treffer(raw_liste: list, bundesland: str, min_relevanz: int,
                         gesehen: set, neue_projekte: list, auftrag: dict) -> int:
     """
-    Validiert, dedupliziert (innerhalb des Laufs) und speichert eine Liste roher
-    Treffer in Supabase. Gibt die Anzahl NEU gespeicherter Projekte zurück.
+    Validiert, dedupliziert (laufintern) und speichert rohe Treffer in Supabase.
+    Gibt die Anzahl NEU gespeicherter Projekte zurück.
     """
     gespeichert = 0
     for raw in raw_liste:
         projekt = validiere_und_normalisiere_projekt(raw, bundesland, min_relevanz)
         if not projekt:
             continue
-        # Dedup-Schlüssel: URL, sonst Titel+Ort (kleingeschrieben)
         key = projekt["artikel_url"].lower() if projekt["artikel_url"] \
               else f"{projekt['titel'].lower()}|{projekt['ort'].lower()}"
         if key in gesehen:
@@ -696,6 +826,7 @@ def _verarbeite_treffer(raw_liste: list, bundesland: str, min_relevanz: int,
             neue_projekte.append(projekt)
             gespeichert += 1
     return gespeichert
+
 
 # SCHRITT 6: PROJEKTE IN SUPABASE SPEICHERN
 # WICHTIG: Duplikat-Check LAUFÜBERGREIFEND – kein suchanfrage_id Filter!
@@ -1092,13 +1223,13 @@ def verarbeite_auftrag(auftrag: dict) -> None:
             # ── Gleis 4: Kommunal / Gemeinderats- & Stadtratsbeschlüsse ──
             if not zeit_aufgebraucht():
                 print(f"\n  🏘️  [{bl}] Kommunal- & Gemeinderatssuche")
-                bezirke_orte = _bezirke_mit_orten(bl)
-                if bezirke_orte:
-                    print(f"     ({len(bezirke_orte)} Bezirke mit echten Ortsnamen)")
+                orte = _repraesentative_orte(bl, anzahl=25)
+                if orte:
+                    print(f"     ({len(orte)} echte Ortsnamen aus der Gemeinde-DB)")
                 time.sleep(1.5)
                 # Kommunalprojekte sind oft kleiner → min_relevanz=3
                 roh = suche_kommunal(
-                    bundesland=bl, bezirke_orte=bezirke_orte,
+                    bundesland=bl, orte=orte,
                     suchbegriffe=suchbegriffe, cutoff=cutoff_str,
                     heute=heute_str, modell=modell,
                 )
