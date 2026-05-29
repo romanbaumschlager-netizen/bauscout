@@ -25,7 +25,7 @@ jobs:
           python-version: '3.11'
 
       - name: Abhängigkeiten installieren
-        run: pip install requests
+        run: pip install requests anthropic
 
       - name: ProjectScout Agent starten
         env:
