@@ -1,0 +1,21 @@
+# robots.txt – project-scout.at
+# Ziel: Suchmaschinen und seriöse KI-Crawler erlauben, private Bereiche
+# (Kunden-Dashboards) sperren, ressourcenfressende Scraper ohne Mehrwert ausschließen.
+
+# Alle Crawler: Website ist erlaubt, private Seiten sind gesperrt.
+# GPTBot (ChatGPT), ClaudeBot (Claude), PerplexityBot und Google-Extended (Gemini/
+# AI Overviews) fallen unter diese Regel und sind damit ausdrücklich willkommen.
+User-agent: *
+Allow: /
+Disallow: /dashboard.html
+Disallow: /success.html
+
+# Aggressive Scraper ohne Zitier-/Traffic-Nutzen ausschließen:
+User-agent: Bytespider
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+# Verweis auf die Sitemap (hilft Google beim Finden aller Seiten):
+Sitemap: https://project-scout.at/sitemap.xml
