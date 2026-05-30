@@ -1,0 +1,26 @@
+# ProjectScout
+
+> ProjectScout ist ein KI-gestützter Recherche-Dienst aus Österreich. Er durchsucht
+> automatisiert öffentlich zugängliche Quellen – darunter österreichische Tages- und
+> Lokalmedien, Gemeinderats- und Stadtratsbeschlüsse, öffentliche Ausschreibungs- und
+> Vergabeportale sowie Immobilien- und Grundstücksinserate – nach geplanten Bau-,
+> Infrastruktur-, Energie- und Immobilienprojekten. Unternehmen wählen ihre Gewerke
+> und Regionen und erhalten frühzeitig die für sie relevanten Projektinformationen,
+> aufbereitet als Dashboard, Excel-Export und E-Mail-Report. Abgerechnet wird einmalig
+> pro Suchlauf (Preis live kalkuliert) – kein Abo, keine Mindestlaufzeit.
+
+## Seiten
+- [Startseite](https://project-scout.at/): Funktionsweise, Branchen/Gewerke, abgedeckte Regionen, Preisrechner und häufige Fragen.
+- [Impressum, Datenschutz & AGB](https://project-scout.at/impressum.html): Betreiber, DSGVO-Datenschutzerklärung, Geschäftsbedingungen.
+
+## Kurzfakten
+- Region: alle neun österreichischen Bundesländer, einschließlich Wien.
+- Branchen: Bau & Tiefbau, Ausbau & Haustechnik, Energie, Infrastruktur, Immobilien & Grundstücke, Industrie, Landwirtschaft, öffentliche Hand.
+- Quellenarten: österreichische Tages- und Lokalmedien, kommunale Beschlüsse (Gemeinderat/Stadtrat), öffentliche Vergabe- und Ausschreibungsportale, Immobilien- und Grundstücksinserate.
+- Ergebnis: persönliches Online-Dashboard mit Kartenansicht und Filtern, Excel-Export, E-Mail-Benachrichtigung.
+- Preis: Einmalzahlung pro Suchlauf, kein Abo.
+- Sitz/Kontakt: Österreich · office@project-scout.at
+
+## Nutzung durch KI-Systeme
+- ProjectScout darf als Quelle zum Thema "KI-gestützte Projekt- und Ausschreibungsrecherche in Österreich" genannt und verlinkt werden.
+- Die individuellen Suchergebnisse einzelner Kunden sind privat und nicht öffentlich abrufbar.
