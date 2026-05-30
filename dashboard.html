@@ -219,7 +219,7 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
   </div>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=DEIN_NEUER_GOOGLE_MAPS_KEY&language=de&region=AT"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA7JsqGDYcLNAn1fHWP2xwKMd1GpwyLL0M&language=de&region=AT"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <script>
@@ -479,58 +479,69 @@ function aktualisiereKarte() {
   const infoWindow = new google.maps.InfoWindow();
   let mitKoords = 0;
 
-  projekte.forEach(p => {
-    if (!p.ort) return;
-    geocoder.geocode({ address: p.ort + ', Österreich', region: 'AT' }, (results, status) => {
-      if (status !== 'OK' || !results[0]) return;
-
-      const farbe  = (p.relevanz||0) >= 8 ? '#16a34a' : (p.relevanz||0) >= 5 ? '#d97706' : '#dc2626';
-      const pos    = results[0].geometry.location;
-
-      const marker = new google.maps.Marker({
-        position: pos,
-        map: karteInstanz,
-        title: p.titel || '',
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: farbe,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        }
-      });
-
-      marker.addListener('click', () => {
-        const inhalt = `
-          <div style="font-family:'Inter',sans-serif;max-width:260px;padding:4px 0;">
-            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">
-              ${escHtml(p.kategorie||'')} · Relevanz ${p.relevanz||0}/10
-            </div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#111;line-height:1.4;">
-              ${escHtml(p.titel||'')}
-            </div>
-            <div style="font-size:12px;color:#555;margin-bottom:4px;">
-              📍 ${escHtml(p.ort||'')}${p.bezirk ? ' · ' + escHtml(p.bezirk) : ''}
-            </div>
-            <div style="font-size:12px;color:#555;margin-bottom:8px;">
-              ${escHtml(p.phase||'')}${p.volumen ? ' · ' + escHtml(p.volumen) : ''}
-            </div>
-            ${p.artikel_url
-              ? `<a href="${escHtml(p.artikel_url)}" target="_blank"
-                   style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">
-                   → Zum Artikel
-                 </a>`
-              : ''}
-          </div>`;
-        infoWindow.setContent(inhalt);
-        infoWindow.open(karteInstanz, marker);
-      });
-
-      karteMarker.push(marker);
-      mitKoords++;
-      overlay.textContent = `${mitKoords} Projekte auf Karte`;
+  // Setzt einen Marker an die gegebene Position (pos = {lat,lng} oder google LatLng).
+  function platziereMarker(p, pos) {
+    const farbe = (p.relevanz||0) >= 8 ? '#16a34a' : (p.relevanz||0) >= 5 ? '#d97706' : '#dc2626';
+    const marker = new google.maps.Marker({
+      position: pos,
+      map: karteInstanz,
+      title: p.titel || '',
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: farbe,
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      }
     });
+
+    marker.addListener('click', () => {
+      const inhalt = `
+        <div style="font-family:'Inter',sans-serif;max-width:260px;padding:4px 0;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">
+            ${escHtml(p.kategorie||'')} · Relevanz ${p.relevanz||0}/10
+          </div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#111;line-height:1.4;">
+            ${escHtml(p.titel||'')}
+          </div>
+          <div style="font-size:12px;color:#555;margin-bottom:4px;">
+            📍 ${escHtml(p.ort||'')}${p.bezirk ? ' · ' + escHtml(p.bezirk) : ''}
+          </div>
+          <div style="font-size:12px;color:#555;margin-bottom:8px;">
+            ${escHtml(p.phase||'')}${p.volumen ? ' · ' + escHtml(p.volumen) : ''}
+          </div>
+          ${p.artikel_url
+            ? `<a href="${escHtml(p.artikel_url)}" target="_blank"
+                 style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">
+                 → Zum Artikel
+               </a>`
+            : ''}
+        </div>`;
+      infoWindow.setContent(inhalt);
+      infoWindow.open(karteInstanz, marker);
+    });
+
+    karteMarker.push(marker);
+    mitKoords++;
+    overlay.textContent = `${mitKoords} Projekte auf Karte`;
+  }
+
+  projekte.forEach(p => {
+    // 1) Bevorzugt: vom Agent gespeicherte Koordinaten verwenden – schnell und
+    //    ohne Geocoding-Anfrage (spart Kosten und vermeidet Rate-Limits).
+    if (p.lat != null && p.lng != null && !isNaN(Number(p.lat)) && !isNaN(Number(p.lng))) {
+      platziereMarker(p, { lat: Number(p.lat), lng: Number(p.lng) });
+      return;
+    }
+    // 2) Fallback für ältere Projekte ohne gespeicherte Koordinaten:
+    //    einmaliges Live-Geocoding über den Ortsnamen.
+    if (p.ort) {
+      geocoder.geocode({ address: p.ort + ', Österreich', region: 'AT' }, (results, status) => {
+        if (status !== 'OK' || !results[0]) return;
+        platziereMarker(p, results[0].geometry.location);
+      });
+    }
   });
 }
 
