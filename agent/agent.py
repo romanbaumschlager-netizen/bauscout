@@ -101,6 +101,133 @@ def _normalisiere_bundesland(bl_roh: str) -> str:
     schluessel = bl_roh.upper().strip()
     return BL_NORMALISIERUNG.get(schluessel, schluessel)
 
+
+# =============================================================================
+# FAKTENBASIERTE PRÜFUNGEN (Ort -> Bundesland, Jahres-Plausibilität, Geocoding)
+# =============================================================================
+
+# Ungefähre geografische Zentren je Bundesland – Fallback fürs Geocoding,
+# wenn ein konkreter Ort nicht aufgelöst werden kann.
+BL_ZENTREN = {
+    "W":   (48.2082, 16.3738),  # Wien
+    "NOE": (48.2047, 15.6256),  # St. Pölten
+    "OOE": (48.3069, 14.2858),  # Linz
+    "SBG": (47.8095, 13.0550),  # Salzburg
+    "STK": (47.0707, 15.4395),  # Graz
+    "KTN": (46.6247, 14.3050),  # Klagenfurt
+    "TIR": (47.2692, 11.4041),  # Innsbruck
+    "VBG": (47.5031,  9.7471),  # Bregenz
+    "BGR": (47.8457, 16.5286),  # Eisenstadt
+}
+
+# Manuelle Ort->Bundesland-Zuordnungen für Schreibweisen, die in der
+# Gemeinde-Datenbank anders oder gar nicht stehen (z.B. "Wien", "Klagenfurt").
+_MANUELLE_ORT_BL = {
+    "wien": "W",
+    "klagenfurt": "KTN",
+    "st. pölten": "NOE", "st.pölten": "NOE", "sankt pölten": "NOE", "st pölten": "NOE",
+    "graz": "STK", "linz": "OOE", "salzburg": "SBG", "innsbruck": "TIR",
+    "bregenz": "VBG", "eisenstadt": "BGR",
+}
+
+_ORT_ZU_BL = None  # wird einmalig befüllt (Lazy-Init)
+
+def _get_ort_zu_bl() -> dict:
+    """
+    Baut eine Nachschlagetabelle {ort_kleingeschrieben: bundesland} aus der
+    Gemeinde-Datenbank. NUR EINDEUTIGE Ortsnamen werden aufgenommen – kommt ein
+    Name in mehreren Bundesländern vor, wird er bewusst weggelassen, damit der
+    Filter niemals einen korrekten Treffer fälschlich verwirft.
+    """
+    global _ORT_ZU_BL
+    if _ORT_ZU_BL is not None:
+        return _ORT_ZU_BL
+    zaehler: dict = {}
+    for bl in ("W", "NOE", "OOE", "SBG", "STK", "KTN", "TIR", "VBG", "BGR"):
+        try:
+            gemeinden = get_gemeinden_fuer_bundeslaender([bl])
+        except Exception:
+            gemeinden = []
+        for g in gemeinden:
+            name = (g.get("name") or "").lower().strip()
+            if name:
+                zaehler.setdefault(name, set()).add(bl)
+    tabelle = {ort: next(iter(bls)) for ort, bls in zaehler.items() if len(bls) == 1}
+    # Manuelle Aliase haben Vorrang
+    tabelle.update(_MANUELLE_ORT_BL)
+    _ORT_ZU_BL = tabelle
+    return _ORT_ZU_BL
+
+def _bundesland_aus_ort(ort: str) -> str:
+    """Gibt das eindeutige Bundesland-Kürzel für einen Ort zurück, sonst ''."""
+    if not ort:
+        return ""
+    o = ort.lower().strip()
+    tabelle = _get_ort_zu_bl()
+    if o in tabelle:
+        return tabelle[o]
+    # Auch Teiltreffer erlauben: "Floridsdorf (21. Bezirk)" -> "floridsdorf"
+    erstes_wort = o.split("(")[0].split(",")[0].strip()
+    if erstes_wort and erstes_wort in tabelle:
+        return tabelle[erstes_wort]
+    return ""
+
+_JAHR_REGEX = re.compile(r"\b(20\d{2})\b")
+
+def _jahr_verdaechtig(text: str, cutoff_jahr: int, heute_jahr: int) -> bool:
+    """
+    True, wenn im Text AUSSCHLIESSLICH veraltete Jahreszahlen vorkommen (z.B. nur
+    2022/2023) und kein Jahr aus dem erlaubten Zeitfenster oder der Zukunft.
+    Findet sich gar keine Jahreszahl ODER mindestens ein aktuelles/zukünftiges
+    Jahr, gilt der Treffer als unverdächtig (kein falsches Verwerfen).
+    """
+    if not text:
+        return False
+    jahre = [int(j) for j in _JAHR_REGEX.findall(text)]
+    if not jahre:
+        return False
+    # erlaubt: ab Cutoff-Jahr bis zu 3 Jahre in die Zukunft (geplante Baustarts)
+    aktuelle = [j for j in jahre if cutoff_jahr <= j <= heute_jahr + 3]
+    return len(aktuelle) == 0
+
+# Geocoding: Ort -> (lat, lng). Nutzt OpenStreetMap/Nominatim mit Cache und
+# fällt bei Misserfolg auf das Bundesland-Zentrum zurück. Ein Fehler bricht
+# den Lauf NIEMALS ab.
+_GEOCODE_CACHE: dict = {}
+
+def geocode_ort(ort: str, bundesland: str) -> tuple:
+    """Gibt (lat, lng) zurück. Cache -> Nominatim -> Bundesland-Zentrum."""
+    schluessel = f"{(ort or '').lower().strip()}|{bundesland}"
+    if schluessel in _GEOCODE_CACHE:
+        return _GEOCODE_CACHE[schluessel]
+
+    lat = lng = None
+    ort_sauber = (ort or "").split("(")[0].strip()
+    if ort_sauber:
+        bl_name = BL_NAMEN.get(bundesland, "")
+        query = f"{ort_sauber}, {bl_name}, Österreich" if bl_name else f"{ort_sauber}, Österreich"
+        try:
+            resp = requests.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"q": query, "format": "json", "limit": 1, "countrycodes": "at"},
+                headers={"User-Agent": "ProjectScout/1.0 (office@project-scout.at)"},
+                timeout=6,
+            )
+            if resp.status_code == 200:
+                treffer = resp.json()
+                if treffer:
+                    lat = float(treffer[0]["lat"])
+                    lng = float(treffer[0]["lon"])
+            time.sleep(1.0)  # Nominatim-Nutzungsbedingungen: max. 1 Anfrage/Sekunde
+        except Exception:
+            pass  # Netzfehler etc. -> Fallback
+
+    if lat is None or lng is None:
+        lat, lng = BL_ZENTREN.get(bundesland, (None, None))
+
+    _GEOCODE_CACHE[schluessel] = (lat, lng)
+    return lat, lng
+
 # Token-Zähler für Kosten-Logging
 _TOKEN_STATS = {"input": 0, "output": 0, "calls": 0}
 
@@ -563,13 +690,19 @@ def suche_vergaben(bundesland: str, suchbegriffe: list,
 ZEITRAUM: Ausschreibungen aktiv oder veröffentlicht vom {cutoff} bis {heute}.
 
 DURCHSUCHE GEZIELT DIESE VERGABEPORTALE (mehrere Suchen!):
-- ankoe.at und vergabe.gv.at (offizielles österreichisches Vergabeportal)
-- auftrag.at
-- lieferanzeiger.at
-- offenevergaben.at
-- ted.europa.eu (EU-Ausschreibungen, Land = Österreich)
-- bbg.gv.at (Bundesbeschaffung)
+- vergabeportal.at (ANKÖ – führende österreichische Ausschreibungsdatenbank)
+- evi.gv.at (offizielles digitales Amtsblatt der Republik, seit 1.7.2023 Nachfolger des Amtsblatts zur Wiener Zeitung)
+- usp.gv.at Ausschreibungssuche (Unternehmensserviceportal des Bundes)
+- ausschreibung.at (Fachportal für Bauausschreibungen: Hochbau, Tiefbau, Haustechnik)
+- architekturwettbewerb.at (Bauplanungs-/Architekturverfahren)
+- ted.europa.eu (EU-weite Ausschreibungen, Land = Österreich)
+- bbg.gv.at (Bundesbeschaffung), auftrag.at, lieferanzeiger.at, offenevergaben.at
 - Vergabe-/Beschaffungsplattformen der Länder und größeren Städte
+
+TIPP: Öffentliche Ausschreibungen sind über CPV-Codes klassifiziert. Nutze fuer
+Bauleistungen u.a. die CPV-Hauptgruppen 45 (Bau-/Tiefbauarbeiten), 71 (Architektur-/
+Ingenieurleistungen) und 09 (Energie) als zusaetzliche Suchbegriffe, z.B.
+"CPV 45 Bauauftrag {bl_name}".
 
 SUCHE u.a. NACH: "Bauausschreibung {bl_name}", "Vergabe Bauleistung {bl_name}",
 "Generalunternehmer Ausschreibung {bl_name}", "Hochbau/Tiefbau Ausschreibung {bl_name}",
@@ -615,6 +748,48 @@ Gemeinde-Websites (.gv.at), tips.at, Landespresse {bl_name}.
 Kommunale Projekte sind oft kleiner – nimm sie TROTZDEM auf (relevanz 4-7).
 Ziel: möglichst viele konkrete kommunale Vorhaben. Antworte als JSON-Array."""
     return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
+
+
+def suche_wien(suchbegriffe: list, cutoff: str, heute: str, modell: str) -> list:
+    """
+    Wien-Spezialgleis. Wien ist zugleich Stadt UND Bundesland und hat eigene
+    amtliche Quellen, die fuer Flaechengemeinden nicht existieren. Dieses Gleis
+    durchsucht gezielt diese Wien-Quellen und alle 23 Gemeindebezirke.
+    """
+    try:
+        bezirke = [g.get("name", "") for g in get_gemeinden_fuer_bundeslaender(["W"]) if g.get("name")]
+    except Exception:
+        bezirke = []
+    bezirke_txt = ", ".join(bezirke) if bezirke else "alle 23 Wiener Gemeindebezirke"
+    signale = ", ".join(suchbegriffe[:8])
+
+    prompt = f"""Suche AKTUELLE BAU-, STADTENTWICKLUNGS- UND INFRASTRUKTURPROJEKTE in WIEN (Oesterreich).
+
+ZEITRAUM: Beschluesse/Meldungen/Auflagen vom {cutoff} bis {heute}.
+
+WICHTIG – Wien ist Stadt UND Bundesland. Nutze gezielt diese amtlichen Wien-Quellen:
+- INFODAT, die Informationsdatenbank des Wiener Landtags & Gemeinderats (wien.gv.at/infodat) – Beschluesse, Bauordnung, Flaechenwidmungen
+- Flaechenwidmungs- & Bebauungsplan / Plandokumente der Stadt Wien (wien.gv.at/flaechenwidmung) – laufende oeffentliche Auflagen sind Fruehindikatoren fuer Bauvorhaben
+- Vorhabenliste der Wiener Stadtentwicklung (wien.gv.at/stadtentwicklung)
+- Amtsblatt der Stadt Wien (Gemeinderat, Gemeinderatsausschuesse, Vergaben)
+- Wiener Wohnen, gemeinnuetzige Bautraeger, OEBB/Wiener Linien (U-Bahn-/Gleisbau)
+- meinbezirk.at (nach Wiener Bezirken gegliedert), wien.orf.at, Bezirkszeitungen
+
+DURCHSUCHE DIE 23 BEZIRKE (decke moeglichst viele ab):
+{bezirke_txt}
+
+FUEHRE VIELE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
+- "Wien [Bezirk] Neubau Projekt 2026" / "Wien [Bezirk] Bauprojekt"
+- "Wien Flaechenwidmung Plandokument [Bezirk]" / "oeffentliche Auflage Bebauungsplan Wien"
+- "Wien Stadtentwicklung Vorhaben [Bezirk]" / "Stadterweiterung Wien"
+- "Wiener Wohnen Neubau" / "Wohnbau Wien Spatenstich"
+- "Wien Schule Neubau" / "Wien Kindergarten" / "Wien Amtsgebaeude Sanierung"
+- "Wiener Linien U-Bahn Ausbau" / "Wien Gleisbau" / "Wien Infrastruktur"
+- einzelne Gewerke aus dieser Liste + "Wien": {signale}
+
+Sammle ALLE konkreten Treffer (auch einzelne Bezirksprojekte). Setze bundesland="W".
+Antworte als JSON-Array."""
+    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 2)
 
 
 # -----------------------------------------------------------------------------
@@ -668,15 +843,34 @@ def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
         except (ValueError, TypeError):
             pass  # Nicht parsebar → durchlassen
 
-    # ── BUNDESLAND-FILTER ──────────────────────────────────────────────────
-    bl = _normalisiere_bundesland(str(projekt.get("bundesland") or ""))
-    if bundesland_erwartet:
-        if bl and bl != bundesland_erwartet:
-            # Claude hat explizit ein anderes BL angegeben → verwerfen
+    # ── JAHRES-PLAUSIBILITÄT (zweite Sicherung gegen alte Projekte) ─────────
+    # Greift auch dann, wenn KEIN sauberes Datumsfeld geliefert wurde: Stehen in
+    # Titel/Beschreibung/URL nur veraltete Jahreszahlen (z.B. 2023) und kein
+    # aktuelles/zukünftiges Jahr, wird der Treffer verworfen.
+    if cutoff_dt is not None and heute_dt is not None:
+        kombi_text = f"{titel} {beschreibung} {projekt.get('artikel_url','')}"
+        if _jahr_verdaechtig(kombi_text, cutoff_dt.year, heute_dt.year):
             return None
-        if not bl:
-            # Claude hat kein BL angegeben → erwartetes BL einsetzen
-            bl = bundesland_erwartet
+
+    # ── ORT/BUNDESLAND-FILTER (faktenbasiert statt vertrauensbasiert) ───────
+    # Statt blind dem zu glauben, was im "bundesland"-Feld steht, wird der echte
+    # Ortsname gegen die Gemeinde-Datenbank geprüft. Das verhindert z.B., dass
+    # ein Wiener Projekt in einer Oberösterreich-Suche landet.
+    ort_roh        = str(projekt.get("ort") or "").strip()
+    bl_angegeben   = _normalisiere_bundesland(str(projekt.get("bundesland") or ""))
+    bl_aus_ort     = _bundesland_aus_ort(ort_roh)  # eindeutiges BL laut DB, sonst ''
+
+    if bundesland_erwartet:
+        # 1) Ort gehört eindeutig zu einem ANDEREN Bundesland → verwerfen.
+        if bl_aus_ort and bl_aus_ort != bundesland_erwartet:
+            return None
+        # 2) Ort unbekannt, aber Claude nennt ausdrücklich ein anderes BL → verwerfen.
+        if not bl_aus_ort and bl_angegeben and bl_angegeben != bundesland_erwartet:
+            return None
+        bl = bundesland_erwartet
+    else:
+        # Ganz-Österreich-Suche: Bundesland möglichst exakt bestimmen.
+        bl = bl_aus_ort or bl_angegeben or ""
 
     url = str(projekt.get("artikel_url") or "").strip()
     if url and not url.startswith("http"):
@@ -757,6 +951,8 @@ def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
 
     # Neu → speichern
     jetzt = datetime.now(timezone.utc).isoformat()
+    # Koordinaten für die Kartenansicht einmalig beim Speichern bestimmen.
+    lat, lng = geocode_ort(analyse.get("ort", ""), analyse.get("bundesland", ""))
     projekt = {
         "kunden_id":         auftrag["kunden_id"],
         "suchanfrage_id":    auftrag["id"],
@@ -764,6 +960,8 @@ def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
         "ort":               analyse.get("ort", ""),
         "bezirk":            analyse.get("bezirk", ""),
         "bundesland":        analyse.get("bundesland", ""),
+        "lat":               lat,
+        "lng":               lng,
         "kategorie":         analyse.get("kategorie", "Sonstiges"),
         "volumen":           analyse.get("volumen", ""),
         "phase":             analyse.get("phase", ""),
@@ -1195,17 +1393,26 @@ def verarbeite_auftrag(auftrag: dict) -> None:
 
             # ── Gleis 4: Kommunal / Gemeinderats- & Stadtratsbeschlüsse ──
             if not zeit_aufgebraucht():
-                print(f"\n  🏘️  [{bl}] Kommunal- & Gemeinderatssuche")
-                bezirke_orte = _bezirke_mit_orten(bl)
-                if bezirke_orte:
-                    print(f"     ({len(bezirke_orte)} Bezirke mit echten Ortsnamen)")
-                time.sleep(1.5)
-                # Kommunalprojekte sind oft kleiner → min_relevanz=3
-                roh = suche_kommunal(
-                    bundesland=bl, bezirke_orte=bezirke_orte,
-                    suchbegriffe=suchbegriffe, cutoff=cutoff_str,
-                    heute=heute_str, modell=modell,
-                )
+                if bl == "W":
+                    # Wien hat eigene amtliche Quellen → Spezialgleis.
+                    print(f"\n  🏛️  [W] Wien-Spezialsuche (INFODAT, Flächenwidmung, 23 Bezirke)")
+                    time.sleep(1.5)
+                    roh = suche_wien(
+                        suchbegriffe=suchbegriffe, cutoff=cutoff_str,
+                        heute=heute_str, modell=modell,
+                    )
+                else:
+                    print(f"\n  🏘️  [{bl}] Kommunal- & Gemeinderatssuche")
+                    bezirke_orte = _bezirke_mit_orten(bl)
+                    if bezirke_orte:
+                        print(f"     ({len(bezirke_orte)} Bezirke mit echten Ortsnamen)")
+                    time.sleep(1.5)
+                    # Kommunalprojekte sind oft kleiner → min_relevanz=3
+                    roh = suche_kommunal(
+                        bundesland=bl, bezirke_orte=bezirke_orte,
+                        suchbegriffe=suchbegriffe, cutoff=cutoff_str,
+                        heute=heute_str, modell=modell,
+                    )
                 gesamt_gefunden += len(roh)
                 neu = _verarbeite_treffer(roh, bl_filter, 3, gesehen, neue_projekte, auftrag, cutoff_dt=cutoff_dt, heute_dt=heute_dt)
                 print(f"     → {len(roh)} gefunden, {neu} neu gespeichert")
