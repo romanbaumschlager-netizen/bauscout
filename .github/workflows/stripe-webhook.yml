@@ -1,5 +1,4 @@
 name: ProjectScout Agent
-
 on:
   schedule:
     - cron: '*/15 * * * *'
@@ -9,24 +8,19 @@ on:
         description: 'Suchanfrage ID (optional – leer = alle offenen)'
         required: false
         type: string
-
 jobs:
   neue-auftraege-pruefen:
     runs-on: ubuntu-latest
     timeout-minutes: 55
-
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
-
       - name: Python einrichten
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Abhängigkeiten installieren
-        run: pip install requests anthropic
-
+        run: pip install requests anthropic beautifulsoup4 pdfplumber
       - name: ProjectScout Agent starten
         env:
           SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
@@ -38,7 +32,6 @@ jobs:
           SMTP_PASS:           ${{ secrets.SMTP_PASS }}
           SUCHANFRAGE_ID:      ${{ github.event.inputs.suchanfrage_id }}
         run: python agent/agent.py
-
       - name: Zusammenfassung
         if: always()
         run: |
