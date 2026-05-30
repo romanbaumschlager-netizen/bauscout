@@ -32,7 +32,8 @@ from email.mime.text import MIMEText
 
 sys.path.insert(0, os.path.dirname(__file__))
 from medien_datenbank import get_alle_bundeslaender_kuerzel
-from gemeinden_datenbank import get_gemeinden_fuer_bundeslaender
+from gemeinden_datenbank import get_gemeinden_fuer_bundeslaender, PROTOKOLL_PFADE
+import crawler  # echtes Crawling der Gemeinde-Websites (zweite Säule neben web_search)
 
 # =============================================================================
 # KONFIGURATION
@@ -74,6 +75,17 @@ MAX_TOKENS_SUCHE    = 4500
 # der Agent IMMER sauber finalisiert (E-Mail + Status) bevor GitHub bei 55 Min
 # hart abbricht. Verhindert "agent_laeuft"-Hänger wie in früheren Läufen.
 ZEITBUDGET_SEKUNDEN = 45 * 60
+
+# ── Echtes Crawling der Gemeinde-Websites (zweite Säule neben web_search) ──
+# Standardmäßig aktiv. Per GitHub-Secret CRAWLING_AKTIV=0 abschaltbar.
+CRAWLING_AKTIV          = os.environ.get("CRAWLING_AKTIV", "1") != "0"
+# Höchstzahl Gemeinden, die PRO LAUF gecrawlt werden (Rotation über mehrere Läufe
+# via Cache-Tabelle 'gemeinde_crawl'). Bei regionaler Auswahl meist alle abgedeckt.
+CRAWL_MAX_GEMEINDEN     = int(os.environ.get("CRAWL_MAX_GEMEINDEN", "80"))
+# Anteil des Gesamt-Zeitbudgets, der maximal fürs Crawling verwendet wird.
+CRAWL_ZEITBUDGET_ANTEIL = float(os.environ.get("CRAWL_ZEITBUDGET_ANTEIL", "0.5"))
+# Gleichzeitige Downloads beim Crawling (I/O-gebunden).
+CRAWL_WORKERS           = int(os.environ.get("CRAWL_WORKERS", "12"))
 
 # Bundesland-Kürzel → ausgeschriebener Name (für lesbare Suchanfragen)
 BL_NAMEN = {
@@ -531,6 +543,15 @@ ARBEITSWEISE (WICHTIG):
 - Öffne vielversprechende Treffer und lies Details heraus.
 - Sammle ALLE konkreten Projekte, auch kleinere oder regionale. Lieber 12 Projekte als 3.
 
+BEVORZUGTE QUELLEN & SUCHOPERATOREN (nutze gezielt site:-Operatoren!):
+- Gemeinde-/Behördenseiten: site:gv.at (z.B. "Bauprojekt site:noe.gv.at"), site:ris.bka.gv.at (Rechtsinformationssystem, Verordnungen/Flächenwidmungen)
+- UVP-Verfahren der Landesregierungen (Großvorhaben wie Straßen, Industrie, Einkaufszentren, Kraftwerke): "UVP Verfahren laufend [Bundesland]", site:land-oberoesterreich.gv.at, site:noe.gv.at, site:ktn.gv.at usw.
+- Landes-Amtsblätter und Kundmachungen der Länder
+- Kommunalarchive: site:kommunalarchive.at
+- Offizielles Amtsblatt des Bundes: site:evi.gv.at
+- Bei Grundstücken/Immobilien zusätzlich: site:willhaben.at, site:immobilienscout24.at, site:immowelt.at (Grundstücke, Bauträgerprojekte, Neubauprojekte)
+- Lokalmedien: site:meinbezirk.at, site:tips.at, ORF-Landesstudios (z.B. site:noe.orf.at)
+
 WAS ZÄHLT ALS TREFFER:
 - Neubau, Umbau, Sanierung, Erweiterung von Gebäuden/Anlagen
 - Infrastruktur: Straße, Brücke, Kanal, Wasserleitung, Bahn, Tunnel, Radweg
@@ -642,6 +663,36 @@ def _websearch_aufruf(prompt: str, modell: str,
         return projekte if isinstance(projekte, list) else []
     except Exception as ex:
         print(f"    ❌ web_search Fehler: {str(ex)[:140]}")
+        return []
+
+
+def _analyse_aufruf(prompt: str, modell: str, max_tokens: int = 3500) -> list:
+    """
+    Reiner KI-Analyse-Aufruf OHNE web_search-Tool. Wird verwendet, um bereits
+    gecrawlten Text (Gemeinde-Websites/Protokolle) auf relevante Vorhaben zu
+    analysieren. Deutlich günstiger als ein web_search-Call.
+    """
+    try:
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=modell,
+            max_tokens=max_tokens,
+            system=SUCHE_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        try:
+            _TOKEN_STATS["input"]  += response.usage.input_tokens
+            _TOKEN_STATS["output"] += response.usage.output_tokens
+        except Exception:
+            pass
+        _TOKEN_STATS["calls"] += 1
+        text = " ".join(
+            b.text for b in response.content
+            if getattr(b, "type", None) == "text" and getattr(b, "text", "")
+        ).strip()
+        projekte = _parse_json_array(text)
+        return projekte if isinstance(projekte, list) else []
+    except Exception as ex:
+        print(f"    ❌ Analyse-Fehler: {str(ex)[:140]}")
         return []
 
 
@@ -1271,6 +1322,147 @@ def sende_admin_benachrichtigung(
 
 
 # =============================================================================
+# CRAWLING-GLEIS: Gemeinde-Websites direkt herunterladen + mit Haiku analysieren
+# =============================================================================
+
+def _waehle_crawl_gemeinden(bundeslaender: list, max_anzahl: int) -> list:
+    """
+    Wählt die als Nächstes zu crawlenden Gemeinden aus den gewählten Bundesländern.
+    Rotation über mehrere Läufe via optionaler Supabase-Tabelle 'gemeinde_crawl':
+    Gemeinden, die noch nie / am längsten nicht gecrawlt wurden, kommen zuerst.
+    Fehlt die Tabelle, wird ohne Rotation einfach der Reihe nach genommen.
+    """
+    alle = []
+    for bl in bundeslaender:
+        try:
+            for g in get_gemeinden_fuer_bundeslaender([bl]):
+                g2 = dict(g); g2["bundesland"] = bl
+                alle.append(g2)
+        except Exception:
+            pass
+
+    cache = {}
+    try:
+        rows = sb_get("gemeinde_crawl", {"select": "gemeinde,bundesland,letzter_crawl"})
+        for r in rows or []:
+            cache[(r.get("gemeinde"), r.get("bundesland"))] = r.get("letzter_crawl") or ""
+    except Exception:
+        cache = {}  # Tabelle existiert nicht -> ohne Rotation weiter
+
+    # Sortierung: leerer Zeitstempel (= nie gecrawlt) zuerst, dann ältester zuerst
+    alle.sort(key=lambda g: cache.get((g.get("name"), g.get("bundesland")), ""))
+    return alle[:max_anzahl]
+
+
+def _markiere_crawl_versuche(versuchte: list, erfolgreiche_nach_key: dict) -> None:
+    """
+    Aktualisiert die Cache-Tabelle 'gemeinde_crawl': ALLE versuchten Gemeinden
+    bekommen den aktuellen Zeitstempel (für die Rotation), erfolgreiche zusätzlich
+    die gefundene Protokoll-URL und den Inhalts-Hash. Fehlt die Tabelle, passiert
+    nichts (try/except).
+    """
+    jetzt = datetime.now(timezone.utc).isoformat()
+    for g in versuchte:
+        key = (g.get("name"), g.get("bundesland"))
+        datensatz = {
+            "gemeinde":   g.get("name"),
+            "bundesland": g.get("bundesland"),
+            "letzter_crawl": jetzt,
+        }
+        treffer = erfolgreiche_nach_key.get(key)
+        if treffer:
+            datensatz["protokoll_url"] = treffer.get("quelle_url", "")
+            datensatz["letzter_hash"]  = treffer.get("inhalt_hash", "")
+        try:
+            sb_upsert("gemeinde_crawl", datensatz, on_conflict="gemeinde,bundesland")
+        except Exception:
+            pass  # Tabelle fehlt o.ä. -> Rotation halt ohne Persistenz
+
+
+def _analyse_pdf_aufruf(pdf_bytes: bytes, prompt: str, modell: str,
+                        max_tokens: int = 3500) -> list:
+    """
+    Workaround für GESCANNTE Protokoll-PDFs ohne extrahierbaren Text: das PDF wird
+    direkt (als Dokument) an Claude geschickt; Claude liest es per Vision. Nur für
+    kleinere PDFs (<5 MB), um Kosten/Zeit zu begrenzen.
+    """
+    import base64
+    if not pdf_bytes or len(pdf_bytes) > 5_000_000:
+        return []
+    try:
+        b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=modell,
+            max_tokens=max_tokens,
+            system=SUCHE_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": [
+                {"type": "document",
+                 "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
+                {"type": "text", "text": prompt},
+            ]}],
+        )
+        try:
+            _TOKEN_STATS["input"]  += response.usage.input_tokens
+            _TOKEN_STATS["output"] += response.usage.output_tokens
+        except Exception:
+            pass
+        _TOKEN_STATS["calls"] += 1
+        text = " ".join(b.text for b in response.content
+                        if getattr(b, "type", None) == "text" and getattr(b, "text", "")).strip()
+        return _parse_json_array(text)
+    except Exception as ex:
+        print(f"    ❌ PDF-Analyse-Fehler: {str(ex)[:120]}")
+        return []
+
+
+def analysiere_gecrawlten_inhalt(inhalt_obj: dict, gewerke_txt: str,
+                                 cutoff: str, heute: str) -> list:
+    """
+    Schickt den gecrawlten Inhalt EINER Gemeinde an Haiku und lässt relevante
+    Bau-/Infrastruktur-/Energie-/Immobilienvorhaben als JSON extrahieren.
+    Ist nur ein gescanntes PDF vorhanden (kaum Text), wird das PDF direkt analysiert.
+    """
+    gemeinde = inhalt_obj.get("gemeinde", "")
+    bl       = inhalt_obj.get("bundesland", "")
+    bl_name  = BL_NAMEN.get(bl, bl)
+    text     = inhalt_obj.get("inhalt", "") or ""
+
+    prompt = f"""Analysiere den folgenden Inhalt von der offiziellen Website der Gemeinde {gemeinde} ({bl_name}, Österreich). Es handelt sich um Gemeinderatsprotokolle, Sitzungsberichte oder Gemeinde-Nachrichten.
+
+AUFGABE: Extrahiere ALLE konkreten Bau-, Infrastruktur-, Energie- und Immobilienvorhaben, die für folgende Gewerke des Kunden relevant sind:
+{gewerke_txt}
+
+ZEITRAUM: Nur Vorhaben/Beschlüsse vom {cutoff} bis {heute}. Ältere Beschlüsse ignorieren.
+
+WICHTIG:
+- bundesland = "{bl}"
+- ort = "{gemeinde}" (oder der genaue Ortsteil, falls im Text genannt)
+- quelle_name = "{gemeinde} (Gemeinde-Website)"
+- Beschreibe je Treffer WAS gebaut/saniert wird, WANN und (falls genannt) das Volumen.
+
+Findest du keine konkreten Bauvorhaben im Zeitraum: gib [] zurück.
+
+INHALT DER GEMEINDE-WEBSITE:
+{text}"""
+
+    # Genug Text vorhanden -> normale (günstige) Textanalyse
+    if len(text) >= 200:
+        treffer = _analyse_aufruf(prompt, MODELL_HAIKU)
+        if treffer:
+            return treffer
+
+    # Kaum Text (vermutlich gescanntes PDF) -> PDF direkt an Claude (Vision-Workaround)
+    if inhalt_obj.get("pdf_bytes"):
+        pdf_prompt = (f"Dies ist ein Gemeinderatsprotokoll der Gemeinde {gemeinde} ({bl_name}). "
+                      f"Extrahiere relevante Bauvorhaben für die Gewerke: {gewerke_txt}. "
+                      f"Zeitraum {cutoff} bis {heute}. bundesland=\"{bl}\", ort=\"{gemeinde}\", "
+                      f"quelle_name=\"{gemeinde} (Gemeinde-Website)\". Nichts gefunden: []")
+        return _analyse_pdf_aufruf(inhalt_obj["pdf_bytes"], pdf_prompt, MODELL_HAIKU)
+
+    return []
+
+
+# =============================================================================
 # HAUPTFUNKTION
 # =============================================================================
 
@@ -1348,6 +1540,50 @@ def verarbeite_auftrag(auftrag: dict) -> None:
         gesehen: set = set()       # laufinterner Duplikat-Schutz
         gesamt_gefunden = 0
         abgebrochen     = False
+
+        # CRAWLING-GLEIS (Säule B): Gemeinde-Websites DIREKT herunterladen und mit
+        # Haiku analysieren. Läuft VOR der web_search-Schleife mit eigenem
+        # Zeitbudget-Anteil, damit es garantiert zum Zug kommt.
+        gewerke_txt_crawl = ", ".join(gewerke) if gewerke else \
+            "alle Bau-, Infrastruktur-, Energie- und Immobilienvorhaben"
+
+        def crawl_zeit_ok() -> bool:
+            return (time.time() - start_zeit) < (ZEITBUDGET_SEKUNDEN * CRAWL_ZEITBUDGET_ANTEIL)
+
+        if CRAWLING_AKTIV and crawl_zeit_ok():
+            print(f"\n{'═'*60}")
+            print(f"  🕸️  CRAWLING-GLEIS: Gemeinde-Websites direkt durchsuchen")
+            print(f"{'═'*60}")
+            crawl_gemeinden = _waehle_crawl_gemeinden(bundeslaender, CRAWL_MAX_GEMEINDEN)
+            print(f"     {len(crawl_gemeinden)} Gemeinden ausgewählt "
+                  f"(max {CRAWL_MAX_GEMEINDEN}/Lauf, Rotation via Cache)")
+
+            roh_inhalte = crawler.crawle_gemeinden_parallel(
+                crawl_gemeinden, PROTOKOLL_PFADE,
+                max_workers=CRAWL_WORKERS,
+                zeit_ok=crawl_zeit_ok,
+                fortschritt=lambda n: print(f"     … {n} Gemeinden gecrawlt"),
+            )
+            print(f"     → {len(roh_inhalte)} Gemeinden mit verwertbarem Inhalt")
+
+            erfolge_key = {(o["gemeinde"], o["bundesland"]): o for o in roh_inhalte}
+            _markiere_crawl_versuche(crawl_gemeinden, erfolge_key)
+
+            crawl_neu = 0
+            for obj in roh_inhalte:
+                if zeit_aufgebraucht():
+                    print("     ⏱️  Zeitbudget erreicht – Crawling-Analyse gestoppt.")
+                    break
+                roh = analysiere_gecrawlten_inhalt(obj, gewerke_txt_crawl, cutoff_str, heute_str)
+                gesamt_gefunden += len(roh)
+                neu = _verarbeite_treffer(roh, obj["bundesland"], 3, gesehen,
+                                          neue_projekte, auftrag,
+                                          cutoff_dt=cutoff_dt, heute_dt=heute_dt)
+                crawl_neu += neu
+                if roh:
+                    print(f"     ✅ {obj['gemeinde']}: {len(roh)} gefunden, {neu} neu")
+            print(f"     CRAWLING-ERGEBNIS: {crawl_neu} neue Projekte aus Gemeinde-Websites")
+
 
         # ──────────────────────────────────────────────────────────────────
         # HAUPTSCHLEIFE: pro Bundesland alle Suchgleise abarbeiten
