@@ -76,7 +76,7 @@
   <div class="schritte">
     <div class="schritte-titel">Was passiert jetzt?</div>
     <div class="schritt-zeile"><div class="schritt-nr">1</div><span>Stripe bestätigt Ihre Zahlung an unseren Server</span></div>
-    <div class="schritt-zeile"><div class="schritt-nr">2</div><span>KI-Agent durchsucht alle Quellen (150+ österreichische Medien)</span></div>
+    <div class="schritt-zeile"><div class="schritt-nr">2</div><span>Der KI-Agent durchsucht österreichische Medien, kommunale Beschlüsse und Vergabeportale</span></div>
     <div class="schritt-zeile"><div class="schritt-nr">3</div><span>Sie erhalten eine E-Mail – Ihr Dashboard-Link ist bereits oben</span></div>
     <div class="schritt-zeile"><div class="schritt-nr">4</div><span>Neue Projekte werden bei jeder Suche automatisch hinzugefügt</span></div>
   </div>
@@ -152,89 +152,6 @@
   } else {
     statusEl.textContent = 'Zahlung wird verarbeitet – Sie erhalten in Kürze eine E-Mail';
     stopLoading();
-  }
-</script>
-
-<script>
-function linkKopieren() {
-  const url = window._dashboardUrl;
-  if (!url) return;
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('btn-copy');
-    btn.textContent = '✓ Kopiert!';
-    btn.classList.add('kopiert');
-    setTimeout(() => { btn.textContent = 'Kopieren'; btn.classList.remove('kopiert'); }, 2000);
-  });
-}
-</script>
-</body>
-</html>    <div class="schritt-zeile"><div class="schritt-nr">2</div><span>KI-Agent durchsucht alle Quellen (150+ österreichische Medien)</span></div>
-    <div class="schritt-zeile"><div class="schritt-nr">3</div><span>Sie erhalten eine E-Mail – Ihr Dashboard-Link ist bereits oben</span></div>
-    <div class="schritt-zeile"><div class="schritt-nr">4</div><span>Neue Projekte werden bei jeder Suche automatisch hinzugefügt</span></div>
-  </div>
-
-  <div class="loading" id="loading">
-    <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
-    <span style="font-size:12px;color:var(--text-dim);font-family:'DM Mono',monospace;margin-left:6px;">Zahlung wird verarbeitet...</span>
-  </div>
-
-  <p class="hinweis">Sie erhalten auch per E-Mail eine Benachrichtigung, sobald die Ergebnisse bereit sind.</p>
-  <a href="https://project-scout.at/" class="btn">← Zurück zur Startseite</a>
-</div>
-
-<script type="module">
-  // ===========================================================================
-  // WICHTIG: Diese Seite setzt den Status NICHT mehr selbst auf "bezahlt".
-  // Die Zahlung wird ausschliesslich serverseitig vom Stripe-Webhook bestaetigt
-  // (Supabase Edge Function). Hier wird der Status nur GELESEN, um dem Kunden
-  // eine Rueckmeldung zu geben. So kann niemand durch Aufruf dieser Seite einen
-  // kostenlosen Lauf ausloesen.
-  //
-  // Die Supabase-Bibliothek wird oben per <script>-Tag geladen und steht als
-  // globale Variable "supabase" bereit. Daraus erzeugen wir den Client "db".
-  // (Kein dynamischer Import mehr -> behebt den "Failed to fetch"-Fehler.)
-  // ===========================================================================
-  const db = supabase.createClient(
-    'https://bkhjekpwyngoixnlizxo.supabase.co',
-    'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt'
-  );
-
-  const params        = new URLSearchParams(window.location.search);
-  const kundenId      = params.get('kunden_id')      || sessionStorage.getItem('bs_kunden_id');
-  const suchanfrageId = params.get('suchanfrage_id') || sessionStorage.getItem('bs_suchanfrage_id');
-
-  // Fixen Dashboard-Link anzeigen (nur kunden_id noetig)
-  if (kundenId) {
-    const dashboardUrl = `https://project-scout.at/dashboard.html?kunden_id=${kundenId}`;
-    document.getElementById('dashboard-link-url').textContent = dashboardUrl;
-    document.getElementById('dashboard-box').style.display = 'block';
-    window._dashboardUrl = dashboardUrl;
-  }
-
-  // Status nur LESEN und Anzeige aktualisieren (kein Schreiben!)
-  const statusEl = document.getElementById('status-text');
-  if (suchanfrageId) {
-    let versuche = 0;
-    const pruefe = async () => {
-      versuche++;
-      try {
-        const { data } = await db
-          .from('suchanfragen').select('status')
-          .eq('id', suchanfrageId).single();
-        if (data && ['bezahlt', 'agent_laeuft', 'abgeschlossen'].includes(data.status)) {
-          statusEl.textContent = 'Zahlung bestätigt – Agent wird gestartet';
-          return;
-        }
-      } catch (e) { /* Lesen evtl. durch RLS gesperrt – dann neutrale Meldung */ }
-      if (versuche < 10) {
-        setTimeout(pruefe, 3000);
-      } else {
-        statusEl.textContent = 'Zahlung wird verarbeitet – Sie erhalten in Kürze eine E-Mail';
-      }
-    };
-    pruefe();
-  } else {
-    statusEl.textContent = 'Zahlung wird verarbeitet – Sie erhalten in Kürze eine E-Mail';
   }
 </script>
 
