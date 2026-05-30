@@ -1,0 +1,7 @@
+# Python-Pakete für den ProjectScout-Agent (inkl. Crawling-Säule).
+# Wird von GitHub Actions installiert (pip install -r requirements.txt).
+
+requests>=2.31
+anthropic>=0.40
+beautifulsoup4>=4.12
+pdfplumber>=0.11
