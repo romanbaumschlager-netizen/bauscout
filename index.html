@@ -537,6 +537,10 @@
         </div>
         <div class="hinweis" style="margin-top:14px;">🔒 <strong>Sicher bezahlen:</strong> Die Abwicklung erfolgt über Stripe. Ihre Kreditkartendaten werden nicht auf unseren Servern gespeichert. Nach erfolgreicher Zahlung startet der Scout-Lauf automatisch.</div>
         <div id="scout-status"></div>
+        <label style="display:flex;align-items:flex-start;gap:10px;margin-top:18px;padding:14px 16px;background:var(--hell);border:1.5px solid var(--rand);border-radius:8px;cursor:pointer;font-size:13px;line-height:1.6;color:var(--text-mid);font-weight:400;text-transform:none;letter-spacing:0;">
+          <input type="checkbox" id="widerruf-check" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--blau);">
+          <span>Ich stimme ausdrücklich zu, dass der Scout-Lauf <strong>sofort nach Zahlung</strong> beginnt. Mir ist bekannt, dass ich dadurch mein 14-tägiges Rücktrittsrecht verliere, sobald die Leistung vollständig erbracht ist. Die <a href="https://project-scout.at/impressum.html#agb" target="_blank" style="color:var(--blau);text-decoration:underline;">AGB &amp; Widerrufsbelehrung</a> habe ich zur Kenntnis genommen.</span>
+        </label>
         <div class="btn-row" style="margin-top:20px;">
           <button class="btn-outline" onclick="zurueck(5)">← Zurück</button>
           <button class="btn-gold" id="bezahl-btn" onclick="bezahlen()" style="padding:14px 36px;font-size:16px;">💳 Jetzt bezahlen & starten</button>
@@ -1000,6 +1004,11 @@ async function bezahlen() {
   const email    = document.getElementById('email').value.trim();
   const homepage = document.getElementById('homepage').value.trim();
   if (!vorname || !nachname || !email) { alert('Bitte zurückgehen und alle Pflichtfelder ausfüllen.'); return; }
+  const widerrufOk = document.getElementById('widerruf-check');
+  if (!widerrufOk || !widerrufOk.checked) {
+    alert('Bitte bestätigen Sie die Zustimmung zum sofortigen Start (Kästchen oberhalb des Buttons), um fortzufahren.');
+    return;
+  }
   const btn = document.getElementById('bezahl-btn');
   btn.disabled = true; btn.textContent = '⏳ Wird gespeichert...';
   zeigeStatus('Daten werden gespeichert...', 'laden');
