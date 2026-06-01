@@ -1,4 +1,14 @@
 name: ProjectScout Agent
+
+# Nur EIN Agent-Lauf gleichzeitig: Ein neuer 15-Minuten-Takt wartet, bis der
+# gerade laufende Lauf fertig ist, statt parallel zu starten.
+# 'cancel-in-progress: false' heißt ausdrücklich: ein laufender Lauf wird NICHT
+# abgebrochen. Das verhindert Doppelbearbeitung und macht den automatischen
+# Wiederanlauf abgestürzter Aufträge eindeutig.
+concurrency:
+  group: projectscout-agent
+  cancel-in-progress: false
+
 on:
   schedule:
     - cron: '*/15 * * * *'
