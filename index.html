@@ -587,18 +587,19 @@ function getSupabase() {
 const CREATE_CHECKOUT_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co/functions/v1/create-checkout';
 
 const GEWERKE = {
-  "Bau & Rohbau":["Erdbau / Aushub","Spezialtiefbau","Betonbau / Stahlbeton","Maurerarbeiten","Abbruch / Demontage","Sprengungen","Bohrpfähle / Baugrubensicherung","Bodenverbesserung","Hangsicherungen","Hochwasserschutz","Zimmerei / Holzbau","Trockenbau","Estrich / Boden","Fliesen / Naturstein","Maler / Anstreicher","Schlosser / Metallbau","Fenster / Türen / Verglasungen","Innenausbau"],
+  "Bau & Rohbau":["Erdbau / Aushub","Spezialtiefbau","Betonbau / Stahlbeton","Transportbeton / Lieferbeton","Maurerarbeiten","Abbruch / Demontage","Sprengungen","Bohrpfähle / Baugrubensicherung","Bodenverbesserung","Hangsicherungen","Hochwasserschutz","Zimmerei / Holzbau","Trockenbau","Estrich / Boden","Fliesen / Naturstein","Maler / Anstreicher","Schlosser / Metallbau","Fenster / Türen / Verglasungen","Innenausbau","Baustoffhandel / Baustofflieferanten"],
   "Ausbau & Haustechnik":["Elektriker / Elektrotechnik","Installateur / Sanitär","Heizung / Lüftung / Klima (HVAC)","Aufzüge / Lifte","Brandschutz / Sprinkler","Gebäudeautomation / Smart Building","Dachdecker","Spengler / Klempner","Fassadenbau / WDVS","Gerüstbau"],
   "Energie & Umwelt":["PV-Anlagen / Photovoltaik","Wärmepumpen","Erdwärmebohrungen","Windkraftanlagen","E-Ladeinfrastruktur","Biomasse / Nahwärme","Energiesanierung","Batteriespeicher","Wasserkraft","Deponie / Entsorgung","Altlastensanierung","Recycling / Kreislaufwirtschaft"],
-  "Infrastruktur & Verkehr":["Straßenbau","Bahnbau / Gleisbau","Brückenbau","Tunnelbau","Leitungsbau","Kanal / Abwasser","Wasserversorgung","Glasfaser / Breitband","Kraftwerksbau","Beleuchtung / Straßenbeleuchtung","Verkehrsleitsysteme"],
+  "Infrastruktur & Verkehr":["Straßenbau","Bahnbau / Gleisbau","Brückenbau","Tunnelbau","Leitungsbau","Kanal / Abwasser","Wasserversorgung","Glasfaser / Breitband","Beleuchtung / Straßenbeleuchtung","Verkehrsleitsysteme"],
   "Immobilien & Grundstücke":["Grundstückskauf / -verkauf","Umwidmungen / Flächenwidmung","Wohnbauprojekte","Gewerbliche Neubauten","Sanierung / Revitalisierung","Projektentwicklung / Bauträger","Immobilienmakler","Liegenschaftsbewertung","Zwangsversteigerungen","Pachtflächen / Landwirtschaftliche Flächen"],
-  "Öffentliche Projekte & Soziales":["Schulen / Kindergärten","Pflegeheime / Senioreneinrichtungen","Krankenhäuser / Ärztezentren","Sporthallen / Freizeitanlagen","Gemeindebauten / Rathäuser","Feuerwehr / Rettung","Sozialwohnbau","Kultureinrichtungen","Friedhöfe / Kapellen"],
-  "Fahrzeuge & Ausrüstung":["Nutzfahrzeuge / LKW","Feuerwehrfahrzeuge","Rettungsfahrzeuge","Kommunalfahrzeuge / Traktoren","Baumaschinen / Geräte","Krantechnik / Hebetechnik","Fahrzeugausstattung","Werkzeuge / Betriebsmittel","IT-Ausstattung / Hard- und Software","Büroausstattung / Mobiliar"],
-  "Landschaft & Außenanlagen":["Landschaftsbau / Gartengestaltung","Parkanlagen / Grünflächen","Spielplätze / Freizeitanlagen","Sportplätze / Kunstrasen","Bewässerungsanlagen","Forstarbeiten / Holzschlägerung","Schädlingsbekämpfung / Pflanzenpflege","Flurbereinigung"],
+  "Öffentliche Projekte & Soziales":["Schulen / Kindergärten","Pflegeheime / Senioreneinrichtungen","Krankenhäuser / Ärztezentren","Sporthallen / Bäder","Gemeindebauten / Rathäuser","Feuerwehr / Rettung","Sozialwohnbau","Kultureinrichtungen","Friedhöfe / Kapellen"],
+  "Fahrzeuge & Ausrüstung":["Nutzfahrzeuge / LKW","Feuerwehrfahrzeuge","Rettungsfahrzeuge","Kommunalfahrzeuge","Baumaschinen / Geräte","Krantechnik / Hebetechnik","Fahrzeugausstattung","Werkzeuge / Betriebsmittel"],
+  "Landschaft & Außenanlagen":["Landschaftsbau / Gartengestaltung","Parkanlagen / Grünflächen","Spielplätze","Sportplätze / Kunstrasen","Schädlingsbekämpfung / Pflanzenpflege","Flurbereinigung"],
   "Gastronomie & Tourismus":["Hotelneubauten / Erweiterungen","Gastronomiebetriebe / Konzessionen","Tourismusinfrastruktur","Seilbahnen / Skilifte","Campingplätze","Veranstaltungsstätten","Küchen- / Gastronomieausstattung","Freizeitparks / Erlebnisanlagen"],
   "Planung & Beratung":["Architektur / Gebäudeplanung","Statik / Tragwerksplanung","Vermessung / Geodäsie","Umweltgutachten / UVP","Projektmanagement / Bauleitung","Energieberatung","Rechtsberatung / Vergaberecht","Finanzierung / Fördermittel"],
-  "Landwirtschaft & Forst":["Landwirtschaftliche Bauten / Stallbau","Silos / Lagerhallen","Biogasanlagen","Bewässerung / Drainage","Forststraßen","Landmaschinen / Geräte","Weinbau / Obstbau Infrastruktur","Fischzucht / Aquakultur"],
-  "Industrie & Gewerbe":["Industriehallen / Werkshallen","Gewerbeparks / Betriebsanlagen","Produktionsanlagen","Lagerhallen / Logistikzentren","Reinräume / Labore","Tankstellen / Waschanlagen","Kälteanlagen / Kühlhäuser","Fördertechnik / Förderanlagen"]
+  "Landwirtschaft & Forst":["Landwirtschaftliche Bauten / Stallbau","Silos / Lagerhallen","Biogasanlagen","Bewässerung / Drainage","Forststraßen","Forstarbeiten / Holzschlägerung","Landmaschinen / Geräte","Weinbau / Obstbau Infrastruktur","Fischzucht / Aquakultur"],
+  "Industrie & Gewerbe":["Industriehallen / Werkshallen","Gewerbeparks / Betriebsanlagen","Produktionsanlagen","Lagerhallen / Logistikzentren","Reinräume / Labore","Tankstellen / Waschanlagen","Kälteanlagen / Kühlhäuser","Fördertechnik / Förderanlagen"],
+  "Gebäudeservices & Sicherheit":["Gebäudereinigung / Baureinigung","Facility Management / Hausverwaltung","Sicherheitstechnik / Videoüberwachung / Zutritt"]
 };
 
 // Emojis aus den Kategorienamen für Anzeige (Originaltext mit Emoji wird nur für Datenspeicherung verwendet)
@@ -606,7 +607,8 @@ const GEWERKE_EMOJIS = {
   "Bau & Rohbau":"🏗️","Ausbau & Haustechnik":"🔧","Energie & Umwelt":"⚡",
   "Infrastruktur & Verkehr":"🛣️","Immobilien & Grundstücke":"🏘️","Öffentliche Projekte & Soziales":"🏫",
   "Fahrzeuge & Ausrüstung":"🚗","Landschaft & Außenanlagen":"🌳","Gastronomie & Tourismus":"🍽️",
-  "Planung & Beratung":"📐","Landwirtschaft & Forst":"🌾","Industrie & Gewerbe":"🏭"
+  "Planung & Beratung":"📐","Landwirtschaft & Forst":"🌾","Industrie & Gewerbe":"🏭",
+  "Gebäudeservices & Sicherheit":"🏢"
 };
 
 let ausgewaehlteGewerke = new Set();
