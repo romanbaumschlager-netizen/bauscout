@@ -215,7 +215,27 @@ def geocode_ort(ort: str, bundesland: str) -> tuple:
 
     lat = lng = None
     ort_sauber = (ort or "").split("(")[0].strip()
+
+    # 1) Schon einmal verortet? Vorhandene Koordinaten aus bereits gespeicherten
+    #    Projekten wiederverwenden (ortsweit, kundenübergreifend) – spart die
+    #    langsame Nominatim-Abfrage (sonst 1 Sek Pause je neuem Ort). Reduziert
+    #    die Geocoding-Wartezeit über die Läufe hinweg auf nahezu null.
     if ort_sauber:
+        try:
+            bekannt = sb_get("projekte", {
+                "select": "lat,lng",
+                "ort":    f"eq.{ort_sauber}",
+                "lat":    "not.is.null",
+                "limit":  "1",
+            })
+            if bekannt:
+                lat = bekannt[0].get("lat")
+                lng = bekannt[0].get("lng")
+        except Exception:
+            pass  # Bei Problemen einfach unten live abfragen.
+
+    # 2) Noch unbekannt -> einmalig live bei Nominatim abfragen.
+    if (lat is None or lng is None) and ort_sauber:
         bl_name = BL_NAMEN.get(bundesland, "")
         query = f"{ort_sauber}, {bl_name}, Österreich" if bl_name else f"{ort_sauber}, Österreich"
         try:
@@ -289,7 +309,16 @@ def lade_offene_auftraege(spezifische_id: str = None) -> list:
     if spezifische_id:
         params = {"id": f"eq.{spezifische_id}"}
     else:
-        params = {"status": "eq.bezahlt"}
+        # 'bezahlt'      = neue Aufträge.
+        # 'agent_laeuft' = Aufträge, deren vorheriger Lauf abgestürzt ist. Da dank
+        #                  der 'ein Lauf gleichzeitig'-Sperre (Workflow) garantiert
+        #                  KEIN zweiter Lauf parallel arbeitet, ist jeder noch auf
+        #                  'agent_laeuft' stehende Auftrag eine Leiche und wird hier
+        #                  automatisch wieder aufgegriffen (Selbstheilung gegen
+        #                  Hänger). Doppelte Projekte entstehen dabei nicht, weil
+        #                  speichere_projekt laufübergreifend per rohdaten_hash
+        #                  dedupliziert.
+        params = {"status": "in.(bezahlt,agent_laeuft)"}
     auftraege = sb_get("suchanfragen", params)
     print(f"📋 {len(auftraege)} offener Auftrag/Aufträge gefunden")
     return auftraege
