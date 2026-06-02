@@ -225,7 +225,7 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
 <script>
 const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabase = null; // wird in init() gesetzt, sobald die Bibliothek sicher geladen ist
 
 let alleProjekte  = [];
 let alleAuftraege = [];
@@ -238,10 +238,46 @@ let gemerkteIds   = new Set();
 const params   = new URLSearchParams(window.location.search);
 const kundenId = params.get('kunden_id');
 
+// Zeigt eine klare Meldung im Dashboard an, statt ewig zu laden.
+function zeigeFehler(text) {
+  const liste = document.getElementById('projekte-liste');
+  if (liste) liste.innerHTML = '<div style="padding:24px;text-align:center;color:#b91c1c;font-size:14px;line-height:1.6;">' + text + '</div>';
+  const ov = document.getElementById('karte-overlay');
+  if (ov) ov.textContent = text;
+}
+
+// Stellt sicher, dass die Supabase-Bibliothek geladen ist – mit Fallback-CDN,
+// falls die erste Quelle (z. B. durch einen Inhalts-/Werbeblocker) blockiert wurde.
+async function stelleSupabaseSicher() {
+  if (window.supabase && window.supabase.createClient) return;
+  const quellen = [
+    'https://unpkg.com/@supabase/supabase-js@2',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+  ];
+  for (const url of quellen) {
+    try {
+      await new Promise((ok, fehler) => {
+        const s = document.createElement('script');
+        s.src = url; s.onload = ok; s.onerror = fehler;
+        document.head.appendChild(s);
+      });
+      if (window.supabase && window.supabase.createClient) return;
+    } catch (e) { /* nächste Quelle versuchen */ }
+  }
+  throw new Error('Die Datenbank-Bibliothek konnte nicht geladen werden. Bitte deaktivieren Sie einen evtl. aktiven Inhalts-/Werbeblocker für project-scout.at und laden die Seite neu – oder verwenden Sie einen anderen Browser.');
+}
+
 // ── INIT ──
 async function init() {
-  if (!kundenId) { zeigeKeinZugang(); return; }
-  await ladeDaten();
+  try {
+    if (!kundenId) { zeigeKeinZugang(); return; }
+    await stelleSupabaseSicher();
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await ladeDaten();
+  } catch (e) {
+    console.error('Init-Fehler:', e);
+    zeigeFehler((e && e.message) ? e.message : 'Unbekannter Fehler beim Laden.');
+  }
 }
 
 async function ladeDaten() {
@@ -262,15 +298,19 @@ async function ladeDaten() {
     // ALLE Projekte des Kunden laden (nicht laufspezifisch)
     await ladeProjekte();
 
-  } catch(e) { console.error('Ladefehler:', e); }
+  } catch(e) {
+    console.error('Ladefehler:', e);
+    zeigeFehler('Fehler beim Laden der Daten: ' + ((e && e.message) ? e.message : e));
+  }
 }
 
 // ── ALLE PROJEKTE DES KUNDEN LADEN ──
 async function ladeProjekte() {
-  const { data: projekte } = await supabase
+  const { data: projekte, error } = await supabase
     .from('projekte').select('*')
     .eq('kunden_id', kundenId)
     .order('erstmals_gefunden', { ascending: false });
+  if (error) throw new Error('Projekte konnten nicht geladen werden: ' + error.message);
 
   alleProjekte = projekte || [];
   ignoriertIds = new Set(alleProjekte.filter(p => p.ignorieren).map(p => p.id));
