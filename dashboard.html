@@ -225,7 +225,7 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
 <script>
 const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
-let supabase = null; // wird in init() gesetzt, sobald die Bibliothek sicher geladen ist
+let sb = null; // wird in init() gesetzt, sobald die Bibliothek sicher geladen ist
 
 let alleProjekte  = [];
 let alleAuftraege = [];
@@ -272,7 +272,7 @@ async function init() {
   try {
     if (!kundenId) { zeigeKeinZugang(); return; }
     await stelleSupabaseSicher();
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     await ladeDaten();
   } catch (e) {
     console.error('Init-Fehler:', e);
@@ -282,13 +282,13 @@ async function init() {
 
 async function ladeDaten() {
   try {
-    const { data: kunde } = await supabase.from('kunden').select('*').eq('id', kundenId).single();
+    const { data: kunde } = await sb.from('kunden').select('*').eq('id', kundenId).single();
     if (kunde) {
       document.getElementById('header-firma').textContent = kunde.firmenname || 'Dashboard';
     }
 
     // Alle abgeschlossenen Aufträge des Kunden
-    const { data: auftraege } = await supabase
+    const { data: auftraege } = await sb
       .from('suchanfragen').select('*')
       .eq('kunden_id', kundenId).eq('status', 'abgeschlossen')
       .order('erstellt_am', { ascending: false });
@@ -306,7 +306,7 @@ async function ladeDaten() {
 
 // ── ALLE PROJEKTE DES KUNDEN LADEN ──
 async function ladeProjekte() {
-  const { data: projekte, error } = await supabase
+  const { data: projekte, error } = await sb
     .from('projekte').select('*')
     .eq('kunden_id', kundenId)
     .order('erstmals_gefunden', { ascending: false });
@@ -469,17 +469,17 @@ function bindEvents(container) {
 
 async function toggleMerken(id) {
   const neu = !gemerkteIds.has(id);
-  await supabase.from('projekte').update({ gemerkt: neu }).eq('id', id);
+  await sb.from('projekte').update({ gemerkt: neu }).eq('id', id);
   neu ? gemerkteIds.add(id) : gemerkteIds.delete(id);
   rendereListe(); rendereMerkliste();
 }
 
 async function toggleIgnorieren(id) {
   const neu = !ignoriertIds.has(id);
-  await supabase.from('projekte').update({ ignorieren: neu }).eq('id', id);
+  await sb.from('projekte').update({ ignorieren: neu }).eq('id', id);
   if (neu) {
     ignoriertIds.add(id);
-    if (gemerkteIds.has(id)) { gemerkteIds.delete(id); await supabase.from('projekte').update({ gemerkt: false }).eq('id', id); }
+    if (gemerkteIds.has(id)) { gemerkteIds.delete(id); await sb.from('projekte').update({ gemerkt: false }).eq('id', id); }
   } else { ignoriertIds.delete(id); }
   aktualisiereStats(); rendereListe(); rendereMerkliste();
 }
