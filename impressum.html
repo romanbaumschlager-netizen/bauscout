@@ -4,109 +4,189 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProjectScout – Impressum, Datenschutz & AGB</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --weiss: #ffffff;
-    --hell: #f8f7f4;
-    --hell2: #f1f0ec;
-    --rand: #e5e4e0;
-    --rand2: #d0cfc9;
-    --text: #111111;
-    --text-mid: #444444;
-    --text-dim: #888888;
-    --blau: #2563eb;
-    --blau-hell: #eff6ff;
-    --blau-dunkel: #1d4ed8;
-    --gruen: #16a34a;
+    --weiss:#ffffff;
+    --hell:#f8f9fb;
+    --hell2:#f0f2f5;
+    --rand:#e4e7ec;
+    --rand2:#cdd2db;
+    --text:#0f1724;
+    --text-mid:#3d4a5c;
+    --text-dim:#8494a7;
+    --blau:#2563eb;
+    --blau-hell:#eef3fd;
+    --blau-mid:#dbeafe;
+    --blau-dunkel:#1d4ed8;
+    --gruen:#16a34a;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--weiss); color: var(--text); font-family: 'Inter', sans-serif; font-weight: 400; min-height: 100vh; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--weiss);color:var(--text);
+    font-family:'Plus Jakarta Sans',sans-serif;
+    font-weight:400;min-height:100vh;
+  }
 
-  header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--rand); padding: 0 48px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; text-decoration: none; }
-  .logo span { color: var(--blau); }
-  .header-nav { display: flex; align-items: center; gap: 32px; }
-  .header-nav a { font-size: 14px; color: var(--text-mid); text-decoration: none; transition: color 0.15s; }
-  .header-nav a:hover { color: var(--blau); }
-  .header-nav a.aktiv { color: var(--blau); font-weight: 600; }
-  .header-cta { background: var(--blau); color: white; font-size: 14px; font-weight: 600; padding: 9px 20px; border-radius: 8px; text-decoration: none; transition: background 0.15s; }
-  .header-cta:hover { background: var(--blau-dunkel); }
-  @media (max-width: 768px) { .header-nav { display: none; } }
+  /* ── HEADER ── */
+  header{
+    position:sticky;top:0;z-index:100;
+    background:rgba(255,255,255,0.97);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--rand);
+    padding:0 52px;height:68px;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 2px 16px rgba(15,23,36,0.06);
+  }
+  .header-logo{display:flex;align-items:center;text-decoration:none;}
+  .header-nav{display:flex;align-items:center;gap:36px;}
+  .header-nav a{
+    font-size:14px;font-weight:500;color:var(--text-mid);
+    text-decoration:none;transition:color 0.15s;
+  }
+  .header-nav a:hover{color:var(--blau);}
+  .header-nav a.aktiv{color:var(--blau);font-weight:700;}
+  .header-cta{
+    background:var(--blau);color:white;
+    font-size:14px;font-weight:600;
+    padding:9px 22px;border-radius:8px;
+    text-decoration:none;transition:background 0.15s;
+  }
+  .header-cta:hover{background:var(--blau-dunkel);}
 
-  .container { max-width: 860px; margin: 0 auto; padding: 56px 48px 100px; }
+  /* ── LAYOUT ── */
+  .container{max-width:840px;margin:0 auto;padding:60px 52px 100px;}
 
-  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rand); margin-bottom: 48px; }
-  .tab { font-size: 14px; font-weight: 500; color: var(--text-dim); padding: 12px 20px; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
-  .tab:hover { color: var(--text); }
-  .tab.aktiv { color: var(--blau); border-bottom-color: var(--blau); }
+  /* ── TABS ── */
+  .tabs{
+    display:flex;gap:2px;
+    border-bottom:1px solid var(--rand);
+    margin-bottom:52px;
+  }
+  .tab{
+    font-size:14px;font-weight:600;color:var(--text-dim);
+    padding:12px 22px;cursor:pointer;border:none;background:none;
+    border-bottom:2px solid transparent;margin-bottom:-1px;
+    transition:all 0.15s;letter-spacing:-0.1px;
+    font-family:'Plus Jakarta Sans',sans-serif;
+  }
+  .tab:hover{color:var(--text);}
+  .tab.aktiv{color:var(--blau);border-bottom-color:var(--blau);}
 
-  .sektion { display: none; }
-  .sektion.aktiv { display: block; }
+  .sektion{display:none;}
+  .sektion.aktiv{display:block;}
 
-  .page-title { font-size: 36px; font-weight: 700; letter-spacing: -1px; color: var(--text); margin-bottom: 6px; }
-  .page-sub { font-size: 13px; color: var(--text-dim); font-family: 'DM Mono', monospace; margin-bottom: 40px; }
+  /* ── TYPOGRAFIE ── */
+  .page-title{
+    font-size:38px;font-weight:800;letter-spacing:-1.5px;
+    color:var(--text);margin-bottom:6px;line-height:1.1;
+  }
+  .page-sub{
+    font-size:13px;color:var(--text-dim);
+    font-family:'DM Mono',monospace;margin-bottom:44px;
+  }
 
-  h2 { font-size: 11px; font-weight: 600; color: var(--blau); letter-spacing: 2px; text-transform: uppercase; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(37,99,235,0.15); }
-  h2:first-of-type { margin-top: 0; }
+  h2{
+    font-size:11px;font-weight:700;color:var(--blau);
+    letter-spacing:2px;text-transform:uppercase;
+    margin:40px 0 16px;padding-bottom:10px;
+    border-bottom:1px solid rgba(37,99,235,0.15);
+  }
+  h2:first-of-type{margin-top:0;}
 
-  p { font-size: 15px; color: var(--text-mid); line-height: 1.8; margin-bottom: 12px; }
-  p strong { color: var(--text); font-weight: 600; }
-  a { color: var(--blau); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  p{font-size:15px;color:var(--text-mid);line-height:1.85;margin-bottom:14px;}
+  p strong{color:var(--text);font-weight:700;}
+  a{color:var(--blau);text-decoration:none;}
+  a:hover{text-decoration:underline;}
 
-  ul { list-style: none; padding: 0; margin-bottom: 12px; }
-  ul li { font-size: 15px; color: var(--text-mid); line-height: 1.8; padding: 3px 0 3px 20px; position: relative; }
-  ul li::before { content: '→'; position: absolute; left: 0; color: var(--blau); font-size: 12px; top: 5px; }
+  ul{list-style:none;padding:0;margin-bottom:14px;}
+  ul li{
+    font-size:15px;color:var(--text-mid);line-height:1.85;
+    padding:3px 0 3px 22px;position:relative;
+  }
+  ul li::before{
+    content:'→';position:absolute;left:0;
+    color:var(--blau);font-size:12px;top:6px;font-weight:700;
+  }
 
-  .info-karte { background: var(--hell); border: 1px solid var(--rand); border-radius: 10px; padding: 4px 0; margin-bottom: 14px; }
-  .info-zeile { display: flex; gap: 16px; padding: 11px 20px; border-bottom: 1px solid var(--rand); align-items: flex-start; }
-  .info-zeile:last-child { border-bottom: none; }
-  .info-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; min-width: 130px; padding-top: 2px; flex-shrink: 0; }
-  .info-wert { font-size: 14px; color: var(--text); line-height: 1.6; }
+  /* ── INFO KARTE ── */
+  .info-karte{
+    background:var(--hell);border:1px solid var(--rand);
+    border-radius:12px;padding:4px 0;margin-bottom:16px;
+  }
+  .info-zeile{
+    display:flex;gap:20px;padding:13px 22px;
+    border-bottom:1px solid var(--rand);align-items:flex-start;
+  }
+  .info-zeile:last-child{border-bottom:none;}
+  .info-label{
+    font-size:11px;font-weight:700;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:0.8px;
+    min-width:140px;padding-top:2px;flex-shrink:0;
+  }
+  .info-wert{font-size:14px;color:var(--text);line-height:1.65;}
 
-  .hinweis { background: var(--blau-hell); border: 1px solid rgba(37,99,235,0.15); border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 14px; color: #1d4ed8; line-height: 1.7; }
+  /* ── HINWEIS ── */
+  .hinweis{
+    background:var(--blau-hell);border:1px solid rgba(37,99,235,0.15);
+    border-radius:10px;padding:16px 20px;margin:18px 0;
+    font-size:14px;color:#1d4ed8;line-height:1.75;
+  }
 
-  .stand { font-size: 12px; color: var(--text-dim); font-family: 'DM Mono', monospace; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rand); }
+  /* ── STAND ── */
+  .stand{
+    font-size:12px;color:var(--text-dim);
+    font-family:'DM Mono',monospace;
+    margin-top:52px;padding-top:22px;
+    border-top:1px solid var(--rand);
+  }
 
-  footer { background: var(--hell); border-top: 1px solid var(--rand); padding: 28px 48px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-  .footer-logo { font-size: 16px; font-weight: 700; color: var(--text); }
-  .footer-logo span { color: var(--blau); }
-  .footer-copy { font-size: 12px; color: var(--text-dim); }
+  /* ── FOOTER ── */
+  footer{
+    background:var(--hell);border-top:1px solid var(--rand);
+    padding:28px 52px;
+    display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:12px;
+  }
+  .footer-copy{font-size:12px;color:var(--text-dim);}
 
-  @media (max-width: 640px) {
-    header { padding: 0 20px; }
-    .container { padding: 40px 20px 80px; }
-    .info-zeile { flex-direction: column; gap: 4px; }
-    .info-label { min-width: auto; }
-    footer { padding: 20px; flex-direction: column; }
+  /* ── RESPONSIVE ── */
+  @media(max-width:768px){
+    header{padding:0 20px;}
+    .header-nav{display:none;}
+    .container{padding:40px 20px 80px;}
+    .info-zeile{flex-direction:column;gap:4px;}
+    .info-label{min-width:auto;}
+    footer{padding:20px;flex-direction:column;}
   }
 </style>
 </head>
 <body>
 
 <header>
-  <a href="https://project-scout.at/" style="text-decoration:none;display:flex;align-items:center;">
-    <svg height="38" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="90" cy="90" r="52" fill="none" stroke="#111111" stroke-width="2.5"/>
-      <circle cx="90" cy="90" r="38" fill="none" stroke="#111111" stroke-width="0.8" opacity="0.25"/>
+  <a href="https://project-scout.at/" class="header-logo">
+    <svg height="40" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="90" cy="90" r="52" fill="none" stroke="#0f1724" stroke-width="2.5"/>
+      <circle cx="90" cy="90" r="38" fill="none" stroke="#0f1724" stroke-width="0.8" opacity="0.25"/>
       <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
-      <polygon points="90,138 83,90 90,98 97,90" fill="#111111" opacity="0.35"/>
-      <text x="90" y="36" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#2563eb">N</text>
-      <text x="90" y="152" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#111111" opacity="0.4">S</text>
-      <text x="34" y="94" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#111111" opacity="0.4">W</text>
-      <text x="146" y="94" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#111111" opacity="0.4">O</text>
+      <polygon points="90,138 83,90 90,98 97,90" fill="#0f1724" opacity="0.35"/>
+      <text x="90" y="36" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#2563eb">N</text>
+      <text x="90" y="152" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">S</text>
+      <text x="34" y="94" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">W</text>
+      <text x="146" y="94" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">O</text>
       <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
       <circle cx="116" cy="116" r="7" fill="#2563eb" opacity="0.2"/>
       <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
       <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
-      <text x="162" y="74" font-family="Inter,Arial,sans-serif" font-size="48" font-weight="700" fill="#111111">Project<tspan fill="#2563eb">Scout</tspan></text>
-      <text x="164" y="102" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400" fill="#6b7280" letter-spacing="1">Intelligentes Scouting · Österreich</text>
+      <text x="162" y="76" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="48" font-weight="800" fill="#0f1724">Project<tspan fill="#2563eb">Scout</tspan></text>
+      <text x="164" y="104" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#8494a7" letter-spacing="1.5">Intelligentes Scouting · Österreich</text>
     </svg>
   </a>
   <nav class="header-nav">
-    <a href="https://project-scout.at/#wie-es-funktioniert">Wie es funktioniert</a>
-    <a href="https://project-scout.at/#quellen">Quellen</a>
+    <a href="wie-es-funktioniert.html">Wie es funktioniert</a>
     <a href="https://project-scout.at/#preise">Preise</a>
     <a href="impressum.html" class="aktiv">Impressum</a>
   </nav>
@@ -114,7 +194,6 @@
 </header>
 
 <div class="container">
-
   <div class="tabs">
     <button class="tab aktiv" onclick="zeigeTab('impressum', this)">Impressum</button>
     <button class="tab" onclick="zeigeTab('datenschutz', this)">Datenschutz</button>
@@ -216,7 +295,7 @@
       <div class="info-zeile"><div class="info-label">Website</div><div class="info-wert"><a href="https://www.dsb.gv.at" target="_blank">www.dsb.gv.at</a></div></div>
     </div>
 
-    <h2>8. Cookies & Tracking</h2>
+    <h2>8. Cookies &amp; Tracking</h2>
     <p>ProjectScout verwendet keine Marketing-Cookies, keine Tracking-Dienste und keine Analyse-Tools. Es werden ausschließlich technisch notwendige Browserspeicher-Mechanismen (sessionStorage) für die Funktionsfähigkeit des Bestellvorgangs verwendet. Diese werden nicht an Dritte weitergegeben.</p>
 
     <div class="stand">Stand: Juni 2026 · ProjectScout · Roman Baumschlager · Molln, OÖ</div>
@@ -280,11 +359,22 @@
 
     <div class="stand">Stand: Juni 2026 · ProjectScout · Roman Baumschlager · Molln, OÖ</div>
   </div>
-
 </div>
 
 <footer>
-  <div class="footer-logo">Project<span>Scout</span></div>
+  <a href="https://project-scout.at/" style="text-decoration:none;display:flex;align-items:center;">
+    <svg height="28" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="90" cy="90" r="52" fill="none" stroke="#0f1724" stroke-width="2.5"/>
+      <circle cx="90" cy="90" r="38" fill="none" stroke="#0f1724" stroke-width="0.8" opacity="0.25"/>
+      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
+      <polygon points="90,138 83,90 90,98 97,90" fill="#0f1724" opacity="0.35"/>
+      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
+      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
+      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+      <text x="162" y="76" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="48" font-weight="800" fill="#0f1724">Project<tspan fill="#2563eb">Scout</tspan></text>
+      <text x="164" y="104" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#8494a7" letter-spacing="1.5">Intelligentes Scouting · Österreich</text>
+    </svg>
+  </a>
   <div class="footer-copy">© 2026 Roman Baumschlager · Molln, OÖ</div>
 </footer>
 
@@ -300,7 +390,7 @@ function zeigeTab(id, btn) {
 const hash = window.location.hash.replace('#','');
 if (hash && document.getElementById(hash)) {
   document.querySelectorAll('.tab').forEach(t => {
-    if (t.getAttribute('onclick').includes(hash)) t.click();
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes(hash)) t.click();
   });
 }
 </script>
