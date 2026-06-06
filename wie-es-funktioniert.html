@@ -129,6 +129,32 @@
   .disclaimer p{font-size:14.5px;color:var(--text-mid);line-height:1.8;margin-bottom:0;}
   .disclaimer p strong{color:var(--text);}
 
+  /* ── VIDEO BOX ── */
+  .video-wrap{max-width:840px;margin:32px auto 0;padding:0 24px;}
+  .video-box{
+    background:var(--hell);border:1px solid var(--rand);
+    border-radius:16px;padding:40px 32px;text-align:center;
+  }
+  .video-eyebrow{
+    display:inline-block;background:var(--blau-hell);color:var(--blau);
+    font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;
+    margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;
+  }
+  .video-title{
+    font-size:24px;font-weight:800;color:var(--text);
+    letter-spacing:-0.5px;line-height:1.2;margin-bottom:10px;
+  }
+  .video-sub{
+    font-size:15px;color:var(--text-mid);line-height:1.7;
+    margin:0 auto;max-width:480px;
+  }
+  .video-frame{
+    max-width:340px;margin:28px auto 0;aspect-ratio:9/16;
+    border-radius:14px;overflow:hidden;
+    box-shadow:0 16px 40px rgba(15,23,36,0.12);
+  }
+  .video-frame iframe{width:100%;height:100%;border:0;display:block;}
+
   /* ── CTA ── */
   .cta-box{
     background:var(--text);border-radius:16px;
@@ -165,6 +191,8 @@
     .header-nav{display:none;}
     .lead-wrap{padding:40px 20px 8px;}
     .container{padding:24px 20px 72px;}
+    .video-wrap{padding:0 20px;}
+    .video-box{padding:32px 20px;}
     .cta-box{padding:32px 24px;}
     footer{padding:20px;flex-direction:column;align-items:flex-start;}
   }
@@ -204,6 +232,23 @@
   <div class="lead-eyebrow">Hinter den Kulissen</div>
   <h1>Wie ProjectScout arbeitet</h1>
   <p class="lead">ProjectScout nimmt Ihnen die zeitraubende Recherche ab: Ein KI-Agent durchsucht live alle öffentlich zugängliche Informationslandschaft Österreichs und filtert daraus genau jene Projekte heraus, die zu Ihren Gewerken passen. Auf dieser Seite erfahren Sie im Detail, wie das funktioniert – und wo die Grenzen liegen.</p>
+</div>
+
+<!-- VIDEO -->
+<div class="video-wrap">
+  <div class="video-box">
+    <div class="video-eyebrow">Im Video</div>
+    <div class="video-title">Project Scout</div>
+    <p class="video-sub">Projekte finden, bevor andere es tun. Vollautomatisch und maßgeschneidert auf Ihre Gewerke.</p>
+    <div class="video-frame">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/80P6XGuwYEE"
+        title="ProjectScout — Ihr KI-Radar für neue Projekte in Österreich"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        loading="lazy"></iframe>
+    </div>
+  </div>
 </div>
 
 <div class="container">
