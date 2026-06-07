@@ -182,18 +182,26 @@ def entdecke_bezirke(bl_kuerzel: str, s: requests.Session, log=print) -> list[st
 
 def entdecke_gemeinden(bezirk_slug: str, html: str | None = None,
                        s: requests.Session | None = None) -> list[str]:
-    """Entdeckt die Gemeinde-Adressen (/<Name>-XX) aus der Bezirks-Seite."""
+    """Entdeckt die Gemeinde-Adressen (/<Name>-XX) aus der Bezirks-Seite.
+    Robust: per BeautifulSoup, akzeptiert relative UND absolute Links."""
     if html is None and s is not None:
         html = _get(f"{BASIS}/{bezirk_slug}", s)
     if not html:
         return []
-    gem = []
-    gesehen = set()
-    for m in RE_GEMEINDE.finditer(html):
+    gem, gesehen = [], set()
+    soup = BeautifulSoup(html, "html.parser")
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if href.startswith(BASIS):
+            href = href[len(BASIS):]
+        m = re.match(r'^(/[A-Za-zÄÖÜäöüß][^/?#"]*-[A-Z]{2})(?:[/?#].*)?$', href)
+        if not m:
+            continue
         p = m.group(1)
-        if p not in gesehen:
-            gesehen.add(p)
-            gem.append(p)
+        if p in gesehen or p.lstrip("/").lower() in STOP_SEGMENTE:
+            continue
+        gesehen.add(p)
+        gem.append(p)
     return gem
 
 
@@ -278,6 +286,67 @@ def _im_fenster(datum_dt, cutoff_dt, heute_dt) -> bool:
 
 
 # -----------------------------------------------------------------------------
+# Robuster Abgleich Kunden-Bezirksname  <->  meinbezirk-Slug
+# umlaut- und suffix-fest: "Kirchdorf an der Krems" passt auf Slug "kirchdorf",
+# "Schärding" auf "schaerding", "Eferding" auf "grieskirchen-eferding".
+# -----------------------------------------------------------------------------
+def _norm_txt(s: str) -> str:
+    s = (s or "").lower()
+    s = (s.replace("ä", "ae").replace("ö", "oe")
+           .replace("ü", "ue").replace("ß", "ss"))
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+_BEZIRK_FUELL = re.compile(r"\b(stadt|land|am|an|im|in|bei|ob|der|die|das|den|umgebung)\b")
+
+
+def _bezirk_kerne(name: str) -> set:
+    """Kernwoerter eines Bezirksnamens (Fuellwoerter + kurze Tokens raus)."""
+    n = _BEZIRK_FUELL.sub(" ", _norm_txt(name))
+    kerne = {t for t in n.split() if len(t) >= 4}
+    return kerne or {n.strip()}
+
+
+def _bezirk_passt(slug: str, filter_namen: list) -> bool:
+    slug_tokens = set(_norm_txt(slug.replace("-", " ")).split())
+    if not slug_tokens:
+        return False
+    for fn in filter_namen:
+        for kern in _bezirk_kerne(fn):
+            for st in slug_tokens:
+                if kern == st or kern in st or st in kern:
+                    return True
+    return False
+
+
+def _kompakt(s: str) -> str:
+    """Kompaktform fuer Gemeinde-Abgleich: klein, ohne Umlaute/Sonderzeichen,
+    'Sankt'->'st', alle Trenner entfernt -> 'stwolfgangimsalzkammergut'."""
+    s = re.sub(r"\bsankt\b", "st", _norm_txt(s))
+    return re.sub(r"\s+", "", s)
+
+
+def _gemeinde_passt(slug_path: str, filter_kompakt: list) -> bool:
+    """Robuster Abgleich Kunden-Gemeindename <-> meinbezirk-Gemeinde-Slug.
+    Vergleicht Kompaktformen (Gleichheit oder Praefix ab 5 Zeichen) – das
+    vermeidet Fehltreffer kurzer Namen wie 'Au' oder 'Ach'."""
+    core = re.sub(r"-[A-Za-z]{2}$", "", slug_path.lstrip("/"))
+    sk = _kompakt(core)
+    if not sk:
+        return False
+    for fk in filter_kompakt:
+        if not fk:
+            continue
+        if sk == fk:
+            return True
+        if len(fk) >= 5 and sk.startswith(fk):
+            return True
+        if len(sk) >= 5 and fk.startswith(sk):
+            return True
+    return False
+
+
+# -----------------------------------------------------------------------------
 # Oeffentliche Hauptfunktion
 # -----------------------------------------------------------------------------
 def ernte_meinbezirk(bundeslaender: list[str],
@@ -298,7 +367,7 @@ def ernte_meinbezirk(bundeslaender: list[str],
     """
     s = _session()
     bezirke_filter = [b.lower() for b in (bezirke_filter or [])]
-    gemeinden_filter = [g.lower() for g in (gemeinden_filter or [])]
+    gemeinden_kompakt = [k for k in (_kompakt(g) for g in (gemeinden_filter or [])) if k]
 
     # 1) Bezirke je Bundesland entdecken + Listen-/Gemeinde-Seiten zusammenstellen
     listen_urls: list[str] = []
@@ -307,7 +376,7 @@ def ernte_meinbezirk(bundeslaender: list[str],
             break
         bezirke = entdecke_bezirke(bl, s, log)
         if bezirke_filter:
-            bezirke = [b for b in bezirke if any(f in b for f in bezirke_filter)]
+            bezirke = [b for b in bezirke if _bezirk_passt(b, bezirke_filter)]
         for bez in bezirke:
             if not zeit_ok():
                 break
@@ -317,9 +386,8 @@ def ernte_meinbezirk(bundeslaender: list[str],
                 listen_urls.append(f"{BASIS}/{bez}" + (f"/{ru}" if ru else ""))
             # Gemeinde-Seiten des Bezirks (feingranular -> erreicht auch Aelteres)
             gemeinden = entdecke_gemeinden(bez, html=bez_html)
-            if gemeinden_filter:
-                gemeinden = [g for g in gemeinden
-                             if any(f in g.lower() for f in gemeinden_filter)]
+            if gemeinden_kompakt:
+                gemeinden = [g for g in gemeinden if _gemeinde_passt(g, gemeinden_kompakt)]
             listen_urls.extend(_voll_url(g) for g in gemeinden)
             log(f"     [meinbezirk] {bez}: {len(gemeinden)} Gemeinde-Seiten + {len(RUBRIKEN)} Rubriken")
 
