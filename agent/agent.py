@@ -1548,14 +1548,28 @@ def _pdf_text(pdf_bytes: bytes) -> str:
         return ""
 
 
+# meinbezirk pp:state -> Bundesland-Kuerzel (deterministisch, ohne LLM)
+_REGIO_STATE_BL = {
+    "w": "W", "wien": "W",
+    "noe": "NOE", "niederoesterreich": "NOE",
+    "ooe": "OOE", "oberoesterreich": "OOE",
+    "sbg": "SBG", "szg": "SBG", "salzburg": "SBG",
+    "stmk": "STK", "stk": "STK", "steiermark": "STK",
+    "ktn": "KTN", "kaernten": "KTN",
+    "t": "TIR", "tir": "TIR", "tirol": "TIR",
+    "vbg": "VBG", "vorarlberg": "VBG",
+    "bgld": "BGR", "bgr": "BGR", "burgenland": "BGR",
+}
+
+
 def _analyse_regionalmedien(artikel_liste: list, gewerke_txt: str,
                             cutoff: str, heute: str, modell: str,
                             zeit_ok=lambda: True) -> list:
     """
     Analysiert die von regionalmedien.ernte_meinbezirk() gelieferten Artikel auf
-    konkrete Bauvorhaben. Arbeitet in kleinen Stapeln (mehrere Artikel je
-    KI-Aufruf, ohne web_search -> guenstig). Die Quell-URL wird je Treffer
-    durchgereicht.
+    konkrete Bauvorhaben. Stapelweise (mehrere Artikel je KI-Aufruf, ohne
+    web_search -> guenstig). Die KI nennt nur die Artikel-NUMMER; die echte
+    Quell-URL setzt der Code DETERMINISTISCH (keine vertippten Links mehr).
     """
     treffer = []
     STAPEL = 5
@@ -1567,29 +1581,52 @@ def _analyse_regionalmedien(artikel_liste: list, gewerke_txt: str,
         for nr, a in enumerate(stapel, 1):
             teile.append(
                 f"--- ARTIKEL {nr} ---\n"
-                f"URL: {a.get('url', '')}\n"
                 f"TITEL: {a.get('titel', '')}\n"
                 f"ORT/REGION: {a.get('region', '')}\n"
                 f"DATUM: {a.get('datum', '')}\n"
                 f"TEXT: {(a.get('text', '') or '')[:3500]}"
             )
+        anzahl = str(len(stapel))
         prompt = (
-            f"Du erhaeltst {len(stapel)} Artikel von meinbezirk.at (Oesterreich). "
+            "Du erhaeltst " + anzahl + " Artikel von meinbezirk.at (Oesterreich). "
             "Extrahiere ALLE konkreten Bau-, Infrastruktur-, Energie- und "
-            f"Immobilienvorhaben, die fuer folgende Gewerke relevant sind:\n{gewerke_txt}\n\n"
-            f"ZEITRAUM: nur Vorhaben/Berichte vom {cutoff} bis {heute}.\n\n"
-            "WICHTIG je Treffer:\n"
-            "- artikel_url = die EXAKTE URL des Artikels, aus dem der Treffer stammt (Feld 'URL:')\n"
-            "- quelle_name = 'meinbezirk.at'\n"
-            "- ort = genannte Gemeinde/Stadt; bundesland = Kuerzel (W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR)\n"
-            "- WAS wird gebaut/saniert/geplant, WO, WANN, (falls genannt) Volumen.\n"
-            "- Veranstaltungen, Sport, Unfaelle, Personalien zaehlen NICHT.\n"
+            "Immobilienvorhaben, die fuer folgende Gewerke relevant sind:\n" + gewerke_txt + "\n\n"
+            "ZEITRAUM: nur Vorhaben/Berichte vom " + cutoff + " bis " + heute + ".\n\n"
+            "Gib je Treffer ein JSON-Objekt mit GENAU diesen Feldern:\n"
+            "  titel, beschreibung, ort, bundesland (Kuerzel W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR),\n"
+            "  kategorie, volumen, phase, relevanz (Zahl 1-10), datum,\n"
+            "  artikel_nr = NUMMER des Artikels (1-" + anzahl + "), aus dem der Treffer stammt.\n\n"
+            "WICHTIG:\n"
+            "- 'artikel_nr' ist Pflicht und muss korrekt sein. Gib KEINE URL aus.\n"
+            "- Beschreibe WAS gebaut/saniert/geplant wird, WO, WANN, (falls genannt) Volumen.\n"
+            "- Reine Veranstaltungen, Sport, Unfaelle, Personalien zaehlen NICHT.\n"
             "Findest du nichts: []\n\n"
             "ARTIKEL:\n" + "\n\n".join(teile)
         )
         roh = _analyse_aufruf(prompt, modell, max_tokens=3500)
-        if roh:
-            treffer.extend(roh)
+        if not roh:
+            continue
+        for p in roh:
+            if not isinstance(p, dict):
+                continue
+            nr = p.get("artikel_nr")
+            try:
+                idx = int(nr) - 1
+            except (TypeError, ValueError):
+                idx = 0 if len(stapel) == 1 else -1
+            if not (0 <= idx < len(stapel)):
+                # Nicht eindeutig zuordenbar -> lieber kein Eintrag als kaputter Link
+                continue
+            quelle = stapel[idx]
+            p["artikel_url"] = quelle.get("url", "")
+            p["quelle_name"] = "meinbezirk.at"
+            if not p.get("ort"):
+                p["ort"] = quelle.get("region", "")
+            if not p.get("bundesland"):
+                st = (quelle.get("state") or "").strip().lower()
+                p["bundesland"] = _REGIO_STATE_BL.get(st, "")
+            p.pop("artikel_nr", None)
+            treffer.append(p)
     return treffer
 
 
