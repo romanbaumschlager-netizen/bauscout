@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from medien_datenbank import get_alle_bundeslaender_kuerzel
 from gemeinden_datenbank import get_gemeinden_fuer_bundeslaender, PROTOKOLL_PFADE
 import crawler  # echtes Crawling der Gemeinde-Websites (zweite Säule neben web_search)
+import regionalmedien  # Säule C: Regionalmedien (meinbezirk) direkt auslesen
 
 # =============================================================================
 # KONFIGURATION
@@ -83,9 +84,19 @@ CRAWLING_AKTIV          = os.environ.get("CRAWLING_AKTIV", "1") != "0"
 # via Cache-Tabelle 'gemeinde_crawl'). Bei regionaler Auswahl meist alle abgedeckt.
 CRAWL_MAX_GEMEINDEN     = int(os.environ.get("CRAWL_MAX_GEMEINDEN", "80"))
 # Anteil des Gesamt-Zeitbudgets, der maximal fürs Crawling verwendet wird.
-CRAWL_ZEITBUDGET_ANTEIL = float(os.environ.get("CRAWL_ZEITBUDGET_ANTEIL", "0.5"))
+CRAWL_ZEITBUDGET_ANTEIL = float(os.environ.get("CRAWL_ZEITBUDGET_ANTEIL", "0.78"))
 # Gleichzeitige Downloads beim Crawling (I/O-gebunden).
 CRAWL_WORKERS           = int(os.environ.get("CRAWL_WORKERS", "12"))
+
+# -- Saeule C: Regionalmedien-Ernte (meinbezirk direkt auslesen) --
+# Das Rueckgrat der Suche. Laeuft ZUERST mit dem groessten Zeitbudget-Anteil.
+REGIO_AKTIV             = os.environ.get("REGIO_AKTIV", "1") != "0"
+# Anteil des Gesamt-Zeitbudgets, das (zuerst) fuer die Regionalmedien-Ernte gilt.
+REGIO_ZEITBUDGET_ANTEIL = float(os.environ.get("REGIO_ZEITBUDGET_ANTEIL", "0.55"))
+# Obergrenze geladener Artikel pro Lauf (Schutz bei Grossauftraegen).
+REGIO_MAX_ARTIKEL       = int(os.environ.get("REGIO_MAX_ARTIKEL", "1500"))
+# Gleichzeitige Downloads bei der Ernte (I/O-gebunden).
+REGIO_WORKERS           = int(os.environ.get("REGIO_WORKERS", "16"))
 
 # Bundesland-Kürzel → ausgeschriebener Name (für lesbare Suchanfragen)
 BL_NAMEN = {
@@ -1488,8 +1499,24 @@ INHALT DER GEMEINDE-WEBSITE:
         if treffer:
             return treffer
 
-    # Kaum Text (vermutlich gescanntes PDF) -> PDF direkt an Claude (Vision-Workaround)
+    # Kaum Text -> PDF vorhanden? ZUERST den Text aus dem PDF ziehen (pdfplumber):
+    # zuverlaessig + guenstig + behebt den bisherigen 400er beim Roh-PDF-Versand.
+    # Nur ein echtes Scan-PDF ohne Textebene geht als Notloesung per Vision.
     if inhalt_obj.get("pdf_bytes"):
+        pdf_txt = _pdf_text(inhalt_obj["pdf_bytes"])
+        if pdf_txt and len(pdf_txt) >= 200:
+            prompt_pdf = (
+                "Analysiere dieses Gemeinderatsprotokoll/Sitzungsdokument der Gemeinde "
+                + gemeinde + " (" + bl_name + ", Oesterreich).\n"
+                "AUFGABE: Extrahiere ALLE konkreten Bau-, Infrastruktur-, Energie- und "
+                "Immobilienvorhaben fuer die Gewerke: " + gewerke_txt + "\n"
+                "ZEITRAUM: nur " + cutoff + " bis " + heute + ". "
+                "bundesland='" + bl + "', ort='" + gemeinde + "', "
+                "quelle_name='" + gemeinde + " (Gemeinde-Website)'. Nichts gefunden: []\n\n"
+                "INHALT:\n" + pdf_txt[:12000]
+            )
+            return _analyse_aufruf(prompt_pdf, MODELL_HAIKU)
+        # echtes Scan-PDF ohne Textebene -> Vision-Notloesung (bestehender Weg):
         pdf_prompt = (f"Dies ist ein Gemeinderatsprotokoll der Gemeinde {gemeinde} ({bl_name}). "
                       f"Extrahiere relevante Bauvorhaben für die Gewerke: {gewerke_txt}. "
                       f"Zeitraum {cutoff} bis {heute}. bundesland=\"{bl}\", ort=\"{gemeinde}\", "
@@ -1502,6 +1529,69 @@ INHALT DER GEMEINDE-WEBSITE:
 # =============================================================================
 # HAUPTFUNKTION
 # =============================================================================
+
+def _pdf_text(pdf_bytes: bytes) -> str:
+    """Liest Text aus einem PDF (pdfplumber). Leerer String bei Scan-PDF/Fehler."""
+    if not pdf_bytes:
+        return ""
+    try:
+        import io
+        import pdfplumber
+        teile = []
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for seite in pdf.pages[:30]:
+                t = seite.extract_text() or ""
+                if t:
+                    teile.append(t)
+        return "\n".join(teile).strip()
+    except Exception:
+        return ""
+
+
+def _analyse_regionalmedien(artikel_liste: list, gewerke_txt: str,
+                            cutoff: str, heute: str, modell: str,
+                            zeit_ok=lambda: True) -> list:
+    """
+    Analysiert die von regionalmedien.ernte_meinbezirk() gelieferten Artikel auf
+    konkrete Bauvorhaben. Arbeitet in kleinen Stapeln (mehrere Artikel je
+    KI-Aufruf, ohne web_search -> guenstig). Die Quell-URL wird je Treffer
+    durchgereicht.
+    """
+    treffer = []
+    STAPEL = 5
+    for i in range(0, len(artikel_liste), STAPEL):
+        if not zeit_ok():
+            break
+        stapel = artikel_liste[i:i + STAPEL]
+        teile = []
+        for nr, a in enumerate(stapel, 1):
+            teile.append(
+                f"--- ARTIKEL {nr} ---\n"
+                f"URL: {a.get('url', '')}\n"
+                f"TITEL: {a.get('titel', '')}\n"
+                f"ORT/REGION: {a.get('region', '')}\n"
+                f"DATUM: {a.get('datum', '')}\n"
+                f"TEXT: {(a.get('text', '') or '')[:3500]}"
+            )
+        prompt = (
+            f"Du erhaeltst {len(stapel)} Artikel von meinbezirk.at (Oesterreich). "
+            "Extrahiere ALLE konkreten Bau-, Infrastruktur-, Energie- und "
+            f"Immobilienvorhaben, die fuer folgende Gewerke relevant sind:\n{gewerke_txt}\n\n"
+            f"ZEITRAUM: nur Vorhaben/Berichte vom {cutoff} bis {heute}.\n\n"
+            "WICHTIG je Treffer:\n"
+            "- artikel_url = die EXAKTE URL des Artikels, aus dem der Treffer stammt (Feld 'URL:')\n"
+            "- quelle_name = 'meinbezirk.at'\n"
+            "- ort = genannte Gemeinde/Stadt; bundesland = Kuerzel (W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR)\n"
+            "- WAS wird gebaut/saniert/geplant, WO, WANN, (falls genannt) Volumen.\n"
+            "- Veranstaltungen, Sport, Unfaelle, Personalien zaehlen NICHT.\n"
+            "Findest du nichts: []\n\n"
+            "ARTIKEL:\n" + "\n\n".join(teile)
+        )
+        roh = _analyse_aufruf(prompt, modell, max_tokens=3500)
+        if roh:
+            treffer.extend(roh)
+    return treffer
+
 
 def verarbeite_auftrag(auftrag: dict) -> None:
     sid = auftrag["id"]
@@ -1577,6 +1667,61 @@ def verarbeite_auftrag(auftrag: dict) -> None:
         gesehen: set = set()       # laufinterner Duplikat-Schutz
         gesamt_gefunden = 0
         abgebrochen     = False
+
+        # Gewerke-Text fuer Direkt-Analysen (Crawl + Regionalmedien)
+        gewerke_txt_crawl = ", ".join(gewerke) if gewerke else \
+            "alle Bau-, Infrastruktur-, Energie- und Immobilienvorhaben"
+
+        # ==================================================================
+        # SAEULE C: REGIONALMEDIEN-ERNTE (meinbezirk) - DAS RUECKGRAT
+        # Liest die Bezirks-/Gemeinde-Feeds DIREKT aus (nicht ueber die
+        # Suchmaschine), damit jeder Bezirk gleich tief abgedeckt ist.
+        # Laeuft mit eigenem Zeitbudget-Anteil ZUERST (ergiebigste Quelle).
+        # ==================================================================
+        def regio_zeit_ok() -> bool:
+            return (time.time() - start_zeit) < (ZEITBUDGET_SEKUNDEN * REGIO_ZEITBUDGET_ANTEIL)
+
+        if REGIO_AKTIV and regio_zeit_ok():
+            print("\n" + "=" * 60)
+            print("  [Saeule C] Regionalmedien (meinbezirk) direkt auslesen")
+            print("=" * 60)
+            bezirke_filter = auftrag.get("bezirke") or []
+            gemeinden_filter = auftrag.get("gemeinden") or []
+            if isinstance(bezirke_filter, str):
+                try:
+                    bezirke_filter = json.loads(bezirke_filter)
+                except Exception:
+                    bezirke_filter = [bezirke_filter]
+            if isinstance(gemeinden_filter, str):
+                try:
+                    gemeinden_filter = json.loads(gemeinden_filter)
+                except Exception:
+                    gemeinden_filter = [gemeinden_filter]
+            try:
+                regio_artikel = regionalmedien.ernte_meinbezirk(
+                    bundeslaender=bundeslaender,
+                    cutoff_dt=cutoff_dt, heute_dt=heute_dt,
+                    bezirke_filter=[str(b) for b in bezirke_filter] or None,
+                    gemeinden_filter=[str(g) for g in gemeinden_filter] or None,
+                    zeit_ok=regio_zeit_ok,
+                    max_artikel=REGIO_MAX_ARTIKEL,
+                    max_workers=REGIO_WORKERS,
+                    log=print,
+                )
+                print("     -> " + str(len(regio_artikel)) + " Artikel geerntet - Analyse laeuft ...")
+                roh_regio = _analyse_regionalmedien(
+                    regio_artikel, gewerke_txt_crawl,
+                    cutoff_str, heute_str, MODELL_HAIKU, zeit_ok=regio_zeit_ok,
+                )
+                gesamt_gefunden += len(roh_regio)
+                neu_regio = _verarbeite_treffer(
+                    roh_regio, "", 3, gesehen, neue_projekte, auftrag,
+                    cutoff_dt=cutoff_dt, heute_dt=heute_dt,
+                )
+                print("     SAEULE C ERGEBNIS: " + str(len(roh_regio)) + " Treffer, "
+                      + str(neu_regio) + " neue Projekte")
+            except Exception as regio_err:
+                print("     [!] Regionalmedien-Ernte Fehler: " + str(regio_err)[:160])
 
         # CRAWLING-GLEIS (Säule B): Gemeinde-Websites DIREKT herunterladen und mit
         # Haiku analysieren. Läuft VOR der web_search-Schleife mit eigenem
