@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wie ProjectScout arbeitet – KI-gestützte Projektrecherche für Österreich</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
 <meta name="description" content="Ein Blick hinter die Kulissen: Wie der KI-Agent von ProjectScout recherchiert, welche öffentlich zugänglichen Quellen er durchsucht, wonach er sucht – und wo die Grenzen liegen.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://project-scout.at/wie-es-funktioniert.html">
@@ -11,6 +13,9 @@
 <meta property="og:url" content="https://project-scout.at/wie-es-funktioniert.html">
 <meta property="og:title" content="Wie ProjectScout arbeitet">
 <meta property="og:description" content="Wie der KI-Agent recherchiert, welche Quellen er nutzt – und wo die Grenzen liegen.">
+<meta property="og:image" content="https://project-scout.at/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://project-scout.at/og-image.png">
 <meta property="og:locale" content="de_AT">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -74,6 +79,260 @@
     display:inline-block;background:var(--blau-hell);color:var(--blau);
     font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;
     margin-bottom:18px;text-transform:uppercase;letter-spacing:1px;
+  }
+  h1{
+    font-size:clamp(32px,4vw,46px);font-weight:800;
+    letter-spacing:-1.5px;color:var(--text);
+    line-height:1.1;margin-bottom:18px;
+  }
+  .lead{font-size:18px;color:var(--text-mid);line-height:1.75;}
+
+  /* ── CONTENT ── */
+  .container{max-width:840px;margin:0 auto;padding:32px 52px 100px;}
+
+  h2{
+    font-size:11px;font-weight:700;color:var(--blau);
+    letter-spacing:2px;text-transform:uppercase;
+    margin:48px 0 16px;padding-bottom:10px;
+    border-bottom:1px solid rgba(37,99,235,0.15);
+  }
+  h2:first-of-type{margin-top:8px;}
+
+  p{font-size:15px;color:var(--text-mid);line-height:1.85;margin-bottom:14px;}
+  p strong{color:var(--text);font-weight:700;}
+  a{color:var(--blau);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  ul{list-style:none;padding:0;margin:4px 0 14px;}
+  ul li{
+    font-size:15px;color:var(--text-mid);line-height:1.8;
+    padding:5px 0 5px 24px;position:relative;
+  }
+  ul li::before{
+    content:'→';position:absolute;left:0;
+    color:var(--blau);font-size:12px;top:8px;font-weight:700;
+  }
+  ul li strong{color:var(--text);font-weight:700;}
+
+  /* ── CALLOUTS ── */
+  .callout{
+    background:var(--blau-hell);border:1px solid rgba(37,99,235,0.18);
+    border-radius:12px;padding:18px 22px;margin:18px 0;
+    font-size:14.5px;color:#1d4ed8;line-height:1.75;
+  }
+  .callout strong{color:var(--blau-dunkel);font-weight:700;}
+
+  .disclaimer{
+    background:var(--hell);border:1px solid var(--rand);
+    border-left:3px solid var(--rand2);
+    border-radius:12px;padding:20px 24px;margin:18px 0;
+  }
+  .disclaimer-title{
+    font-size:12px;font-weight:700;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;
+  }
+  .disclaimer p{font-size:14.5px;color:var(--text-mid);line-height:1.8;margin-bottom:0;}
+  .disclaimer p strong{color:var(--text);}
+
+  /* ── VIDEO BOX ── */
+  .video-wrap{max-width:840px;margin:32px auto 0;padding:0 24px;}
+  .video-box{
+    background:var(--hell);border:1px solid var(--rand);
+    border-radius:16px;padding:40px 32px;text-align:center;
+  }
+  .video-eyebrow{
+    display:inline-block;background:var(--blau-hell);color:var(--blau);
+    font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;
+    margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;
+  }
+  .video-title{
+    font-size:24px;font-weight:800;color:var(--text);
+    letter-spacing:-0.5px;line-height:1.2;margin-bottom:10px;
+  }
+  .video-sub{
+    font-size:15px;color:var(--text-mid);line-height:1.7;
+    margin:0 auto;max-width:480px;
+  }
+  .video-frame{
+    max-width:340px;margin:28px auto 0;aspect-ratio:9/16;
+    border-radius:14px;overflow:hidden;
+    box-shadow:0 16px 40px rgba(15,23,36,0.12);
+  }
+  .video-frame iframe{width:100%;height:100%;border:0;display:block;}
+
+  /* ── CTA ── */
+  .cta-box{
+    background:var(--text);border-radius:16px;
+    padding:40px;margin-top:56px;text-align:center;
+  }
+  .cta-box h3{
+    font-size:26px;font-weight:800;color:white;
+    letter-spacing:-0.8px;margin-bottom:10px;
+  }
+  .cta-box p{font-size:15px;color:#94a3b8;line-height:1.7;margin-bottom:24px;}
+  .cta-btn{
+    background:var(--blau);color:white;
+    font-size:15px;font-weight:700;
+    padding:14px 32px;border-radius:10px;
+    text-decoration:none;display:inline-block;
+    transition:all 0.15s;letter-spacing:-0.2px;
+  }
+  .cta-btn:hover{background:var(--blau-dunkel);transform:translateY(-1px);text-decoration:none;}
+
+  /* ── FOOTER ── */
+  footer{
+    background:var(--hell);border-top:1px solid var(--rand);
+    padding:32px 52px;
+    display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:16px;
+  }
+  .footer-links{display:flex;gap:24px;flex-wrap:wrap;}
+  .footer-links a{font-size:13px;color:var(--text-dim);text-decoration:none;transition:color 0.15s;}
+  .footer-links a:hover{color:var(--blau);}
+  .footer-copy{font-size:12px;color:var(--text-dim);}
+
+  @media(max-width:768px){
+    header{padding:0 20px;}
+    .header-nav{display:none;}
+    .lead-wrap{padding:40px 20px 8px;}
+    .container{padding:24px 20px 72px;}
+    .video-wrap{padding:0 20px;}
+    .video-box{padding:32px 20px;}
+    .cta-box{padding:32px 24px;}
+    footer{padding:20px;flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="https://project-scout.at/" class="header-logo">
+    <svg height="40" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="90" cy="90" r="52" fill="none" stroke="#0f1724" stroke-width="2.5"/>
+      <circle cx="90" cy="90" r="38" fill="none" stroke="#0f1724" stroke-width="0.8" opacity="0.25"/>
+      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
+      <polygon points="90,138 83,90 90,98 97,90" fill="#0f1724" opacity="0.35"/>
+      <text x="90" y="36" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#2563eb">N</text>
+      <text x="90" y="152" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">S</text>
+      <text x="34" y="94" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">W</text>
+      <text x="146" y="94" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">O</text>
+      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
+      <circle cx="116" cy="116" r="7" fill="#2563eb" opacity="0.2"/>
+      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
+      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+      <text x="162" y="76" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="48" font-weight="800" fill="#0f1724">Project<tspan fill="#2563eb">Scout</tspan></text>
+      <text x="164" y="104" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#8494a7" letter-spacing="1.5">Intelligentes Scouting · Österreich</text>
+    </svg>
+  </a>
+  <nav class="header-nav">
+    <a href="wie-es-funktioniert.html" class="aktiv">Wie es funktioniert</a>
+    <a href="https://project-scout.at/#preise">Preise</a>
+    <a href="impressum.html">Impressum</a>
+  </nav>
+  <a href="https://project-scout.at/#scout-starten" class="header-cta">Scout starten →</a>
+</header>
+
+<div class="lead-wrap">
+  <div class="breadcrumb"><a href="https://project-scout.at/">Start</a> &nbsp;/&nbsp; Wie es funktioniert</div>
+  <div class="lead-eyebrow">Hinter den Kulissen</div>
+  <h1>Wie ProjectScout arbeitet</h1>
+  <p class="lead">ProjectScout nimmt Ihnen die zeitraubende Recherche ab: Ein KI-Agent durchsucht live alle öffentlich zugängliche Informationslandschaft Österreichs und filtert daraus genau jene Projekte heraus, die zu Ihren Gewerken passen. Auf dieser Seite erfahren Sie im Detail, wie das funktioniert – und wo die Grenzen liegen.</p>
+</div>
+
+<!-- VIDEO -->
+<div class="video-wrap">
+  <div class="video-box">
+    <div class="video-eyebrow">Im Video</div>
+    <div class="video-title">Project Scout</div>
+    <p class="video-sub">Projekte finden, bevor andere es tun. Vollautomatisch und maßgeschneidert auf Ihre Gewerke.</p>
+    <div class="video-frame">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/80P6XGuwYEE"
+        title="ProjectScout — Ihr KI-Radar für neue Projekte in Österreich"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <h2>Der KI-Agent im Überblick</h2>
+  <p>Statt täglich dutzende Zeitungen, Portale und Gemeindeseiten manuell durchzusehen, übernimmt diese Arbeit ein KI-Agent für Sie – vollautomatisch und in einem Bruchteil der Zeit. Er liest, bewertet und sortiert die gefundenen Informationen und liefert Ihnen am Ende eine übersichtliche, nach Relevanz gereihte Liste konkreter Vorhaben. Sie konzentrieren sich auf Ihr Kerngeschäft, die Suche erledigt die KI.</p>
+
+  <h2>Welche Quellen durchsucht werden</h2>
+  <p>Der Agent arbeitet ausschließlich mit <strong>frei zugänglichen, öffentlichen Informationen</strong>. Dazu zählen unter anderem:</p>
+  <ul>
+    <li><strong>Tages- und Regionalmedien</strong> – von den großen österreichischen Tageszeitungen bis zur kleinsten Lokal- und Bezirkszeitung.</li>
+    <li><strong>Öffentliche Vergabe- und Ausschreibungsportale</strong> – also dort, wo Aufträge offiziell ausgeschrieben werden.</li>
+    <li><strong>Immobilien- und Grundstücksportale</strong> – für Grundstücke, Bauträgerprojekte und geplante Neubauten.</li>
+    <li><strong>Offizielle Websites von Gemeinden und Ländern</strong> – inklusive Amtsblätter und Kundmachungen.</li>
+  </ul>
+  <p>Ein besonderer Fokus liegt auf den <strong>Gemeinderatsprotokollen</strong>. Hier tauchen Umwidmungen, Baubeschlüsse oder geplante Vorhaben oft Wochen oder Monate früher auf als in den klassischen Medien. Der Agent durchsucht die Homepages der Gemeinden gezielt nach diesen Protokollen – allerdings nur, <strong>sofern sie auch tatsächlich online veröffentlicht sind</strong>. Nicht jede Gemeinde stellt ihre Protokolle ins Netz; was nicht öffentlich verfügbar ist, kann auch nicht gefunden werden.</p>
+  <div class="callout">
+    🔒 <strong>Wichtig:</strong> Nicht durchsucht werden Quellen, für die eine Registrierung oder Anmeldung erforderlich ist – etwa Inhalte hinter einem Login oder geschlossene Portale. ProjectScout nutzt ausschließlich, was öffentlich und ohne Zugangsbeschränkung erreichbar ist.
+  </div>
+
+  <h2>Wonach der Agent sucht</h2>
+  <p>Im Mittelpunkt stehen konkrete Bau-, Infrastruktur-, Energie- und Immobilienvorhaben. Konkret achtet der Agent auf Projekte, die</p>
+  <ul>
+    <li><strong>gerade ausgeführt werden</strong> – also laufende Bauvorhaben,</li>
+    <li><strong>ausgeschrieben sind oder demnächst ausgeschrieben werden</strong>,</li>
+    <li><strong>sich in Planung befinden</strong> – etwa durch Gemeinderatsbeschlüsse, Umwidmungen oder Flächenwidmungen.</li>
+  </ul>
+  <p>Reines „Rauschen" – Unfälle, Brände, Veranstaltungen, Meinungsbeiträge oder Personalmeldungen – wird dabei konsequent aussortiert. Sie erhalten nur, was für Ihr Geschäft tatsächlich relevant sein kann, gefiltert nach den Gewerken, die Sie ausgewählt haben.</p>
+
+  <h2>Warum ein größerer Suchzeitraum oft mehr bringt</h2>
+  <p>Beim Konfigurieren legen Sie fest, wie weit der Agent zeitlich zurückblickt. Hier lohnt sich häufig ein großzügig gewählter Zeitraum – aus einem einfachen Grund: Viele Projekte durchlaufen einen langen Weg. Von der ersten Erwähnung im Gemeinderat über den Baubescheid bis zur tatsächlichen Umsetzung vergehen oft Monate oder sogar Jahre.</p>
+  <p>Besonders deutlich wird das bei den <strong>Gemeinderatsprotokollen</strong>: Gemeinderatssitzungen finden meist nur alle paar Monate statt. Ein sehr kurzer Suchzeitraum kann solche Beschlüsse daher leicht übersehen. Wer den Zeitraum etwas großzügiger ansetzt, erfasst auch ältere – aber nach wie vor hochaktuelle – Vorhaben. Und genau dort, oft lange vor der offiziellen Ausschreibung, liegt der größte Vorsprung gegenüber dem Mitbewerb.</p>
+
+  <h2>Wie die Ergebnisse zu Ihnen kommen</h2>
+  <p>Jedes gefundene Projekt wird nach Relevanz bewertet und landet in Ihrem persönlichen Dashboard – mit Kartenansicht, Filterfunktion und Excel-Export. Sobald ein Scout-Lauf abgeschlossen ist, erhalten Sie automatisch eine E-Mail mit dem Link zu Ihren Ergebnissen. In der Regel ist das schon nach wenigen Stunden der Fall. Ihr Dashboard-Link bleibt dabei immer gleich und wächst mit jedem weiteren Lauf.</p>
+
+  <h2>Immer auf dem neuesten Stand der Technik</h2>
+  <p>Künstliche Intelligenz entwickelt sich rasant. ProjectScout setzt deshalb immer auf die <strong>modernsten verfügbaren KI-Modelle</strong> und wird laufend auf den jeweils besten Stand aktualisiert. Erscheint eine leistungsfähigere Modellgeneration, stellt ProjectScout darauf um – ganz ohne Ihr Zutun. Die Qualität der Suche wird damit über die Zeit nicht schlechter, sondern besser.</p>
+
+  <h2>Keine Garantie auf Vollständigkeit</h2>
+  <div class="disclaimer">
+    <div class="disclaimer-title">Ehrlich gesagt</div>
+    <p>Eine hundertprozentige Trefferquote kann es nicht geben. Der Agent stützt sich auf öffentlich zugängliche Quellen und auf künstliche Intelligenz – beides hat Grenzen. Manche Vorhaben werden nirgends öffentlich angekündigt, einzelne Quellen sind zeitweise nicht erreichbar, und auch eine KI kann einmal einen Treffer übersehen oder die Relevanz falsch einschätzen. <strong>ProjectScout ist ein äußerst leistungsfähiges Werkzeug, das Ihnen einen echten Informations- und Zeitvorsprung verschafft – aber keine Garantie, dass wirklich jedes existierende Projekt gefunden wird.</strong></p>
+  </div>
+
+  <div class="cta-box">
+    <h3>Bereit, Ihren Vorsprung zu nutzen?</h3>
+    <p>Konfigurieren Sie Ihren ersten Scout-Lauf in wenigen Minuten. Kein Abo, kein Risiko.</p>
+    <a href="https://project-scout.at/#scout-starten" class="cta-btn">Jetzt Scout starten →</a>
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://project-scout.at/" style="text-decoration:none;display:flex;align-items:center;">
+    <svg height="28" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="90" cy="90" r="52" fill="none" stroke="#0f1724" stroke-width="2.5"/>
+      <circle cx="90" cy="90" r="38" fill="none" stroke="#0f1724" stroke-width="0.8" opacity="0.25"/>
+      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
+      <polygon points="90,138 83,90 90,98 97,90" fill="#0f1724" opacity="0.35"/>
+      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
+      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
+      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+      <text x="162" y="76" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="48" font-weight="800" fill="#0f1724">Project<tspan fill="#2563eb">Scout</tspan></text>
+      <text x="164" y="104" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#8494a7" letter-spacing="1.5">Intelligentes Scouting · Österreich</text>
+    </svg>
+  </a>
+  <div class="footer-links">
+    <a href="https://project-scout.at/">Start</a>
+    <a href="impressum.html">Impressum</a>
+    <a href="impressum.html#datenschutz">Datenschutz</a>
+    <a href="impressum.html#agb">AGB</a>
+    <a href="mailto:office@project-scout.at">office@project-scout.at</a>
+  </div>
+  <div class="footer-copy">© 2026 Roman Baumschlager · Molln, OÖ</div>
+</footer>
+
+</body>
+</html>    margin-bottom:18px;text-transform:uppercase;letter-spacing:1px;
   }
   h1{
     font-size:clamp(32px,4vw,46px);font-weight:800;
