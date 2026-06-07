@@ -94,7 +94,7 @@ REGIO_AKTIV             = os.environ.get("REGIO_AKTIV", "1") != "0"
 # Anteil des Gesamt-Zeitbudgets, das (zuerst) fuer die Regionalmedien-Ernte gilt.
 REGIO_ZEITBUDGET_ANTEIL = float(os.environ.get("REGIO_ZEITBUDGET_ANTEIL", "0.55"))
 # Obergrenze geladener Artikel pro Lauf (Schutz bei Grossauftraegen).
-REGIO_MAX_ARTIKEL       = int(os.environ.get("REGIO_MAX_ARTIKEL", "1500"))
+REGIO_MAX_ARTIKEL       = int(os.environ.get("REGIO_MAX_ARTIKEL", "4000"))
 # Gleichzeitige Downloads bei der Ernte (I/O-gebunden).
 REGIO_WORKERS           = int(os.environ.get("REGIO_WORKERS", "16"))
 
@@ -1561,72 +1561,97 @@ _REGIO_STATE_BL = {
     "bgld": "BGR", "bgr": "BGR", "burgenland": "BGR",
 }
 
+# Bau-/Infrastruktur-/Energie-/Immobilien-Stichwoerter (Kleinschreibung, Teilstring).
+# Zweck: KOSTENLOSER Vorfilter vor der KI. Nur Artikel mit mindestens einem Treffer
+# werden per Haiku analysiert -> spart bei tausenden Regionalartikeln massiv Kosten,
+# ohne Abdeckung zu verlieren (die Liste ist bewusst breit; Fehl-Treffer kosten nur
+# einen guenstigen KI-Aufruf, der dann [] zurueckgibt).
+_REGIO_BAU_KEYWORDS = (
+    "bau", "sanier", "errich", "neubau", "umbau", "zubau", "anbau", "ausbau",
+    "bebau", "projekt", "investit", "gemeinderat", "stadtrat", "beschluss",
+    "beschloss", "widmung", "bebauungsplan", "spatenstich", "eroeffn",
+    "er\u00f6ffn", "entsteh", "erweiter", "modernisier", "revitalisier",
+    "areal", "quartier", "siedlung", "wohnanlage", "wohnbau", "grundst\u00fcck",
+    "grundstueck", "immobil", "bautr\u00e4ger", "bautraeger", "planung",
+    "vergabe", "ausschreibung", "abriss", "abbruch", "neugestaltung",
+    "ansiedl", "nahversorg", "gewerbegebiet", "betriebsgebiet", "betriebsbau",
+    "stra\u00dfe", "strasse", "kanal", "wasserleitung", "leitung", "br\u00fccke",
+    "bruecke", "radweg", "gehsteig", "kreisverkehr", "tunnel", "bahnhof",
+    "photovolta", "pv-anlage", "windkraft", "windpark", "w\u00e4rmepump",
+    "waermepump", "nahw\u00e4rme", "nahwaerme", "fernw\u00e4rme", "fernwaerme",
+    "heizwerk", "kraftwerk", "umspannwerk", "stromnetz", "trafostation",
+    "hotel", "halle", "zentrum", "schule", "kindergarten", "feuerwehr",
+    "bauhof", "amtsgeb\u00e4ude", "amtsgebaeude", "rathaus", "klinik",
+    "pflegeheim", "supermarkt", "spar-markt", "billa", "kindergruppe",
+)
+
+
+def _hat_bau_keyword(a: dict) -> bool:
+    blob = (str(a.get("titel", "")) + " " + str(a.get("beschreibung", "")) + " "
+            + str(a.get("text", ""))).lower()
+    return any(kw in blob for kw in _REGIO_BAU_KEYWORDS)
+
 
 def _analyse_regionalmedien(artikel_liste: list, gewerke_txt: str,
                             cutoff: str, heute: str, modell: str,
-                            zeit_ok=lambda: True) -> list:
+                            zeit_ok=lambda: True, max_workers: int = 8) -> list:
     """
-    Analysiert die von regionalmedien.ernte_meinbezirk() gelieferten Artikel auf
-    konkrete Bauvorhaben. Stapelweise (mehrere Artikel je KI-Aufruf, ohne
-    web_search -> guenstig). Die KI nennt nur die Artikel-NUMMER; die echte
-    Quell-URL setzt der Code DETERMINISTISCH (keine vertippten Links mehr).
+    Analysiert die geernteten meinbezirk-Artikel auf Bauvorhaben – EIN Artikel je
+    KI-Aufruf, parallel. Zwei Schutzmechanismen:
+      1) KOSTENLOSER Bau-Stichwort-Vorfilter: nur baurelevante Artikel kosten ein
+         KI-Token (spart bei tausenden Regionalartikeln deutlich Kosten/Zeit).
+      2) Der Agent BESITZT die Quelle: artikel_url / quelle_name / bundesland werden
+         DETERMINISTISCH aus dem Artikel gesetzt – egal was die KI ausgibt. Keine
+         vertippten/halluzinierten Links, keine Zuordnungsfehler, kein Schema-Konflikt
+         mit dem System-Prompt.
     """
-    treffer = []
-    STAPEL = 5
-    for i in range(0, len(artikel_liste), STAPEL):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    relevante = [a for a in artikel_liste if _hat_bau_keyword(a)]
+    print("     [Saeule C] Stichwort-Vorfilter: " + str(len(relevante)) + " von "
+          + str(len(artikel_liste)) + " Artikeln baurelevant -> KI-Analyse")
+
+    def _eine(a: dict) -> list:
         if not zeit_ok():
-            break
-        stapel = artikel_liste[i:i + STAPEL]
-        teile = []
-        for nr, a in enumerate(stapel, 1):
-            teile.append(
-                f"--- ARTIKEL {nr} ---\n"
-                f"TITEL: {a.get('titel', '')}\n"
-                f"ORT/REGION: {a.get('region', '')}\n"
-                f"DATUM: {a.get('datum', '')}\n"
-                f"TEXT: {(a.get('text', '') or '')[:3500]}"
-            )
-        anzahl = str(len(stapel))
+            return []
+        txt = (a.get("text") or "")[:4000]
+        if len(txt) < 60:
+            return []
         prompt = (
-            "Du erhaeltst " + anzahl + " Artikel von meinbezirk.at (Oesterreich). "
-            "Extrahiere ALLE konkreten Bau-, Infrastruktur-, Energie- und "
-            "Immobilienvorhaben, die fuer folgende Gewerke relevant sind:\n" + gewerke_txt + "\n\n"
-            "ZEITRAUM: nur Vorhaben/Berichte vom " + cutoff + " bis " + heute + ".\n\n"
-            "Gib je Treffer ein JSON-Objekt mit GENAU diesen Feldern:\n"
-            "  titel, beschreibung, ort, bundesland (Kuerzel W/NOE/OOE/SBG/STK/KTN/TIR/VBG/BGR),\n"
-            "  kategorie, volumen, phase, relevanz (Zahl 1-10), datum,\n"
-            "  artikel_nr = NUMMER des Artikels (1-" + anzahl + "), aus dem der Treffer stammt.\n\n"
-            "WICHTIG:\n"
-            "- 'artikel_nr' ist Pflicht und muss korrekt sein. Gib KEINE URL aus.\n"
-            "- Beschreibe WAS gebaut/saniert/geplant wird, WO, WANN, (falls genannt) Volumen.\n"
-            "- Reine Veranstaltungen, Sport, Unfaelle, Personalien zaehlen NICHT.\n"
-            "Findest du nichts: []\n\n"
-            "ARTIKEL:\n" + "\n\n".join(teile)
+            "Analysiere DIESEN EINEN Artikel von meinbezirk.at (Oesterreich) auf "
+            "konkrete Bau-, Infrastruktur-, Energie- und Immobilienvorhaben, die fuer "
+            "folgende Gewerke relevant sind:\n" + gewerke_txt + "\n\n"
+            "ZEITRAUM: nur Vorhaben/Berichte vom " + cutoff + " bis " + heute + ".\n"
+            "Gib pro konkretem Vorhaben ein JSON-Objekt nach dem vorgegebenen Schema "
+            "zurueck. Reine Veranstaltungen, Sport, Unfaelle, Personalien zaehlen "
+            "NICHT. Findest du nichts: []\n\n"
+            "TITEL: " + (a.get("titel") or "") + "\n"
+            "ORT/REGION: " + (a.get("region") or "") + "\n"
+            "DATUM: " + (a.get("datum") or "") + "\n\n"
+            "ARTIKELTEXT:\n" + txt
         )
-        roh = _analyse_aufruf(prompt, modell, max_tokens=3500)
-        if not roh:
-            continue
-        for p in roh:
+        roh = _analyse_aufruf(prompt, modell, max_tokens=2000)
+        out = []
+        for p in (roh or []):
             if not isinstance(p, dict):
                 continue
-            nr = p.get("artikel_nr")
-            try:
-                idx = int(nr) - 1
-            except (TypeError, ValueError):
-                idx = 0 if len(stapel) == 1 else -1
-            if not (0 <= idx < len(stapel)):
-                # Nicht eindeutig zuordenbar -> lieber kein Eintrag als kaputter Link
-                continue
-            quelle = stapel[idx]
-            p["artikel_url"] = quelle.get("url", "")
+            p["artikel_url"] = a.get("url", "")
             p["quelle_name"] = "meinbezirk.at"
             if not p.get("ort"):
-                p["ort"] = quelle.get("region", "")
-            if not p.get("bundesland"):
-                st = (quelle.get("state") or "").strip().lower()
-                p["bundesland"] = _REGIO_STATE_BL.get(st, "")
-            p.pop("artikel_nr", None)
-            treffer.append(p)
+                p["ort"] = a.get("region", "")
+            st = (a.get("state") or "").strip().lower()
+            p["bundesland"] = _REGIO_STATE_BL.get(st) or p.get("bundesland", "") or ""
+            out.append(p)
+        return out
+
+    treffer = []
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = [ex.submit(_eine, a) for a in relevante]
+        for fut in as_completed(futs):
+            try:
+                treffer.extend(fut.result())
+            except Exception:
+                pass
     return treffer
 
 
