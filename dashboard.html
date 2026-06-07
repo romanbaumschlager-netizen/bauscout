@@ -3,1561 +3,662 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProjectScout – KI-gestützter Projekt-Scout für Österreich</title>
-<meta name="description" content="ProjectScout durchsucht automatisch Lokalzeitungen, Gemeinden und Ausschreibungsplattformen in ganz Österreich nach relevanten Projekten, Ausschreibungen und Grundstücken – powered by KI. Einmalig zahlen, sofort Ergebnisse.">
-<meta name="keywords" content="Ausschreibungen Österreich, Bauprojekte Österreich, Projektscout, KI Ausschreibungssuche, Vergabe Österreich, Baubewilligung, Photovoltaik Ausschreibung, Infrastruktur Projekte, Grundstücke kaufen Österreich, öffentliche Aufträge">
-<meta name="author" content="ProjectScout">
-<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-<link rel="canonical" href="https://project-scout.at/">
+<title>ProjectScout – Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
-<meta property="og:image" content="https://project-scout.at/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:image" content="https://project-scout.at/og-image.png">
-<meta name="language" content="de">
-<meta name="geo.region" content="AT">
-<meta name="geo.placename" content="Österreich">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://project-scout.at/">
-<meta property="og:title" content="ProjectScout – KI-gestützter Projekt-Scout für Österreich">
-<meta property="og:description" content="Automatische KI-Suche nach Projekten, Ausschreibungen und Grundstücken in ganz Österreich. Mehr als 150 Quellen. Einmalzahlung, Preis live kalkuliert.">
-<meta property="og:locale" content="de_AT">
-<meta property="og:site_name" content="ProjectScout">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="ProjectScout – KI-gestützter Projekt-Scout für Österreich">
-<meta name="twitter:description" content="Automatische KI-Suche nach Projekten, Ausschreibungen und Grundstücken in ganz Österreich. Mehr als 150 Quellen. Einmalzahlung, Preis live kalkuliert.">
-<script type="application/ld+json">
-{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://project-scout.at/#organization","name":"ProjectScout","url":"https://project-scout.at","description":"KI-gestützte Plattform zur automatischen Suche nach Projekten, Ausschreibungen und Grundstücken in Österreich.","areaServed":{"@type":"Country","name":"Austria"},"contactPoint":{"@type":"ContactPoint","email":"office@project-scout.at","contactType":"customer support","availableLanguage":"German"}},{"@type":"WebSite","@id":"https://project-scout.at/#website","url":"https://project-scout.at","name":"ProjectScout","description":"KI-gestützter Projekt-Scout für Österreich","inLanguage":"de","publisher":{"@id":"https://project-scout.at/#organization"}},{"@type":"SoftwareApplication","@id":"https://project-scout.at/#software","name":"ProjectScout","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://project-scout.at","description":"KI-Agent durchsucht automatisch österreichische Medien, Gemeinderats- und Stadtratsbeschlüsse sowie Ausschreibungs- und Vergabeportale nach Projekten, Vergaben und Grundstücken.","featureList":["KI-gestützte Projektsuche in allen neun Bundesländern inkl. Wien","Durchsucht österreichische Medien, kommunale Beschlüsse und Vergabeportale","Alle Branchen: Bau, Energie, Infrastruktur, Immobilien, Industrie, Landwirtschaft","Ergebnisse als Dashboard mit Kartenansicht und Excel-Export","E-Mail-Benachrichtigung bei Fertigstellung","Einmalzahlung, kein Abo"],"inLanguage":"de","offers":{"@type":"Offer","price":"20.00","priceCurrency":"EUR","description":"Einmalzahlung pro Scout-Lauf, Preis live kalkuliert. Kein Abo, keine Mindestlaufzeit."}},{"@type":"Service","@id":"https://project-scout.at/#service","name":"KI-gestützte Projekt- und Ausschreibungsrecherche","serviceType":"Projekt- und Ausschreibungsrecherche","provider":{"@id":"https://project-scout.at/#organization"},"areaServed":{"@type":"Country","name":"Austria"},"description":"Automatisierte Recherche nach geplanten Bau-, Infrastruktur-, Energie- und Immobilienprojekten aus öffentlich zugänglichen österreichischen Quellen, gefiltert nach den Gewerken des Kunden.","offers":{"@type":"Offer","price":"20.00","priceCurrency":"EUR","description":"Einmalzahlung pro Scout-Lauf, Preis live kalkuliert."}},{"@type":"BreadcrumbList","@id":"https://project-scout.at/#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Start","item":"https://project-scout.at/"},{"@type":"ListItem","position":2,"name":"Wie es funktioniert","item":"https://project-scout.at/wie-es-funktioniert.html"},{"@type":"ListItem","position":3,"name":"Preise","item":"https://project-scout.at/#preise"}]},{"@type":"FAQPage","@id":"https://project-scout.at/#faq","mainEntity":[{"@type":"Question","name":"Welche Quellen werden durchsucht?","acceptedAnswer":{"@type":"Answer","text":"Der KI-Agent durchsucht österreichische Tages- und Lokalmedien, Gemeinderats- und Stadtratsbeschlüsse, öffentliche Vergabe- und Ausschreibungsportale sowie Immobilien- und Grundstücksinserate – je nach gewähltem Bundesland."}},{"@type":"Question","name":"Findet der Scout auch Grundstücke und Immobilien?","acceptedAnswer":{"@type":"Answer","text":"Ja. ProjectScout durchsucht neben Bauprojekten auch Immobilienportale, Grundstücksausschreibungen und Gemeindebekanntmachungen."}},{"@type":"Question","name":"Gibt es ein Abo oder eine Mindestlaufzeit?","acceptedAnswer":{"@type":"Answer","text":"Nein. ProjectScout funktioniert ausschließlich als Einmalzahlung pro Scout-Lauf. Kein Abo, keine automatischen Verlängerungen, keine Mindestlaufzeit. Der Preis wird live beim Konfigurieren berechnet."}},{"@type":"Question","name":"Wie lange dauert ein Scout-Lauf?","acceptedAnswer":{"@type":"Answer","text":"Die meisten Scout-Läufe sind innerhalb weniger Stunden fertig, in der Regel noch am selben Tag. Sie werden automatisch per E-Mail benachrichtigt, sobald die Ergebnisse in Ihrem Dashboard bereitstehen."}},{"@type":"Question","name":"Werden auch Projekte in Wien gefunden?","acceptedAnswer":{"@type":"Answer","text":"Ja. Wien wird mit eigenen amtlichen Quellen und allen 23 Gemeindebezirken durchsucht – darunter Flächenwidmungs- und Bebauungspläne, Gemeinderatsbeschlüsse und das Amtsblatt der Stadt Wien."}}]}]}
-</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --weiss:#ffffff;
-    --hell:#f8f9fb;
-    --hell2:#f0f2f5;
-    --rand:#e4e7ec;
-    --rand2:#cdd2db;
-    --text:#0f1724;
-    --text-mid:#3d4a5c;
-    --text-dim:#8494a7;
-    --blau:#2563eb;
-    --blau-hell:#eef3fd;
-    --blau-mid:#dbeafe;
-    --blau-dunkel:#1d4ed8;
-    --blau-satt:#1e40af;
-    --gruen:#16a34a;
-    --gruen-hell:#f0fdf4;
-    --rot:#dc2626;
-    --gold:#d97706;
-    --gold-hell:#fffbeb;
-  }
-
-  *{box-sizing:border-box;margin:0;padding:0;}
-  html{scroll-behavior:smooth;}
-  body{
-    background:var(--weiss);
-    color:var(--text);
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-weight:400;
-    min-height:100vh;
-    overflow-x:hidden;
-  }
-
-  /* ── HEADER ── */
-  header{
-    position:sticky;top:0;z-index:100;
-    background:rgba(255,255,255,0.97);
-    backdrop-filter:blur(16px);
-    border-bottom:1px solid var(--rand);
-    padding:0 52px;height:68px;
-    display:flex;align-items:center;justify-content:space-between;
-    transition:box-shadow 0.2s;
-  }
-  header.scrolled{box-shadow:0 2px 16px rgba(15,23,36,0.07);}
-  .header-logo{display:flex;align-items:center;text-decoration:none;flex-shrink:0;}
-  .header-nav{display:flex;align-items:center;gap:36px;}
-  .header-nav a{
-    font-size:14px;font-weight:500;
-    color:var(--text-mid);text-decoration:none;
-    transition:color 0.15s;letter-spacing:-0.1px;
-  }
-  .header-nav a:hover{color:var(--blau);}
-  .header-cta{
-    background:var(--blau);color:white;
-    font-size:14px;font-weight:600;
-    padding:9px 22px;border-radius:8px;
-    text-decoration:none;
-    transition:background 0.15s, transform 0.15s;
-    letter-spacing:-0.2px;
-  }
-  .header-cta:hover{background:var(--blau-dunkel);transform:translateY(-1px);}
-
-  /* ── HERO ── */
-  .hero-wrap{
-    max-width:1120px;margin:0 auto;
-    padding:88px 52px 80px;
-    display:grid;grid-template-columns:1fr 460px;gap:72px;align-items:center;
-  }
-  .hero-eyebrow{
-    display:inline-flex;align-items:center;gap:8px;
-    background:var(--blau-hell);color:var(--blau);
-    font-size:12px;font-weight:700;
-    padding:5px 14px;border-radius:20px;
-    margin-bottom:26px;letter-spacing:0.3px;
-    text-transform:uppercase;
-  }
-  .hero-eyebrow .pulse{
-    width:7px;height:7px;background:var(--blau);
-    border-radius:50%;flex-shrink:0;
-    animation:pulse-anim 2s infinite;
-  }
-  @keyframes pulse-anim{
-    0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,0.4);}
-    50%{box-shadow:0 0 0 5px rgba(37,99,235,0);}
-  }
-  .hero h1{
-    font-size:clamp(38px,4.2vw,56px);
-    font-weight:800;line-height:1.08;
-    letter-spacing:-2px;color:var(--text);
-    margin-bottom:10px;
-  }
-  .hero h1 em{font-style:normal;color:var(--blau);}
-  .hero-tagline{
-    font-size:19px;font-weight:600;
-    color:var(--text-mid);
-    margin-bottom:18px;letter-spacing:-0.4px;
-  }
-  .hero-p{
-    font-size:16px;color:var(--text-dim);
-    line-height:1.8;margin-bottom:36px;
-    max-width:480px;
-  }
-  .hero-advantage{
-    background:var(--blau-hell);
-    border:1px solid var(--blau-mid);
-    border-radius:12px;padding:20px 22px;
-    margin-bottom:36px;
-  }
-  .hero-advantage-label{
-    font-size:11px;font-weight:700;color:var(--blau);
-    text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;
-  }
-  .advantage-list{display:flex;flex-direction:column;gap:10px;}
-  .advantage-item{display:flex;gap:11px;align-items:flex-start;}
-  .advantage-arrow{
-    color:var(--blau);font-weight:700;
-    flex-shrink:0;margin-top:1px;font-size:13px;
-  }
-  .advantage-text{font-size:14px;color:var(--text-mid);line-height:1.7;}
-  .advantage-text strong{color:var(--text);}
-  .hero-btns{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
-  .btn-primary{
-    background:var(--blau);color:white;
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:15px;font-weight:700;
-    padding:14px 30px;border-radius:10px;
-    text-decoration:none;border:none;cursor:pointer;
-    transition:all 0.15s;display:inline-block;letter-spacing:-0.2px;
-  }
-  .btn-primary:hover{background:var(--blau-dunkel);transform:translateY(-1px);box-shadow:0 6px 16px rgba(37,99,235,0.28);}
-  .btn-secondary{
-    background:var(--weiss);color:var(--text-mid);
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:15px;font-weight:500;
-    padding:13px 26px;border-radius:10px;
-    border:1.5px solid var(--rand2);
-    text-decoration:none;cursor:pointer;
-    transition:all 0.15s;display:inline-block;
-  }
-  .btn-secondary:hover{border-color:var(--blau);color:var(--blau);}
-  .hero-trust{
-    display:flex;align-items:center;gap:8px;
-    font-size:13px;color:var(--text-dim);flex-wrap:wrap;
-  }
-  .hero-trust .check{color:var(--gruen);font-weight:700;}
-  .hero-trust .sep{color:var(--rand2);}
-
-  /* ── HERO CARD ── */
-  .hero-card{
-    background:var(--weiss);
-    border:1.5px solid var(--rand);
-    border-radius:16px;
-    padding:28px 28px 24px;
-    box-shadow:0 8px 32px rgba(15,23,36,0.07),0 1px 4px rgba(15,23,36,0.04);
-  }
-  .hero-card-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:5px;letter-spacing:-0.3px;}
-  .hero-card-sub{font-size:13px;color:var(--text-dim);margin-bottom:22px;}
-  .scout-steps{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
-  .scout-step{
-    display:flex;align-items:center;gap:12px;
-    padding:11px 14px;
-    background:var(--hell);border:1.5px solid var(--rand);
-    border-radius:8px;cursor:pointer;
-    transition:all 0.15s;
-  }
-  .scout-step:hover,.scout-step.aktiv{border-color:var(--blau);background:var(--blau-hell);}
-  .step-nr{
-    width:28px;height:28px;
-    background:var(--weiss);border:1.5px solid var(--rand2);
-    border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:700;color:var(--text-dim);
-    flex-shrink:0;transition:all 0.15s;
-    font-family:'DM Mono',monospace;
-  }
-  .scout-step.aktiv .step-nr{background:var(--blau);border-color:var(--blau);color:white;}
-  .step-info{flex:1;}
-  .step-name{font-size:13px;font-weight:600;color:var(--text);}
-  .step-desc{font-size:11px;color:var(--text-dim);margin-top:1px;}
-  .scout-step.aktiv .step-name{color:var(--blau-dunkel);}
-  .hero-card-features{
-    background:var(--hell);border:1px solid var(--rand);
-    border-radius:8px;padding:12px 16px;
-    display:flex;justify-content:flex-end;
-    align-items:center;margin-bottom:16px;
-  }
-  .hero-card-features div{font-size:13px;color:var(--text-mid);line-height:1.9;text-align:right;}
-  .hero-card-features span{color:var(--gruen);font-weight:600;margin-right:4px;}
-  .btn-start{
-    width:100%;background:var(--blau);color:white;
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:15px;font-weight:700;padding:13px;
-    border-radius:10px;border:none;cursor:pointer;
-    transition:all 0.15s;letter-spacing:-0.2px;
-  }
-  .btn-start:hover{background:var(--blau-dunkel);}
-
-  /* ── PROOF / VALUE BAR ── */
-  .stats-bar{
-    background:var(--hell);
-    border-top:1px solid var(--rand);
-    border-bottom:1px solid var(--rand);
-    padding:48px 52px;
-  }
-  .stats-inner{
-    max-width:1120px;margin:0 auto;
-    display:grid;grid-template-columns:repeat(3,1fr);gap:40px;
-  }
-  .proof-item{display:flex;flex-direction:column;}
-  .proof-icon{
-    width:42px;height:42px;background:var(--blau-hell);
-    border-radius:11px;display:flex;align-items:center;justify-content:center;
-    font-size:20px;margin-bottom:16px;
-  }
-  .proof-title{
-    font-size:20px;font-weight:800;color:var(--text);
-    letter-spacing:-0.6px;line-height:1.2;margin-bottom:8px;
-    font-family:'Plus Jakarta Sans',sans-serif;
-  }
-  .proof-text{font-size:14px;color:var(--text-dim);line-height:1.7;}
-
-  /* ── SECTIONS ── */
-  .section{max-width:1120px;margin:0 auto;padding:88px 52px;}
-  .section-eyebrow{
-    display:inline-block;
-    background:var(--blau-hell);color:var(--blau);
-    font-size:11px;font-weight:700;
-    padding:5px 12px;border-radius:20px;
-    margin-bottom:18px;text-transform:uppercase;
-    letter-spacing:1px;
-  }
-  .section-title{
-    font-size:clamp(28px,3vw,40px);
-    font-weight:800;letter-spacing:-1.2px;
-    color:var(--text);margin-bottom:14px;
-    line-height:1.1;
-  }
-  .section-sub{font-size:17px;color:var(--text-dim);max-width:520px;line-height:1.75;}
-
-  /* ── WIE ES FUNKTIONIERT ── */
-  .wie-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:52px;}
-  .wie-karte{
-    background:var(--weiss);border:1.5px solid var(--rand);
-    border-radius:14px;padding:30px 28px;
-    transition:all 0.25s;
-  }
-  .wie-karte:hover{
-    border-color:var(--blau);
-    box-shadow:0 10px 28px rgba(37,99,235,0.09);
-    transform:translateY(-3px);
-  }
-  .wie-nr{
-    font-size:52px;font-weight:800;color:var(--hell2);
-    letter-spacing:-2px;margin-bottom:18px;
-    font-family:'DM Mono',monospace;line-height:1;
-    transition:color 0.25s;
-  }
-  .wie-karte:hover .wie-nr{color:var(--blau-mid);}
-  .wie-icon{
-    width:44px;height:44px;background:var(--blau-hell);
-    border-radius:10px;display:flex;align-items:center;
-    justify-content:center;font-size:20px;margin-bottom:16px;
-  }
-  .wie-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:10px;letter-spacing:-0.3px;}
-  .wie-text{font-size:14px;color:var(--text-dim);line-height:1.75;}
-
-  /* ── QUELLEN ── */
-  .quellen-section{
-    background:var(--hell);
-    border-top:1px solid var(--rand);
-    border-bottom:1px solid var(--rand);
-    padding:52px;
-  }
-  .quellen-inner{max-width:1120px;margin:0 auto;}
-  .quellen-label{
-    font-size:11px;font-weight:700;color:var(--text-dim);
-    text-align:center;margin-bottom:24px;
-    text-transform:uppercase;letter-spacing:2px;
-  }
-  .quellen-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
-    gap:8px;
-  }
-  .quelle-tag{
-    background:var(--weiss);border:1px solid var(--rand);
-    border-radius:8px;padding:10px 14px;
-    font-size:12px;font-weight:500;color:var(--text-mid);
-    text-align:center;transition:border-color 0.15s;
-  }
-  .quelle-tag:hover{border-color:var(--blau);color:var(--blau);}
-
-  /* ── FEATURES ── */
-  .features-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:52px;}
-  .feature-karte{
-    background:var(--hell);border:1px solid var(--rand);
-    border-radius:14px;padding:26px 28px;
-    transition:border-color 0.2s;
-  }
-  .feature-karte:hover{border-color:var(--rand2);}
-  .feature-karte.highlight{
-    background:var(--blau-hell);
-    border-color:rgba(37,99,235,0.2);
-  }
-  .feature-icon{font-size:24px;margin-bottom:14px;}
-  .feature-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-0.2px;}
-  .feature-text{font-size:14px;color:var(--text-dim);line-height:1.75;}
-
-  /* ── PREISE ── */
-  .preise-bg{background:var(--hell);border-top:1px solid var(--rand);}
-  .preise-box{
-    background:var(--weiss);border:1.5px solid var(--blau);
-    border-radius:14px;padding:32px;max-width:560px;margin-top:52px;
-  }
-  .preise-box-label{
-    font-size:12px;font-weight:700;color:var(--blau);
-    text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;
-  }
-  .preise-box p{font-size:15px;color:var(--text);line-height:1.8;}
-  .preise-tip{
-    background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);
-    border-radius:10px;padding:16px 20px;margin-top:20px;
-    font-size:14px;color:#1d4ed8;
-  }
-
-  /* ── FAQ ── */
-  .faq-liste{margin-top:52px;display:flex;flex-direction:column;gap:10px;}
-  .faq-item{
-    background:var(--weiss);border:1px solid var(--rand);
-    border-radius:10px;overflow:hidden;
-    transition:border-color 0.15s;
-  }
-  .faq-item:hover{border-color:var(--rand2);}
-  .faq-item.offen{border-color:var(--blau);}
-  .faq-frage{
-    padding:18px 24px;font-size:15px;font-weight:600;
-    color:var(--text);cursor:pointer;
-    display:flex;justify-content:space-between;align-items:center;
-    user-select:none;gap:16px;letter-spacing:-0.2px;
-  }
-  .faq-frage:hover{background:var(--hell);}
-  .faq-item.offen .faq-frage{background:var(--blau-hell);color:var(--blau-dunkel);}
-  .faq-pfeil{
-    font-size:18px;color:var(--text-dim);
-    transition:transform 0.25s;flex-shrink:0;
-  }
-  .faq-item.offen .faq-pfeil{transform:rotate(180deg);color:var(--blau);}
-  .faq-antwort{
-    display:none;
-    padding:16px 24px 20px;
-    font-size:14px;color:var(--text-dim);
-    line-height:1.8;border-top:1px solid var(--rand);
-  }
-  .faq-item.offen .faq-antwort{display:block;}
-
-  /* ── CTA SECTION ── */
-  .cta-section{
-    background:var(--text);padding:88px 52px;text-align:center;
-  }
-  .cta-inner{max-width:580px;margin:0 auto;}
-  .cta-eyebrow{
-    display:inline-block;background:rgba(37,99,235,0.2);
-    color:#93c5fd;font-size:11px;font-weight:700;
-    padding:5px 14px;border-radius:20px;
-    margin-bottom:24px;text-transform:uppercase;letter-spacing:1px;
-  }
-  .cta-section h2{
-    font-size:clamp(32px,4vw,44px);font-weight:800;
-    color:white;letter-spacing:-1.5px;margin-bottom:16px;
-    line-height:1.1;
-  }
-  .cta-section p{font-size:16px;color:#94a3b8;line-height:1.75;margin-bottom:34px;}
-  .btn-cta{
-    background:var(--blau);color:white;
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:16px;font-weight:700;
-    padding:16px 38px;border-radius:12px;border:none;
-    cursor:pointer;transition:all 0.15s;
-    display:inline-block;text-decoration:none;letter-spacing:-0.3px;
-  }
-  .btn-cta:hover{background:var(--blau-dunkel);transform:translateY(-2px);}
-  .cta-sub{font-size:13px;color:#64748b;margin-top:18px;}
-
-  /* ── FOOTER ── */
-  footer{
-    background:var(--hell);border-top:1px solid var(--rand);
-    padding:32px 52px;
-    display:flex;justify-content:space-between;align-items:center;
-    flex-wrap:wrap;gap:16px;
-  }
-  .footer-links{display:flex;gap:24px;}
-  .footer-links a{font-size:13px;color:var(--text-dim);text-decoration:none;transition:color 0.15s;}
-  .footer-links a:hover{color:var(--blau);}
-  .footer-copy{font-size:12px;color:var(--text-dim);}
-
-  /* ── FORMULAR SECTION ── */
-  .formular-wrap{
-    background:var(--hell);
-    padding-top:80px;border-top:1px solid var(--rand);
-  }
-  .formular-section{max-width:860px;margin:0 auto;padding:0 52px 88px;scroll-margin-top:80px;}
-  .formular-title{
-    font-size:30px;font-weight:800;letter-spacing:-0.8px;
-    color:var(--text);margin-bottom:8px;
-  }
-  .formular-sub{font-size:15px;color:var(--text-dim);margin-bottom:40px;}
-
-  /* ── SCHRITTE ── */
-  .schritt{
-    background:var(--weiss);border:1.5px solid var(--rand);
-    border-radius:12px;margin-bottom:10px;overflow:hidden;
-    transition:border-color 0.2s,box-shadow 0.2s;
-  }
-  .schritt.aktiv{border-color:var(--blau);box-shadow:0 4px 20px rgba(37,99,235,0.09);}
-  .schritt-header{
-    display:flex;align-items:center;gap:14px;
-    padding:18px 24px;cursor:pointer;user-select:none;
-  }
-  .schritt-nr{
-    width:30px;height:30px;border-radius:50%;
-    background:var(--hell2);border:1.5px solid var(--rand2);
-    display:flex;align-items:center;justify-content:center;
-    font-size:13px;font-weight:700;color:var(--text-dim);
-    flex-shrink:0;transition:all 0.2s;
-    font-family:'DM Mono',monospace;
-  }
-  .schritt.aktiv .schritt-nr{background:var(--blau);border-color:var(--blau);color:white;}
-  .schritt.erledigt .schritt-nr{background:var(--gruen);border-color:var(--gruen);color:white;}
-  .schritt-titel{font-size:15px;font-weight:700;color:var(--text);flex:1;letter-spacing:-0.2px;}
-  .schritt-status{font-size:12px;color:var(--text-dim);font-family:'DM Mono',monospace;}
-  .schritt.erledigt .schritt-status{color:var(--gruen);}
-  .schritt.aktiv .schritt-status{color:var(--blau);}
-  .schritt-inhalt{display:none;padding:0 24px 24px;border-top:1px solid var(--rand);}
-  .schritt.aktiv .schritt-inhalt{display:block;}
-
-  /* ── FORM ELEMENTS ── */
-  label{
-    display:block;font-size:12px;font-weight:700;
-    color:var(--text-mid);text-transform:uppercase;
-    letter-spacing:0.8px;margin-bottom:8px;margin-top:20px;
-  }
-  input[type="text"],input[type="email"],input[type="url"]{
-    width:100%;background:var(--weiss);
-    border:1.5px solid var(--rand2);color:var(--text);
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:15px;padding:11px 14px;border-radius:8px;
-    outline:none;transition:border-color 0.2s;
-  }
-  input:focus{border-color:var(--blau);box-shadow:0 0 0 3px rgba(37,99,235,0.1);}
-  .hinweis{
-    background:var(--blau-hell);border:1px solid rgba(37,99,235,0.15);
-    border-radius:8px;padding:12px 16px;
-    font-size:13px;color:#1d4ed8;margin-top:12px;line-height:1.6;
-  }
-
-  /* ── GEWERKE ── */
-  .gewerke-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
-  .gewerk-check{
-    display:flex;align-items:center;gap:10px;
-    padding:9px 12px;background:var(--hell);
-    border:1.5px solid var(--rand);border-radius:8px;
-    cursor:pointer;transition:all 0.15s;
-    font-size:13px;color:var(--text-mid);
-  }
-  .gewerk-check:hover{border-color:var(--blau);color:var(--text);background:var(--blau-hell);}
-  .gewerk-check.ausgewaehlt{border-color:var(--blau);background:var(--blau-hell);color:var(--blau-dunkel);font-weight:600;}
-  .gewerk-check input{display:none;}
-  .gewerk-check .check-box{
-    width:16px;height:16px;
-    border:1.5px solid currentColor;border-radius:4px;
-    display:flex;align-items:center;justify-content:center;
-    flex-shrink:0;font-size:10px;
-  }
-  .alle-btn{
-    background:var(--weiss);border:1.5px solid var(--rand2);
-    color:var(--text-mid);
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:12px;font-weight:600;padding:6px 14px;
-    border-radius:6px;cursor:pointer;
-    transition:all 0.15s;margin-top:14px;margin-right:8px;
-  }
-  .alle-btn:hover{border-color:var(--blau);color:var(--blau);}
-  .tag-liste{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-  .tag{
-    background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);
-    color:var(--blau-dunkel);font-size:12px;font-weight:600;
-    padding:4px 10px;border-radius:6px;
-  }
-  select{
-    width:100%;background:var(--weiss);
-    border:1.5px solid var(--rand2);color:var(--text);
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:14px;padding:11px 14px;border-radius:8px;
-    outline:none;transition:border-color 0.2s;cursor:pointer;
-  }
-  select:focus{border-color:var(--blau);}
-
-  /* ── CHAT ── */
-  .chat-box{
-    background:var(--hell);border:1.5px solid var(--rand);
-    border-radius:10px;padding:20px;
-    margin-top:8px;min-height:200px;max-height:360px;overflow-y:auto;
-  }
-  .chat-nachricht{display:flex;gap:12px;margin-bottom:14px;animation:fadeIn 0.3s ease;}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
-  .chat-avatar{
-    width:28px;height:28px;border-radius:50%;flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:700;
-  }
-  .chat-avatar.ki{background:var(--blau-hell);color:var(--blau);}
-  .chat-avatar.user{background:#f0fdf4;color:var(--gruen);}
-  .chat-text{
-    font-size:14px;line-height:1.6;color:var(--text);
-    background:var(--weiss);padding:10px 14px;
-    border-radius:8px;flex:1;border:1px solid var(--rand);
-  }
-  .chat-eingabe-wrapper{display:flex;gap:8px;margin-top:10px;}
-  .chat-eingabe{
-    flex:1;background:var(--weiss);border:1.5px solid var(--rand2);
-    color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:14px;padding:11px 14px;border-radius:8px;
-    outline:none;transition:border-color 0.2s;
-  }
-  .chat-eingabe:focus{border-color:var(--blau);}
-
-  /* ── BUTTONS IN FORM ── */
-  .btn-gold{
-    background:var(--blau);color:white;
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-weight:700;font-size:14px;
-    padding:11px 22px;border:none;border-radius:8px;
-    cursor:pointer;transition:all 0.15s;letter-spacing:-0.2px;
-  }
-  .btn-gold:hover{background:var(--blau-dunkel);}
-  .btn-gold:disabled{opacity:0.5;cursor:not-allowed;}
-  .btn-outline{
-    background:var(--weiss);color:var(--text-mid);
-    font-family:'Plus Jakarta Sans',sans-serif;
-    font-size:14px;padding:11px 22px;
-    border:1.5px solid var(--rand2);border-radius:8px;
-    cursor:pointer;transition:all 0.15s;
-  }
-  .btn-outline:hover{border-color:var(--blau);color:var(--blau);}
-  .btn-row{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
-
-  /* ── TYPING ── */
-  .typing{display:flex;gap:4px;align-items:center;padding:4px 0;}
-  .typing span{
-    width:6px;height:6px;background:var(--text-dim);
-    border-radius:50%;animation:typing 1.2s infinite;
-  }
-  .typing span:nth-child(2){animation-delay:0.2s;}
-  .typing span:nth-child(3){animation-delay:0.4s;}
-  @keyframes typing{0%,60%,100%{opacity:0.3;transform:scale(1);}30%{opacity:1;transform:scale(1.3);}}
-
-  /* ── ZEITRAUM ── */
-  .zeitraum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:8px;}
-  .zeitraum-karte{
-    background:var(--hell);border:1.5px solid var(--rand);
-    border-radius:10px;padding:12px 8px;cursor:pointer;
-    transition:all 0.15s;text-align:center;
-  }
-  .zeitraum-karte:hover,.zeitraum-karte.ausgewaehlt{border-color:var(--blau);background:var(--blau-hell);}
-  .zt-tage{
-    font-size:26px;font-weight:800;color:var(--text);
-    letter-spacing:-1px;line-height:1;
-    font-family:'DM Mono',monospace;
-  }
-  .zeitraum-karte.ausgewaehlt .zt-tage{color:var(--blau);}
-  .zt-label{font-size:10px;font-weight:700;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;}
-  .zeitraum-karte.ausgewaehlt .zt-label{color:var(--blau);}
-
-  /* ── KOSTEN/PREIS ── */
-  .kosten-box{
-    background:var(--hell);border:1px solid var(--rand);
-    border-radius:8px;padding:14px 18px;margin-top:14px;
-    display:flex;align-items:center;justify-content:space-between;
-  }
-  .k-label{font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;}
-  .k-wert{font-size:18px;font-weight:700;color:var(--text);margin-top:3px;font-family:'DM Mono',monospace;}
-  .preis-box{
-    background:var(--weiss);border:1.5px solid var(--blau);
-    border-radius:10px;padding:22px 24px;margin-top:14px;
-    display:flex;align-items:center;justify-content:space-between;
-  }
-  .preis-label{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;}
-  .preis-wert{font-size:42px;font-weight:800;color:var(--blau);letter-spacing:-2px;font-family:'DM Mono',monospace;}
-  .preis-details{font-size:12px;color:var(--text-dim);margin-top:4px;font-family:'DM Mono',monospace;}
-  #scout-status{display:none;padding:12px 16px;border-radius:8px;font-size:14px;margin-top:14px;}
-
-  /* ── FADE-IN ANIMATION ── */
-  .fade-in{opacity:0;transform:translateY(18px);transition:opacity 0.55s ease,transform 0.55s ease;}
-  .fade-in.visible{opacity:1;transform:none;}
-
-  /* ── RESPONSIVE ── */
-  @media(max-width:960px){
-    .hero-wrap{grid-template-columns:1fr;padding:56px 24px;gap:48px;}
-    .hero-card{display:none;}
-    .stats-inner{grid-template-columns:1fr;gap:28px;}
-    .wie-grid,.features-grid{grid-template-columns:1fr;}
-    .section{padding:64px 24px;}
-    .formular-section{padding:0 24px 64px;}
-    header{padding:0 24px;}
-    .header-nav{display:none;}
-    .stats-bar{padding:36px 24px;}
-    .quellen-section{padding:32px 24px;}
-    .cta-section{padding:64px 24px;}
-    footer{padding:24px;flex-direction:column;align-items:flex-start;}
-  }
+:root {
+  --weiss:#ffffff; --hell:#f8f7f4; --hell2:#f1f0ec; --rand:#e5e4e0; --rand2:#d0cfc9;
+  --text:#111111; --text-mid:#444444; --text-dim:#888888;
+  --blau:#2563eb; --blau-hell:#eff6ff; --blau-dunkel:#1d4ed8;
+  --gruen:#16a34a; --gruen-hell:#f0fdf4; --gruen-rand:#bbf7d0;
+  --orange:#d97706; --orange-hell:#fffbeb;
+  --rot:#dc2626; --rot-hell:#fef2f2;
+  --gold:#d97706; --gold-hell:#fffbeb; --gold-rand:#fcd34d;
+  --sidebar-w:240px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--weiss);border-right:1px solid var(--rand);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid var(--rand);}
+.logo-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-0.3px;}
+.logo-name span{color:var(--blau);}
+.logo-sub{font-size:11px;color:var(--text-dim);margin-top:2px;font-family:'DM Mono',monospace;}
+.sidebar-section{padding:14px 18px 6px;}
+.sidebar-label{font-size:10px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.sidebar-divider{border-top:1px solid var(--rand);margin:8px 0;}
+.filter-group{display:flex;flex-direction:column;gap:2px;}
+.filter-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-mid);user-select:none;transition:background 0.15s;}
+.filter-item:hover{background:var(--hell);}
+.filter-item.aktiv{background:var(--blau-hell);color:var(--blau);font-weight:500;}
+.filter-dot{width:7px;height:7px;border-radius:50%;background:var(--rand2);flex-shrink:0;}
+.filter-item.aktiv .filter-dot{background:var(--blau);}
+.filter-count{margin-left:auto;font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;}
+.lauf-item{padding:8px 10px;border-radius:6px;cursor:pointer;margin-bottom:2px;transition:background 0.15s;}
+.lauf-item:hover{background:var(--hell);}
+.lauf-item.aktiv{background:var(--blau-hell);}
+.lauf-datum{font-size:12px;font-weight:600;color:var(--text);}
+.lauf-titel{font-size:11px;color:var(--text-dim);margin-top:2px;}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.header{background:var(--weiss);border-bottom:1px solid var(--rand);padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.header-titel{flex:1;min-width:0;}
+.header-firma{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.header-meta{font-size:12px;color:var(--text-dim);margin-top:2px;}
+.header-stats{display:flex;gap:12px;}
+.stat-box{background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:8px 14px;text-align:center;min-width:60px;}
+.stat-zahl{font-size:20px;font-weight:700;color:var(--blau);font-family:'DM Mono',monospace;}
+.stat-zahl.gold{color:var(--gold);}
+.stat-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+.btn-excel{display:flex;align-items:center;gap:7px;background:var(--gruen);color:white;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;}
+.btn-excel:hover{background:#15803d;}
+.btn-excel svg{width:15px;height:15px;}
+.tabs{background:var(--weiss);border-bottom:1px solid var(--rand);padding:0 24px;display:flex;gap:0;}
+.tab{padding:12px 18px;font-size:14px;font-weight:500;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;display:flex;align-items:center;gap:7px;}
+.tab:hover{color:var(--text);}
+.tab.aktiv{color:var(--blau);border-bottom-color:var(--blau);font-weight:600;}
+.tab.aktiv.gold-tab{color:var(--gold);border-bottom-color:var(--gold);}
+.tab-badge{background:var(--gold);color:white;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;font-family:'DM Mono',monospace;display:none;}
+.tab-badge.sichtbar{display:inline-block;}
+.content{flex:1;padding:20px 24px;}
+.tab-inhalt{display:none;}
+.tab-inhalt.aktiv{display:block;}
+.suchleiste{display:flex;gap:10px;margin-bottom:16px;}
+.such-input{flex:1;background:var(--weiss);border:1.5px solid var(--rand);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:9px 14px;border-radius:8px;outline:none;}
+.such-input:focus{border-color:var(--blau);}
+.sort-select{background:var(--weiss);border:1.5px solid var(--rand);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;border-radius:8px;outline:none;cursor:pointer;}
+.projekte-liste{display:flex;flex-direction:column;gap:10px;}
+.projekt-karte{background:var(--weiss);border:1px solid var(--rand);border-radius:10px;padding:16px 18px;display:flex;gap:14px;align-items:flex-start;transition:border-color 0.15s,box-shadow 0.15s;}
+.projekt-karte:hover{border-color:var(--blau);}
+.projekt-karte.ignoriert{opacity:0.4;}
+.projekt-karte.gemerkt{border-color:var(--gold-rand)!important;border-width:1.5px;box-shadow:0 0 0 3px rgba(217,119,6,0.07);}
+.relevanz-badge{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;flex-shrink:0;}
+.rel-hoch{background:var(--gruen-hell);color:var(--gruen);border:1px solid var(--gruen-rand);}
+.rel-mittel{background:var(--orange-hell);color:var(--orange);border:1px solid #fde68a;}
+.rel-niedrig{background:var(--rot-hell);color:var(--rot);border:1px solid #fecaca;}
+.projekt-body{flex:1;min-width:0;}
+.projekt-titel{font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.4;}
+.projekt-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.tag{font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;}
+.tag-kat{background:var(--blau-hell);color:var(--blau);}
+.tag-phase{background:var(--gruen-hell);color:var(--gruen);}
+.tag-bl{background:var(--hell2);color:var(--text-mid);}
+.tag-vol{background:var(--orange-hell);color:var(--orange);}
+.tag-gemerkt{background:var(--gold-hell);color:var(--gold);border:1px solid var(--gold-rand);}
+.tag-neu{background:var(--blau-hell);color:var(--blau-dunkel);font-size:10px;}
+.projekt-beschreibung{font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:8px;}
+.projekt-ort{font-size:12px;color:var(--text-dim);}
+.projekt-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.btn-link{display:inline-block;background:var(--blau-hell);color:var(--blau);text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:6px;white-space:nowrap;text-align:center;}
+.btn-link:hover{background:var(--blau);color:white;}
+.btn-merken{background:var(--gold-hell);color:var(--gold);border:1px solid var(--gold-rand);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+.btn-merken:hover{background:var(--gold);color:white;border-color:var(--gold);}
+.btn-merken.aktiv{background:var(--gold);color:white;border-color:var(--gold);}
+.btn-ignorieren{background:var(--hell);border:1px solid var(--rand);color:var(--text-dim);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;}
+.btn-ignorieren:hover{border-color:var(--rot);color:var(--rot);}
+.btn-ignorieren.aktiv{background:var(--rot-hell);border-color:#fecaca;color:var(--rot);}
+.merkliste-header{background:var(--gold-hell);border:1px solid var(--gold-rand);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+.merkliste-header-icon{font-size:22px;}
+.merkliste-header-text{font-size:14px;font-weight:600;color:#92400e;}
+.merkliste-header-sub{font-size:12px;color:#b45309;margin-top:2px;}
+.karte-container{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--rand);}
+#karte{height:calc(100vh - 220px);min-height:400px;background:#f1f0ec;}
+.karte-overlay{position:absolute;top:12px;left:12px;z-index:999;background:var(--weiss);border:1px solid var(--rand);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text-mid);box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.laden{display:flex;align-items:center;gap:10px;padding:40px 20px;color:var(--text-dim);font-size:14px;}
+.laden-dots{display:flex;gap:4px;}
+.laden-dots span{width:7px;height:7px;background:var(--blau);border-radius:50%;animation:pulse 1.2s infinite;}
+.laden-dots span:nth-child(2){animation-delay:0.2s;}
+.laden-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes pulse{0%,60%,100%{opacity:0.25;transform:scale(1);}30%{opacity:1;transform:scale(1.3);}}
+.leer-state{text-align:center;padding:60px 20px;}
+.leer-icon{font-size:40px;margin-bottom:12px;}
+.leer-text{color:var(--text-dim);font-size:15px;}
+.leer-sub{color:var(--text-dim);font-size:13px;margin-top:6px;}
+/* Dashboard-Link Box */
+.link-box{background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.link-box-text{font-size:13px;color:var(--blau-dunkel);flex:1;}
+.link-box-url{font-family:'DM Mono',monospace;font-size:11px;color:var(--blau);word-break:break-all;}
+.btn-copy{background:var(--blau);color:white;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;}
+.btn-copy:hover{background:var(--blau-dunkel);}
+@media(max-width:768px){.sidebar{display:none;}.header{padding:12px 16px;}.content{padding:14px 16px;}.tabs{padding:0 16px;}.projekt-karte{flex-direction:column;}.projekt-actions{flex-direction:row;flex-wrap:wrap;}}
 </style>
 </head>
 <body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-name">Project<span>Scout</span></div>
+      <div class="logo-sub">Ihr Projekt-Radar</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Kategorie</div>
+      <div class="filter-group" id="filter-kategorie"></div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Phase</div>
+      <div class="filter-group" id="filter-phase"></div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Bundesland</div>
+      <div class="filter-group" id="filter-bundesland"></div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Scout-Läufe</div>
+      <div id="laufe-liste"></div>
+    </div>
+  </aside>
 
-<!-- HEADER -->
-<header id="main-header">
-  <a href="https://project-scout.at/" class="header-logo">
-    <svg height="40" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="90" cy="90" r="52" fill="none" stroke="#0f1724" stroke-width="2.5"/>
-      <circle cx="90" cy="90" r="38" fill="none" stroke="#0f1724" stroke-width="0.8" opacity="0.25"/>
-      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
-      <polygon points="90,138 83,90 90,98 97,90" fill="#0f1724" opacity="0.35"/>
-      <text x="90" y="36" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#2563eb">N</text>
-      <text x="90" y="152" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">S</text>
-      <text x="34" y="94" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">W</text>
-      <text x="146" y="94" text-anchor="middle" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="10" font-weight="700" fill="#0f1724" opacity="0.4">O</text>
-      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
-      <circle cx="116" cy="116" r="7" fill="#2563eb" opacity="0.2"/>
-      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
-      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
-      <text x="162" y="76" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="48" font-weight="800" fill="#0f1724">Project<tspan fill="#2563eb">Scout</tspan></text>
-      <text x="164" y="104" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#8494a7" letter-spacing="1.5">Intelligentes Scouting · Österreich</text>
-    </svg>
-  </a>
-  <nav class="header-nav">
-    <a href="wie-es-funktioniert.html">Wie es funktioniert</a>
-    <a href="#preise">Preise</a>
-    <a href="impressum.html">Impressum</a>
-  </nav>
-  <a href="#scout-starten" class="header-cta">Scout starten →</a>
-</header>
+  <div class="main">
+    <div class="header">
+      <div class="header-titel">
+        <div class="header-firma" id="header-firma">Laden...</div>
+        <div class="header-meta" id="header-meta"></div>
+      </div>
+      <div class="header-stats">
+        <div class="stat-box"><div class="stat-zahl" id="stat-gesamt">–</div><div class="stat-label">Projekte</div></div>
+        <div class="stat-box"><div class="stat-zahl" id="stat-neu">–</div><div class="stat-label">Neu</div></div>
+        <div class="stat-box"><div class="stat-zahl" id="stat-hoch">–</div><div class="stat-label">Top ≥8</div></div>
+        <div class="stat-box"><div class="stat-zahl gold" id="stat-merkliste">0</div><div class="stat-label">Merkliste</div></div>
+      </div>
+      <button class="btn-excel" id="btn-excel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9,15 12,18 15,15"/></svg>
+        Excel Export
+      </button>
+    </div>
 
-<!-- HERO -->
-<section>
-  <div class="hero-wrap hero">
-    <div class="hero-content fade-in">
-      <div class="hero-eyebrow"><span class="pulse"></span> KI-gestützt · Vollautomatisch · Für ganz Österreich</div>
-      <h1>Projekte entdecken,<br><em>bevor es die anderen tun.</em></h1>
-      <div class="hero-tagline">Projekte automatisch finden lassen.</div>
-      <p class="hero-p">Ein KI-Agent, der Zeitungen, Gemeinderatsprotokolle, Vergabeportale und vieles mehr durchsucht – maßgeschneidert auf Ihre Gewerke, direkt in Ihr Postfach.</p>
-      <div class="hero-advantage">
-        <div class="hero-advantage-label">Ihr Vorteil</div>
-        <div class="advantage-list">
-          <div class="advantage-item"><span class="advantage-arrow">→</span><span class="advantage-text"><strong>Strategische Planung:</strong> Erkennen Sie Projekte in der frühen Phase, treten Sie in Kontakt mit dem Auftraggeber und richten Sie Kalkulation und Ressourcen optimal aus.</span></div>
-          <div class="advantage-item"><span class="advantage-arrow">→</span><span class="advantage-text"><strong>Automatisierte Entlastung:</strong> Wir filtern das Informationsrauschen, damit Sie sich auf Ihr Kerngeschäft konzentrieren können.</span></div>
-          <div class="advantage-item"><span class="advantage-arrow">→</span><span class="advantage-text"><strong>Relevanz pur:</strong> Sie erhalten nur die Informationen, die für Ihr Unternehmen wirklich von Bedeutung sind.</span></div>
+    <div class="tabs">
+      <div class="tab aktiv" data-tab="liste">📋 Projektliste</div>
+      <div class="tab" data-tab="karte">🗺️ Karte</div>
+      <div class="tab" data-tab="merkliste" id="tab-merkliste">⭐ Merkliste <span class="tab-badge" id="merkliste-badge">0</span></div>
+    </div>
+
+    <div class="content">
+      <div id="tab-liste" class="tab-inhalt aktiv">
+        <div class="suchleiste">
+          <input type="text" class="such-input" id="suche" placeholder="Projekt suchen...">
+          <select class="sort-select" id="sortierung">
+            <option value="relevanz">↓ Relevanz</option>
+            <option value="datum">↓ Datum</option>
+            <option value="ort">A–Z Ort</option>
+          </select>
+        </div>
+        <div class="projekte-liste" id="projekte-liste">
+          <div class="laden"><div class="laden-dots"><span></span><span></span><span></span></div><span>Projekte werden geladen...</span></div>
         </div>
       </div>
-      <div class="hero-btns">
-        <a href="#scout-starten" class="btn-primary">Jetzt Scout starten →</a>
-        <a href="wie-es-funktioniert.html" class="btn-secondary">Wie es funktioniert</a>
+
+      <div id="tab-karte" class="tab-inhalt">
+        <div class="karte-container">
+          <div class="karte-overlay" id="karte-overlay">Projekte werden geladen...</div>
+          <div id="karte"></div>
+        </div>
       </div>
-      <div class="hero-trust">
-        <span class="check">✓</span> Kein Abo
-        <span class="sep">·</span>
-        <span class="check">✓</span> Einmalzahlung
-        <span class="sep">·</span>
-        <span class="check">✓</span> Preis live kalkuliert
-      </div>
-    </div>
-    <div class="hero-card fade-in" style="transition-delay:0.15s;">
-      <div class="hero-card-title">Scout konfigurieren</div>
-      <div class="hero-card-sub">In 5 Schritten zum Ergebnis</div>
-      <div class="scout-steps">
-        <div class="scout-step aktiv"><div class="step-nr">1</div><div class="step-info"><div class="step-name">Kontaktdaten</div><div class="step-desc">Name &amp; E-Mail eingeben</div></div></div>
-        <div class="scout-step"><div class="step-nr">2</div><div class="step-info"><div class="step-name">Gewerke / Branchen</div><div class="step-desc">Was soll gesucht werden?</div></div></div>
-        <div class="scout-step"><div class="step-nr">3</div><div class="step-info"><div class="step-name">Suchgebiet</div><div class="step-desc">Region, Bundesland oder ganz Österreich</div></div></div>
-        <div class="scout-step"><div class="step-nr">4</div><div class="step-info"><div class="step-name">KI-Verfeinerung</div><div class="step-desc">Optional: Suche präzisieren</div></div></div>
-        <div class="scout-step"><div class="step-nr">5</div><div class="step-info"><div class="step-name">Bezahlung &amp; Start</div><div class="step-desc">Einmalig, sicher via Stripe</div></div></div>
-      </div>
-      <div class="hero-card-features">
-        <div><span>✓</span>Dashboard<br><span>✓</span>Excel-Export<br><span>✓</span>E-Mail-Report</div>
-      </div>
-      <button class="btn-start" onclick="document.getElementById('scout-starten').scrollIntoView({behavior:'smooth'})">Scout jetzt konfigurieren →</button>
-    </div>
-  </div>
-</section>
 
-<!-- STATS -->
-<div class="stats-bar">
-  <div class="stats-inner fade-in">
-    <div class="proof-item">
-      <div class="proof-icon">🔍</div>
-      <div class="proof-title">Live-Suche, ganz Österreich</div>
-      <div class="proof-text">Durchsucht live alle frei zugänglichen Quellen – vom großen Vergabeportal bis zur kleinsten Regionalzeitung.</div>
-    </div>
-    <div class="proof-item">
-      <div class="proof-icon">🗺️</div>
-      <div class="proof-title">2.094 Gemeinden</div>
-      <div class="proof-text">Flächendeckend recherchiert – inklusive der oft entscheidenden Gemeinderatsprotokolle.</div>
-    </div>
-    <div class="proof-item">
-      <div class="proof-icon">✉️</div>
-      <div class="proof-title">Dashboard per E-Mail</div>
-      <div class="proof-text">Ihre Ergebnisse kommen automatisch – in der Regel schon nach wenigen Stunden.</div>
-    </div>
-  </div>
-</div>
-
-<!-- WIE ES FUNKTIONIERT -->
-<section id="wie-es-funktioniert">
-  <div class="section fade-in">
-    <div class="section-eyebrow">So funktioniert's</div>
-    <h2 class="section-title">In 3 Schritten zu Ihren Projekten</h2>
-    <p class="section-sub">Kein technisches Know-how nötig. Einfach konfigurieren – und der KI-Agent erledigt den Rest.</p>
-    <div class="wie-grid">
-      <div class="wie-karte fade-in"><div class="wie-nr">01</div><div class="wie-icon">🎯</div><div class="wie-title">Konfigurieren</div><div class="wie-text">Wählen Sie Gewerke oder Branchen, Ihr Suchgebiet (von einzelnen Gemeinden über Bundesländer bis ganz Österreich) und den Zeitraum. Optional: präzisieren Sie die Suche per KI-Chat.</div></div>
-      <div class="wie-karte fade-in" style="transition-delay:0.1s;"><div class="wie-nr">02</div><div class="wie-icon">🤖</div><div class="wie-title">KI sucht automatisch</div><div class="wie-text">Der Agent durchsucht mehr als 150 österreichische, öffentlich zugängliche Quellen: Tageszeitungen, Gemeinderatsprotokolle, Vergabeportale, Immobilienportale und mehr – vollautomatisch.</div></div>
-      <div class="wie-karte fade-in" style="transition-delay:0.2s;"><div class="wie-nr">03</div><div class="wie-icon">📊</div><div class="wie-title">Ergebnisse erhalten</div><div class="wie-text">Sie bekommen per E-Mail einen Link zu Ihrem persönlichen Dashboard mit Kartenansicht, Filterfunktion und Excel-Export aller gefundenen Projekte.</div></div>
-    </div>
-    <div style="margin-top:40px;">
-      <a href="wie-es-funktioniert.html" style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:var(--blau);text-decoration:none;border-bottom:1.5px solid var(--blau-mid);padding-bottom:2px;transition:border-color 0.15s;">Im Detail: Wie der KI-Agent arbeitet →</a>
-    </div>
-  </div>
-</section>
-
-
-
-<!-- FEATURES -->
-<section>
-  <div class="section fade-in">
-    <div class="section-eyebrow">Features</div>
-    <h2 class="section-title">Alles was Sie brauchen</h2>
-    <p class="section-sub">Kein Abo-Zwang. Kein Datenchaos. Nur das was Sie wirklich brauchen.</p>
-    <div class="features-grid">
-      <div class="feature-karte highlight fade-in"><div class="feature-icon">🗺️</div><div class="feature-title">Interaktive Kartenansicht</div><div class="feature-text">Alle gefundenen Projekte auf einer Österreich-Karte. Teilweise mit exakter Position, sofern dies in der Quelle genau angegeben ist. Ein Klick auf einen Punkt – und Sie sehen alle Details, die Quelle und den Originallink zum Artikel.</div></div>
-      <div class="feature-karte fade-in" style="transition-delay:0.1s;"><div class="feature-icon">📥</div><div class="feature-title">Excel-Export</div><div class="feature-text">Ein Klick – und alle Projekte landen strukturiert in einer Excel-Datei. Perfekt für die eigene Nachbearbeitung, CRM oder Weitergabe im Team.</div></div>
-      <div class="feature-karte fade-in" style="transition-delay:0.1s;"><div class="feature-icon">🔁</div><div class="feature-title">Wiederkehrende Kunden</div><div class="feature-text">Bereits gefundene Projekte bleiben bestehen und werden nicht doppelt angezeigt. Projekte die Sie ignorieren, bleiben dauerhaft ausgeblendet.</div></div>
-      <div class="feature-karte highlight fade-in" style="transition-delay:0.2s;"><div class="feature-icon">🤖</div><div class="feature-title">Teilen Sie der KI Ihre Wünsche mit</div><div class="feature-text">Erklären Sie dem KI-Assistenten in eigenen Worten, was Sie suchen – er passt die Suche auf Ihre Bedürfnisse an.</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- PREISE -->
-<section class="preise-bg" id="preise">
-  <div class="section fade-in">
-    <div class="section-eyebrow">Preise</div>
-    <h2 class="section-title">Transparent. Dynamisch. Fair.</h2>
-    <p class="section-sub">Kein Abo, keine Pakete, keine versteckten Kosten. Sie zahlen nur für das, was Sie wirklich brauchen.</p>
-    <div class="preise-box">
-      <div class="preise-box-label">Wie der Preis entsteht</div>
-      <p>Der Preis richtet sich je nach Umfang Ihrer Suche – nach der Anzahl der Bundesländer, Gewerke und dem gewählten Zeitraum.</p>
-    </div>
-    <div class="preise-tip">💡 <strong>Tipp:</strong> Den genauen Preis sehen Sie nach der Konfiguration – noch bevor Sie zahlen. Keine Überraschungen.</div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section>
-  <div class="section fade-in">
-    <div class="section-eyebrow">FAQ</div>
-    <h2 class="section-title">Häufige Fragen</h2>
-    <div class="faq-liste">
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Wie ist die Idee zu ProjectScout entstanden? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">Den Anstoß gab eine ganz alltägliche Situation: Ein Kollege schickte mir einen Zeitungsartikel über ein geplantes Bauvorhaben – mit der Frage, ob ich Näheres zum Projekt oder zu den ausführenden Unternehmen wüsste.<br><br>Oft entscheidet der frühe Zugang zu Informationen über den Auftrag. Wer sich als Erster mit der passenden Expertise und einem zielgerichteten Angebot beim Kunden meldet, verschafft sich einen klaren Vorsprung – gerade bei kleineren Projekten, deren Vergabe häufig informell abläuft und nie offiziell ausgeschrieben wird.<br><br>Das manuelle Durchforsten der österreichischen Medienlandschaft ist allerdings zeitraubend und kaum nebenbei zu leisten. Also habe ich den Prozess automatisiert. Der KI-Assistent durchsucht heute laufend die relevanten Quellen und liefert eine übersichtliche, gefilterte Liste der Bauvorhaben im jeweiligen Gebiet.<br><br>Besonders wertvoll sind dabei die Gemeinderatsprotokolle. Umwidmungen oder erteilte Baugenehmigungen tauchen dort oft Wochen oder Monate früher auf als in den klassischen Medien – ein echter „Türöffner" zu Projekten, lange bevor sie öffentlich bekannt werden. Diesen Zeitvorsprung könnte man sonst nur mit einem flächendeckenden persönlichen Netzwerk erreichen.<br><br>Was zunächst zum eigenen, unverzichtbaren Werkzeug wurde, steht mit ProjectScout nun auch anderen offen.</div></div>
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Wie lange dauert ein Scout-Lauf? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">Die meisten Scout-Läufe sind innerhalb weniger Stunden fertig, in der Regel noch am selben Tag. Sie müssen nicht warten: Sobald die Ergebnisse bereitstehen, erhalten Sie automatisch eine E-Mail mit dem Link zu Ihrem persönlichen Dashboard.</div></div>
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Welche Quellen werden durchsucht? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">Der KI-Agent durchsucht mehr als 150 österreichische Quellen: Tageszeitungen (Standard, Presse, OÖN, Kleine Zeitung u.v.m.), Gemeinderatsprotokolle, Vergabeportale, Immobilienportale und Regionalmedien – je nach gewähltem Bundesland.</div></div>
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Gibt es ein Abo oder eine Mindestlaufzeit? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">Nein. ProjectScout funktioniert ausschließlich als Einmalzahlung pro Scout-Lauf. Kein Abo, keine automatischen Verlängerungen, keine Mindestlaufzeit. Der Preis wird live beim Konfigurieren berechnet.</div></div>
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Wie sicher ist die Zahlung? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">Die Zahlung wird über Stripe abgewickelt – einen der weltweit führenden Zahlungsanbieter. Ihre Kreditkartendaten werden nicht auf unseren Servern gespeichert.</div></div>
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Was passiert wenn ich als Stammkunde zurückkomme? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">ProjectScout erkennt Sie anhand Ihrer E-Mail-Adresse. Bereits gefundene Projekte werden nicht erneut angezeigt. Ihr Dashboard wächst mit jeder neuen Suche – Ihr Link bleibt immer gleich.</div></div>
-      <div class="faq-item"><div class="faq-frage" onclick="toggleFaq(this)">Findet der Scout auch Grundstücke und Immobilien? <span class="faq-pfeil">▾</span></div><div class="faq-antwort">Ja. ProjectScout durchsucht neben Bauprojekten auch Immobilienportale, Grundstücksausschreibungen und Gemeindebekanntmachungen. Die Plattform wird laufend um weitere Quellen erweitert.</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="cta-section">
-  <div class="cta-inner fade-in">
-    <div class="cta-eyebrow">Jetzt starten</div>
-    <h2>Bereit schneller zu sein?</h2>
-    <p>Starten Sie jetzt Ihren ersten Scout-Lauf. Kein Abo, kein Risiko – nur Ergebnisse.</p>
-    <a href="#scout-starten" class="btn-cta">Scout jetzt starten →</a>
-    <div class="cta-sub">Ergebnisse meist noch am selben Tag – ganz automatisch per E-Mail</div>
-  </div>
-</section>
-
-<!-- FORMULAR -->
-<div class="formular-wrap" id="scout-starten">
-  <div class="formular-section">
-    <div class="formular-title">Scout konfigurieren</div>
-    <div class="formular-sub">Fülle die 5 Schritte aus – der Rest passiert automatisch.</div>
-
-    <!-- SCHRITT 1 -->
-    <div class="schritt aktiv" id="s1">
-      <div class="schritt-header" onclick="toggleSchritt(1)">
-        <div class="schritt-nr">1</div>
-        <div class="schritt-titel">Ihre Kontaktdaten</div>
-        <div class="schritt-status" id="s1-status">ausstehend</div>
-      </div>
-      <div class="schritt-inhalt">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">
-          <div>
-            <label>Vorname *</label>
-            <input type="text" id="vorname" placeholder="z.B. Max" autocomplete="given-name">
+      <div id="tab-merkliste-inhalt" class="tab-inhalt">
+        <div id="merkliste-leer" class="leer-state">
+          <div class="leer-icon">⭐</div>
+          <div class="leer-text">Noch keine Projekte vorgemerkt</div>
+          <div class="leer-sub">Klicke bei einem Projekt auf „Merken" um es zur engeren Auswahl hinzuzufügen</div>
+        </div>
+        <div id="merkliste-inhalt" style="display:none;">
+          <div class="merkliste-header">
+            <div class="merkliste-header-icon">⭐</div>
+            <div>
+              <div class="merkliste-header-text">Ihre engere Auswahl</div>
+              <div class="merkliste-header-sub" id="merkliste-header-sub">0 Projekte zur Nachverfolgung vorgemerkt</div>
+            </div>
           </div>
-          <div>
-            <label>Nachname *</label>
-            <input type="text" id="nachname" placeholder="z.B. Mustermann" autocomplete="family-name">
-          </div>
-        </div>
-        <label>Firmenname <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);">– optional</span></label>
-        <input type="text" id="firma" placeholder="z.B. Musterbau GmbH" autocomplete="organization">
-        <label>E-Mail-Adresse *</label>
-        <input type="email" id="email" placeholder="ihre@email.at" autocomplete="email">
-        <label>E-Mail-Adresse bestätigen *</label>
-        <input type="email" id="email2" placeholder="E-Mail-Adresse nochmals eingeben"
-          autocomplete="off" onpaste="return false;" ondrop="return false;" oncontextmenu="return false;">
-        <div class="hinweis" style="margin-top:8px;">
-          📬 <strong>Wichtig:</strong> An diese E-Mail-Adresse erhalten Sie den Link zu Ihrem persönlichen Dashboard. Bitte geben Sie die Adresse zweimal manuell ein – kein Kopieren möglich.
-        </div>
-        <label>Homepage <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);">– optional</span></label>
-        <input type="url" id="homepage" placeholder="https://www.ihre-firma.at" autocomplete="url">
-        <div class="hinweis">💡 <strong>Tipp:</strong> Wenn Sie Ihre Homepage angeben, liest der KI-Agent Ihre Referenzen und erkennt automatisch Ihre Gewerke.</div>
-        <div class="btn-row"><button class="btn-gold" onclick="weiter(1)">Weiter →</button></div>
-      </div>
-    </div>
-
-    <!-- SCHRITT 2 -->
-    <div class="schritt" id="s2">
-      <div class="schritt-header" onclick="toggleSchritt(2)">
-        <div class="schritt-nr">2</div>
-        <div class="schritt-titel">Gewerke / Branchen auswählen</div>
-        <div class="schritt-status" id="s2-status">ausstehend</div>
-      </div>
-      <div class="schritt-inhalt">
-        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;">Wählen Sie alle Bereiche für die der Scout nach Projekten suchen soll.</p>
-        <div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-mid);line-height:1.7;">💶 <strong style="color:var(--text);">Preis pro Gewerke-Kategorie: € 7,00</strong> · Jede Kategorie enthält mehrere verwandte Gewerke und wird einmalig berechnet.</div>
-        <div class="gewerke-kategorien" id="gewerke-container"></div>
-        <div>
-          <button class="alle-btn" onclick="alleGewerkeAuswaehlen()">Alle auswählen</button>
-          <button class="alle-btn" onclick="alleGewerkeAbwaehlen()">Alle abwählen</button>
-        </div>
-        <div style="margin-top:14px;">
-          <span style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;">Ausgewählt:</span>
-          <div class="tag-liste" id="gewerke-tags"><span style="color:var(--text-dim);font-size:13px;">Noch nichts ausgewählt</span></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn-outline" onclick="zurueck(2)">← Zurück</button>
-          <button class="btn-gold" onclick="weiter(2)">Weiter →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCHRITT 3 -->
-    <div class="schritt" id="s3">
-      <div class="schritt-header" onclick="toggleSchritt(3)">
-        <div class="schritt-nr">3</div>
-        <div class="schritt-titel">Suchgebiet festlegen</div>
-        <div class="schritt-status" id="s3-status">ausstehend</div>
-      </div>
-      <div class="schritt-inhalt">
-        <label>Schnellauswahl</label>
-        <div class="gewerk-check" id="ganz-oe-btn" onclick="toggleGanzOe()" style="display:inline-flex;padding:12px 20px;font-size:14px;margin-bottom:20px;">
-          <div class="check-box" id="ganz-oe-check"></div>
-          🇦🇹 &nbsp;Ganz Österreich (alle 9 Bundesländer)
-        </div>
-        <label>Bundesländer <span style="color:var(--text-dim);font-style:italic;text-transform:none;letter-spacing:0;font-weight:400;">– Bezirke per Klick aufklappen</span></label>
-        <div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-mid);line-height:1.7;">💶 <strong style="color:var(--text);">Mengenrabatt:</strong> 1. Bundesland <strong>€ 8,00</strong> · 2. BL <strong>€ 7,50</strong> · 3. BL <strong>€ 7,00</strong> · ... jedes weitere um € 0,50 günstiger · <span style="color:var(--blau);font-weight:700;">Ganz Österreich pauschal € 50,00</span></div>
-        <div id="bl-accordion"></div>
-        <div id="gebiet-zusammenfassung" style="margin-top:16px;"></div>
-        <div class="btn-row">
-          <button class="btn-outline" onclick="zurueck(3)">← Zurück</button>
-          <button class="btn-gold" onclick="weiter(3)">Weiter →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCHRITT 4 -->
-    <div class="schritt" id="s4">
-      <div class="schritt-header" onclick="toggleSchritt(4)">
-        <div class="schritt-nr">4</div>
-        <div class="schritt-titel">Suche verfeinern (KI-Chat)</div>
-        <div class="schritt-status" id="s4-status">optional</div>
-      </div>
-      <div class="schritt-inhalt">
-        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;margin-bottom:16px;">Beschreiben Sie dem KI-Assistenten in eigenen Worten was Sie suchen – er passt die Suche entsprechend an.</p>
-        <div class="chat-box" id="chat-box">
-          <div class="chat-nachricht">
-            <div class="chat-avatar ki">KI</div>
-            <div class="chat-text" id="ki-begruessung">Ich lade Ihre Konfiguration...</div>
-          </div>
-        </div>
-        <div class="chat-eingabe-wrapper">
-          <input type="text" class="chat-eingabe" id="chat-input" placeholder="Ihre Antwort..." onkeypress="chatEnter(event)">
-          <button class="btn-gold" onclick="chatSenden()">Senden</button>
-        </div>
-        <div class="btn-row">
-          <button class="btn-outline" onclick="zurueck(4)">← Zurück</button>
-          <button class="btn-gold" onclick="weiter(4)">Weiter →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCHRITT 5 -->
-    <div class="schritt" id="s5">
-      <div class="schritt-header" onclick="toggleSchritt(5)">
-        <div class="schritt-nr">5</div>
-        <div class="schritt-titel">Zusammenfassung &amp; Bezahlung</div>
-        <div class="schritt-status" id="s5-status">ausstehend</div>
-      </div>
-      <div class="schritt-inhalt">
-        <div id="zusammenfassung" style="margin-top:8px;"></div>
-        <label style="margin-top:24px;">Zeitraum – Wie weit zurück soll gesucht werden?</label>
-        <div class="hinweis" style="margin-top:0;margin-bottom:14px;">💡 <strong>Tipp:</strong> Ein größerer Zeitraum bringt meist mehr Treffer – Gemeinderatsprotokolle erscheinen oft nur alle paar Monate. So erfassen Sie auch Projekte, die schon länger geplant, aber nach wie vor hochaktuell sind.</div>
-        <div class="zeitraum-grid">
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(10,this)"><div class="zt-tage">10</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(20,this)"><div class="zt-tage">20</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte ausgewaehlt" onclick="zeitraumWaehlen(30,this)"><div class="zt-tage">30</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(60,this)"><div class="zt-tage">60</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(90,this)"><div class="zt-tage">90</div><div class="zt-label">Tage</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:13px;color:var(--text-mid);font-weight:600;">Eigene Anzahl Tage:</span>
-          <input type="number" id="zeitraum-eigene" min="10" max="365" placeholder="min. 10"
-            style="width:100px;padding:8px 12px;border:1.5px solid var(--rand);border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:var(--text);background:var(--weiss);outline:none;"
-            oninput="zeitraumEigeneEingabe(this.value)"
-            onfocus="this.style.borderColor='var(--blau)'"
-            onblur="this.style.borderColor='var(--rand)'">
-          <span style="font-size:13px;color:var(--text-dim);">Tage (min. 10)</span>
-        </div>
-        <div class="kosten-box" style="background:transparent;border:none;padding:6px 0 0 0;">
-          <div><div class="k-label">Ausgewählter Zeitraum</div>
-          <div style="font-size:16px;font-weight:700;color:var(--blau);margin-top:4px;font-family:'DM Mono',monospace;" id="kosten-zeitraum">30 Tage</div></div>
-        </div>
-        <div class="preis-box">
-          <div style="flex:1;">
-            <div class="preis-label">Ihr Scout-Lauf – Echtzeit-Kalkulation</div>
-            <div class="preis-wert" id="preis-anzeige">€ –</div>
-            <div class="preis-details" id="preis-details" style="margin-bottom:12px;">Konfiguration noch nicht abgeschlossen</div>
-            <div id="preis-aufschluss" style="background:var(--hell);border-radius:6px;padding:10px 14px;"></div>
-          </div>
-          <div style="text-align:right;padding-left:20px;flex-shrink:0;">
-            <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Inkludiert</div>
-            <div style="font-size:13px;color:var(--text-mid);line-height:1.9;">✓ Dashboard + Karte<br>✓ E-Mail-Report<br>✓ Excel-Export</div>
-          </div>
-        </div>
-        <div class="hinweis" style="margin-top:14px;">🔒 <strong>Sicher bezahlen:</strong> Die Abwicklung erfolgt über Stripe. Ihre Kreditkartendaten werden nicht auf unseren Servern gespeichert. Nach erfolgreicher Zahlung startet der Scout-Lauf automatisch.</div>
-        <div id="scout-status"></div>
-        <label style="display:flex;align-items:flex-start;gap:10px;margin-top:18px;padding:14px 16px;background:var(--hell);border:1.5px solid var(--rand);border-radius:8px;cursor:pointer;font-size:13px;line-height:1.6;color:var(--text-mid);font-weight:400;text-transform:none;letter-spacing:0;">
-          <input type="checkbox" id="widerruf-check" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--blau);">
-          <span>Ich stimme ausdrücklich zu, dass der Scout-Lauf <strong>sofort nach Zahlung</strong> beginnt. Mir ist bekannt, dass ich dadurch mein 14-tägiges Rücktrittsrecht verliere, sobald die Leistung vollständig erbracht ist. Die <a href="https://project-scout.at/impressum.html#agb" target="_blank" style="color:var(--blau);text-decoration:underline;">AGB &amp; Widerrufsbelehrung</a> habe ich zur Kenntnis genommen.</span>
-        </label>
-        <div class="btn-row" style="margin-top:20px;">
-          <button class="btn-outline" onclick="zurueck(5)">← Zurück</button>
-          <button class="btn-gold" id="bezahl-btn" onclick="bezahlen()" style="padding:14px 36px;font-size:16px;">💳 Jetzt bezahlen &amp; starten</button>
+          <div class="projekte-liste" id="merkliste-liste"></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- FOOTER -->
-<footer>
-  <a href="https://project-scout.at/" style="text-decoration:none;display:flex;align-items:center;">
-    <svg height="30" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="90" cy="90" r="52" fill="none" stroke="#0f1724" stroke-width="2.5"/>
-      <circle cx="90" cy="90" r="38" fill="none" stroke="#0f1724" stroke-width="0.8" opacity="0.25"/>
-      <polygon points="90,42 83,90 90,82 97,90" fill="#2563eb"/>
-      <polygon points="90,138 83,90 90,98 97,90" fill="#0f1724" opacity="0.35"/>
-      <circle cx="116" cy="116" r="16" fill="white" stroke="#2563eb" stroke-width="2.5"/>
-      <circle cx="116" cy="116" r="2.5" fill="#2563eb"/>
-      <line x1="127" y1="127" x2="136" y2="136" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
-      <text x="162" y="76" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="48" font-weight="800" fill="#0f1724">Project<tspan fill="#2563eb">Scout</tspan></text>
-      <text x="164" y="104" font-family="Plus Jakarta Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#8494a7" letter-spacing="1.5">Intelligentes Scouting · Österreich</text>
-    </svg>
-  </a>
-  <div class="footer-links">
-    <a href="impressum.html">Impressum</a>
-    <a href="impressum.html#datenschutz">Datenschutz</a>
-    <a href="impressum.html#agb">AGB</a>
-    <a href="mailto:office@project-scout.at">office@project-scout.at</a>
-  </div>
-  <div class="footer-copy">© 2026 Roman Baumschlager · Molln, OÖ</div>
-</footer>
-
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA7JsqGDYcLNAn1fHWP2xwKMd1GpwyLL0M&language=de&region=AT"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <script>
-// ── SCROLL SHADOW HEADER ──
-window.addEventListener('scroll', () => {
-  document.getElementById('main-header').classList.toggle('scrolled', window.scrollY > 10);
-});
-
-// ── FADE-IN OBSERVER ──
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
-}, { threshold: 0.1 });
-document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-
-// ── SUPABASE ──
 const SUPABASE_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_w9k4Lrm0ddpg1yMsgx4ZUg__djz3JIt';
-let _supabase = null;
-function getSupabase() {
-  if (_supabase) return _supabase;
-  _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  return _supabase;
-}
-const CREATE_CHECKOUT_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co/functions/v1/create-checkout';
+let sb = null; // wird in init() gesetzt, sobald die Bibliothek sicher geladen ist
 
-const GEWERKE = {
-  "Bau & Rohbau":["Erdbau / Aushub","Spezialtiefbau","Betonbau / Stahlbeton","Transportbeton / Lieferbeton","Maurerarbeiten","Abbruch / Demontage","Sprengungen","Bohrpfähle / Baugrubensicherung","Bodenverbesserung","Hangsicherungen","Hochwasserschutz","Zimmerei / Holzbau","Trockenbau","Estrich / Boden","Fliesen / Naturstein","Maler / Anstreicher","Schlosser / Metallbau","Fenster / Türen / Verglasungen","Innenausbau","Baustoffhandel / Baustofflieferanten"],
-  "Ausbau & Haustechnik":["Elektriker / Elektrotechnik","Installateur / Sanitär","Heizung / Lüftung / Klima (HVAC)","Aufzüge / Lifte","Brandschutz / Sprinkler","Gebäudeautomation / Smart Building","Dachdecker","Spengler / Klempner","Fassadenbau / WDVS","Gerüstbau"],
-  "Energie & Umwelt":["PV-Anlagen / Photovoltaik","Wärmepumpen","Erdwärmebohrungen","Windkraftanlagen","E-Ladeinfrastruktur","Biomasse / Nahwärme","Energiesanierung","Batteriespeicher","Wasserkraft","Deponie / Entsorgung","Altlastensanierung","Recycling / Kreislaufwirtschaft"],
-  "Infrastruktur & Verkehr":["Straßenbau","Bahnbau / Gleisbau","Brückenbau","Tunnelbau","Leitungsbau","Kanal / Abwasser","Wasserversorgung","Glasfaser / Breitband","Beleuchtung / Straßenbeleuchtung","Verkehrsleitsysteme"],
-  "Immobilien & Grundstücke":["Grundstückskauf / -verkauf","Umwidmungen / Flächenwidmung","Wohnbauprojekte","Gewerbliche Neubauten","Sanierung / Revitalisierung","Projektentwicklung / Bauträger","Immobilienmakler","Liegenschaftsbewertung","Zwangsversteigerungen","Pachtflächen / Landwirtschaftliche Flächen"],
-  "Öffentliche Projekte & Soziales":["Schulen / Kindergärten","Pflegeheime / Senioreneinrichtungen","Krankenhäuser / Ärztezentren","Sporthallen / Bäder","Gemeindebauten / Rathäuser","Feuerwehr / Rettung","Sozialwohnbau","Kultureinrichtungen","Friedhöfe / Kapellen"],
-  "Fahrzeuge & Ausrüstung":["Nutzfahrzeuge / LKW","Feuerwehrfahrzeuge","Rettungsfahrzeuge","Kommunalfahrzeuge","Baumaschinen / Geräte","Krantechnik / Hebetechnik","Fahrzeugausstattung","Werkzeuge / Betriebsmittel"],
-  "Landschaft & Außenanlagen":["Landschaftsbau / Gartengestaltung","Parkanlagen / Grünflächen","Spielplätze","Sportplätze / Kunstrasen","Schädlingsbekämpfung / Pflanzenpflege","Flurbereinigung"],
-  "Gastronomie & Tourismus":["Hotelneubauten / Erweiterungen","Gastronomiebetriebe / Konzessionen","Tourismusinfrastruktur","Seilbahnen / Skilifte","Campingplätze","Veranstaltungsstätten","Küchen- / Gastronomieausstattung","Freizeitparks / Erlebnisanlagen"],
-  "Planung & Beratung":["Architektur / Gebäudeplanung","Statik / Tragwerksplanung","Vermessung / Geodäsie","Umweltgutachten / UVP","Projektmanagement / Bauleitung","Energieberatung","Rechtsberatung / Vergaberecht","Finanzierung / Fördermittel"],
-  "Landwirtschaft & Forst":["Landwirtschaftliche Bauten / Stallbau","Silos / Lagerhallen","Biogasanlagen","Bewässerung / Drainage","Forststraßen","Forstarbeiten / Holzschlägerung","Landmaschinen / Geräte","Weinbau / Obstbau Infrastruktur","Fischzucht / Aquakultur"],
-  "Industrie & Gewerbe":["Industriehallen / Werkshallen","Gewerbeparks / Betriebsanlagen","Produktionsanlagen","Lagerhallen / Logistikzentren","Reinräume / Labore","Tankstellen / Waschanlagen","Kälteanlagen / Kühlhäuser","Fördertechnik / Förderanlagen"],
-  "Gebäudeservices & Sicherheit":["Gebäudereinigung / Baureinigung","Facility Management / Hausverwaltung","Sicherheitstechnik / Videoüberwachung / Zutritt"]
-};
+let alleProjekte  = [];
+let alleAuftraege = [];
+let karteInstanz  = null;
+let karteMarker   = [];
+let aktiveFilter  = { kategorie: new Set(), phase: new Set(), bundesland: new Set() };
+let ignoriertIds  = new Set();
+let gemerkteIds   = new Set();
 
-const GEWERKE_EMOJIS = {
-  "Bau & Rohbau":"🏗️","Ausbau & Haustechnik":"🔧","Energie & Umwelt":"⚡",
-  "Infrastruktur & Verkehr":"🛣️","Immobilien & Grundstücke":"🏘️","Öffentliche Projekte & Soziales":"🏫",
-  "Fahrzeuge & Ausrüstung":"🚗","Landschaft & Außenanlagen":"🌳","Gastronomie & Tourismus":"🍽️",
-  "Planung & Beratung":"📐","Landwirtschaft & Forst":"🌾","Industrie & Gewerbe":"🏭",
-  "Gebäudeservices & Sicherheit":"🏢"
-};
+const params   = new URLSearchParams(window.location.search);
+const kundenId = params.get('kunden_id');
 
-let ausgewaehlteGewerke = new Set();
-let ganzOe = false;
-let chatVerlauf = [];
-let chatVerfeinerung = "";
-let gewaehlterZeitraum = 30;
-let ausgewaehlteBL = new Set();
-let ausgewaehlteBez = new Set();
-let ausgewaehlteGem = new Set();
-const BUNDESLAENDER = ["Burgenland","Kärnten","Niederösterreich","Oberösterreich","Salzburg","Steiermark","Tirol","Vorarlberg","Wien"];
-
-const OESTERREICH = {"Burgenland":{"Eisenstadt (Stadt)":["Eisenstadt"],"Rust (Stadt)":["Rust"],"Eisenstadt-Umgebung":["Breitenbrunn","Donnerskirchen","Großhöflein","Hornstein","Kleinhöflein","Leithaprodersdorf","Mörbisch","Müllendorf","Neufeld an der Leitha","Oggau","Oslip","Purbach","Schützen","St. Margarethen","Steinbrunn","Trausdorf","Wimpassing","Zagersdorf"],"Güssing":["Bildein","Deutsch Kaltenbrunn","Gerersdorf","Großmürbisch","Güssing","Hackerberg","Heiligenbrunn","Kukmirn","Neustift","Olbendorf","Rauchwart","Sankt Michael","Stinatz","Strem","Tobaj","Tschanigraben"],"Jennersdorf":["Deutsch Minihof","Eltendorf","Jennersdorf","Minihof-Liebau","Mogersdorf","Neuhaus","St. Martin","Weichselbaum"],"Mattersburg":["Bad Sauerbrunn","Baumgarten","Draßburg","Forchtenstein","Mattersburg","Neutal","Pöttelsdorf","Rohrbach","Schattendorf","Sieggraben","Wiesen","Zemendorf"],"Neusiedl am See":["Andau","Apetlon","Bruckneudorf","Gols","Halbturn","Illmitz","Jois","Kittsee","Mönchhof","Neusiedl am See","Pamhagen","Parndorf","Podersdorf","Tadten","Wallern","Weiden","Zurndorf"],"Oberpullendorf":["Deutschkreutz","Frankenau","Großwarasdorf","Horitschon","Kaisersdorf","Kleinwarasdorf","Lackenbach","Lackendorf","Lockenhaus","Lutzmannsburg","Mannersdorf","Markt St. Martin","Nikitsch","Oberpullendorf","Piringsdorf","Raiding","Stoob","Unterfrauenhaid","Weppersdorf"],"Oberwart":["Bad Tatzmannsdorf","Bernstein","Bocksdorf","Grafenschachen","Großpetersdorf","Kemeten","Kohfidisch","Litzelsdorf","Loipersdorf","Markt Allhau","Oberwart","Pinkafeld","Riedlingsdorf","Rotenturm","Stadtschlaining","Wolfau"]},"Kärnten":{"Klagenfurt (Stadt)":["Klagenfurt am Wörthersee"],"Villach (Stadt)":["Villach"],"Feldkirchen":["Albeck","Arriach","Feldkirchen","Glanegg","Gnesau","Himmelberg","Ossiach","Steindorf","Steuerberg"],"Hermagor":["Dellach","Gitschtal","Hermagor","Kötschach-Mauthen","Lesachtal","St. Stefan"],"Klagenfurt-Land":["Feistritz","Grafenstein","Keutschach","Köttmannsdorf","Krumpendorf","Magdalensberg","Maria Rain","Maria Saal","Maria Wörth","Moosburg","Poggersdorf","Pörtschach","Velden","Wernberg"],"Sankt Veit an der Glan":["Brückl","Eberstein","Frauenstein","Guttaring","Liebenfels","Micheldorf","Neumarkt","St. Georgen","St. Veit an der Glan","Straßburg","Weitensfeld"],"Spittal an der Drau":["Baldramsdorf","Berg im Drautal","Flattach","Gmünd","Greifenburg","Großkirchheim","Heiligenblut","Lendorf","Mallnitz","Millstatt","Obervellach","Radenthein","Sachsenburg","Seeboden","Spittal","Steinfeld"],"Villach-Land":["Arnoldstein","Bad Bleiberg","Feld am See","Finkenstein","Fresach","Nötsch","Paternion","Rosegg","Stockenboi","Treffen","Weißensee"],"Völkermarkt":["Bleiburg","Diex","Eisenkappel","Gallizien","Griffen","Neuhaus","Ruden","St. Kanzian","Sittersdorf","Völkermarkt"],"Wolfsberg":["Bad St. Leonhard","Frantschach","Lavamünd","Reichenfels","Roßbach","St. Andrä","St. Paul","Wolfsberg"]},"Niederösterreich":{"Amstetten":["Allhartsberg","Amstetten","Ardagger","Aschbach","Behamberg","Ertl","Euratsfeld","Ferschnitz","Haag","Hollenstein","Kematen","Neuhofen","Pochlarn","Seitenstetten","St. Georgen","St. Peter","Steinakirchen","Strengberg","Ulmerfeld","Viehdorf","Wallsee","Wang","Weistrach","Winklarn","Wolfsbach","Ybbsitz"],"Baden":["Alland","Altenmarkt","Bad Fischau","Bad Vöslau","Baden","Berndorf","Ebreichsdorf","Enzesfeld","Furth","Günselsdorf","Heiligenkreuz","Hernstein","Hirtenberg","Klausen-Leopoldsdorf","Leobersdorf","Mitterndorf","Oberwaltersdorf","Pfaffstätten","Pottendorf","Pottenstein","Schönau","Sooss","Tattendorf","Teesdorf","Traiskirchen","Trumau","Weissenbach"],"Bruck an der Leitha":["Au am Leithaberge","Bruck an der Leitha","Enzersdorf","Fischamend","Göttlesbrunn","Hainburg","Haslau","Höflein","Klein-Neusiedl","Mannersdorf","Moosbrunn","Pachfurth","Petronell","Prellenkirchen","Rohrau","Schwadorf","Sommerein","Wildungsmauer"],"Gänserndorf":["Angern","Deutsch-Wagram","Drösing","Engelhartstetten","Gänserndorf","Groß-Enzersdorf","Jedenspeigen","Leopoldsdorf","Marchegg","Markgrafneusiedl","Matzen","Neusiedl an der Zaya","Orth an der Donau","Prottes","Raasdorf","Schönkirchen","Strasshof","Weikendorf","Zistersdorf"],"Gmünd":["Amaliendorf","Gmünd","Groß Gerungs","Hoheneich","Kirchberg am Walde","Langschlag","Moorbad Harbach","Reingers","Schrems","St. Martin","Waldenstein","Weitra","Zwettl"],"Hollabrunn":["Grabern","Göllersdorf","Hadres","Hardegg","Haugsdorf","Hollabrunn","Mailberg","Retz","Röhrenbach","Wullersdorf","Zellerndorf","Ziersdorf"],"Horn":["Altenburg","Burgschleinitz","Drosendorf","Eggenburg","Gars am Kamp","Horn","Maissau","Pernegg","Rosenburg","Sigmundsherberg","St. Bernhard","Weitersfeld"],"Korneuburg":["Bisamberg","Ernstbrunn","Großmugl","Hausleiten","Langenzersdorf","Leobendorf","Niederhollabrunn","Spillern","Stockerau","Ulrichskirchen"],"Krems an der Donau (Stadt)":["Krems an der Donau"],"Krems (Land)":["Aggsbach","Dürnstein","Gedersdorf","Hadersdorf","Herzogenburg","Langenlois","Lengenfeld","Mautern","Nußdorf","Paudorf","Rohrendorf","Rossatz","Senftenberg","Spitz","Traismauer","Weißenkirchen"],"Lilienfeld":["Eschenau","Hainfeld","Hohenberg","Kleinzell","Lilienfeld","Mitterbach","Ramsau","St. Aegyd","St. Veit","Traisen","Türnitz"],"Melk":["Artstetten","Blindenmarkt","Emmersdorf","Erlauf","Gaming","Kilb","Klein-Pöchlarn","Loosdorf","Marbach","Maria Taferl","Melk","Persenbeug","Petzenkirchen","Purgstall","Ybbs"],"Mistelbach":["Asparn","Dürnkrut","Falkenstein","Gaweinstal","Großkrut","Herrnbaumgarten","Laa an der Thaya","Ladendorf","Mistelbach","Poysdorf","Schrattenberg","Staatz","Zistersdorf"],"Mödling":["Biedermannsdorf","Brühl","Giesshübl","Gumpoldskirchen","Guntramsdorf","Hinterbrühl","Kaltenleutgeben","Laxenburg","Maria Enzersdorf","Mödling","Münchendorf","Perchtoldsdorf","Vösendorf","Wiener Neudorf"],"Neunkirchen":["Aspang","Breitenau","Gloggnitz","Grafenbach","Kirchberg am Wechsel","Neunkirchen","Payerbach","Reichenau","Ternitz","Wartmannstetten","Wimpassing"],"Sankt Pölten (Stadt)":["Sankt Pölten"],"Sankt Pölten (Land)":["Böheimkirchen","Eichgraben","Gerersdorf","Hafnerbach","Haunoldstein","Herzogenburg","Kapelln","Karlstetten","Kilb","Kirchberg","Loosdorf","Maria-Anzbach","Mautern","Neidling","Ober-Grafendorf","Obritzberg","Prinzersdorf","Pyhra","Rabenstein","Ried","Rott","Schwarzenbach","St. Margarethen","Statzendorf","Traismauer","Wilhelmsburg","Wölbling"],"Scheibbs":["Annaberg","Gaming","Göstling","Gresten","Lunz am See","Pöchlarn","Purgstall","Randegg","Reinsberg","Scheibbs","St. Anton","St. Georgen","Wang","Wieselburg","Ybbsitz"],"Tulln":["Atzenbrugg","Dürnrohr","Grafenwörth","Großweikersdorf","Heiligeneich","Judenau","Klosterneuburg","Königstetten","Langenlebarn","Muckendorf","Niederhollabrunn","Nußdorf","Pixendorf","Sieghartskirchen","Sierndorf","Stetteldorf","Straß","Tulln","Wördern","Zeiselmauer"],"Waidhofen an der Thaya":["Dietmanns","Dobersberg","Gastern","Groß-Siegharts","Kautzen","Pfaffenschlag","Raabs","Thaya","Vitis","Waidhofen an der Thaya","Waldkirchen","Windigsteig"],"Waidhofen an der Ybbs (Stadt)":["Waidhofen an der Ybbs"],"Wiener Neustadt (Stadt)":["Wiener Neustadt"],"Wiener Neustadt (Land)":["Bad Erlach","Bad Fischau","Bromberg","Hochwolkersdorf","Katzelsdorf","Lanzenkirchen","Lichtenwörth","Markt Piesting","Muggendorf","Rohrbach","Seebenstein","Sollenau","Theresienfeld","Walpersbach","Wöllersdorf","Zöbern"],"Wien-Umgebung":["Gablitz","Klosterneuburg","Mauerbach","Pressbaum","Purkersdorf","Wolfsgraben"],"Zwettl":["Allentsteig","Arbesbach","Bad Traunstein","Bärnkopf","Friedersbach","Grafenschlag","Groß Gerungs","Gutenbrunn","Kirchschlag","Langschlag","Lichtenau","Martinsberg","Ottenschlag","Rappottenstein","Sallingberg","Schwarzenau","St. Martin","Traunstein","Weitra","Zwettl"]},"Oberösterreich":{"Braunau am Inn":["Altheim","Burgkirchen","Eggelsberg","Geretsberg","Haigermoos","Helpfau","Hochburg","Jeging","Kirchberg","Lengau","Lochen","Mauerkirchen","Mining","Munderfing","Neukirchen","Ostermiething","Palting","Perwang","Polling","Roßbach","Schalchen","St. Georgen","St. Johann","St. Pantaleon","St. Peter","St. Radegund","Tarsdorf","Trimmelkam"],"Eferding":["Aschach an der Donau","Eferding","Fraham","Haibach ob der Donau","Hartkirchen","Hinzenbach","Kematen an der Krems","Michaelnbach","Natternbach","Prambachkirchen","Pupping","Scharten","St. Marienkirchen","St. Thomas","Stroheim"],"Freistadt":["Freistadt","Gutau","Hagenberg","Kefermarkt","Lasberg","Leopoldschlag","Neumarkt","Pregarten","Rainbach","Reichenthal","Sandl","St. Georgen","St. Leonhard","Tragwein","Unterweitersdorf","Waldburg","Wartberg","Weitersfelden","Zell"],"Gmunden":["Altmünster","Ebensee","Gmunden","Grünau im Almtal","Gschwandt","Kirchham","Laakirchen","Neukirchen","Ohlsdorf","Pinsdorf","Roitham","Scharnstein","St. Konrad","Steinbach am Attersee","Traunkirchen","Vorchdorf","Weißenbach","Weyregg"],"Grieskirchen":["Aistersheim","Bad Schallerbach","Gallspach","Gaspoltshofen","Grieskirchen","Haag am Hausruck","Hofkirchen","Kallham","Kematen","Krenglbach","Natternbach","Neukirchen","Offenhausen","Peuerbach","Schlüßlberg","St. Agatha","St. Georgen","St. Thomas","Taufkirchen","Weibern","Weißkirchen"],"Kirchdorf an der Krems":["Grünburg","Hinterstoder","Inzersdorf","Kirchdorf an der Krems","Klaus","Kremsmünster","Leonstein","Micheldorf","Molln","Nußbach","Oberschlierbach","Pettenbach","Rosenau","Schlierbach","Sipbachzell","Spital am Pyhrn","St. Pankraz","Steinbach an der Steyr","Waldneukirchen","Wartberg an der Krems","Windischgarsten"],"Linz (Stadt)":["Linz"],"Linz-Land":["Allhaming","Ansfelden","Asten","Enns","Hargelsberg","Hörsching","Kematen","Kirchberg","Kronstorf","Leonding","Neuhofen an der Krems","Niederneukirchen","Pasching","Piberbach","Pucking","Raffelstetten","St. Florian","St. Marien","Traun","Weißkirchen","Wilhering"],"Perg":["Allerheiligen","Arbing","Bad Zell","Baumgartenberg","Dimbach","Grein","Klam","Langenstein","Luftenberg","Mauthausen","Mitterkirchen","Münzbach","Naarn","Perg","Rechberg","Schwertberg","St. Georgen","St. Nikola","St. Thomas","Windhaag","Zell"],"Ried im Innkreis":["Antiesenhofen","Aurolzmünster","Eberschwang","Eitzing","Geiersberg","Gurten","Hohenzell","Kirchdorf am Inn","Lohnsburg","Mehrnbach","Neuhofen im Innkreis","Obernberg am Inn","Ried im Innkreis","Schildorn","Schwand","St. Georgen","St. Marienkirchen","Tumeltsham","Utzenaich","Waldzell","Weilbach"],"Rohrbach":["Altenfelden","Arnreit","Aschach","Bad Leonfelden","Haslach","Helfenberg","Herzogsdorf","Hofkirchen","Kleinzell","Kollerschlag","Klaffer","Lembach","Neufelden","Niederwaldkirchen","Oberneukirchen","Oepping","Peilstein","Rohrbach","Sarleinsbach","Schwarzenberg","St. Johann","St. Martin","St. Stefan","Ulrichsberg","Vorderweißenbach","Waxenberg"],"Schärding":["Andorf","Brunnenthal","Dorf an der Pram","Eggerding","Engelhartszell","Esternberg","Freinberg","Kopfing","Münzkirchen","Neuhaus am Inn","Raab","Riedau","Schärding","St. Aegidi","St. Florian","St. Marienkirchen","St. Roman","St. Willibald","Suben","Taufkirchen","Vichtenstein","Wernstein","Zell"],"Steyr (Stadt)":["Steyr"],"Steyr-Land":["Aschach an der Steyr","Bad Hall","Dietach","Gaflenz","Garsten","Großraming","Haidershofen","Kirchdorf","Laussa","Losenstein","Nußbach","Pfarrkirchen","Reichraming","Rosenau","Schiedlberg","Sierning","St. Florian","St. Georgen","St. Peter","Ternberg","Waldneukirchen","Wolfsberg","Wolfern"],"Urfahr-Umgebung":["Altenberg","Engerwitzdorf","Feldkirchen","Gallneukirchen","Gramastetten","Hellmonsödt","Herzogsdorf","Kirchschlag","Lichtenberg","Ottensheim","Puchenau","Reichenthal","Steyregg","Unterweißenbach","Vorderweißenbach","Waldburg","Walding","Wartberg","Zwettl"],"Vöcklabruck":["Altenhof","Ampflwang","Attersee","Attnang-Puchheim","Aurach","Berg","Desselbrunn","Fornach","Frankenmarkt","Gampern","Innerschwand","Kirchham","Lenzing","Mondsee","Nußdorf","Oberhofen","Oberwang","Ottnang","Pfaffing","Pöndorf","Puchkirchen","Regau","Roitham","Rüstorf","Schörfling","Schwanenstadt","Seewalchen","St. Georgen","St. Gilgen","St. Lorenz","Steindorf","Straß","Timelkam","Vöcklabruck","Vöcklamarkt","Weißenkirchen","Weyregg","Zell am Moos","Zell am Pettenfirst"],"Wels (Stadt)":["Wels"],"Wels-Land":["Aichkirchen","Bachmanning","Buchkirchen","Desselbrunn","Edt","Fischlham","Gunskirchen","Holzhausen","Krenglbach","Lambach","Marchtrenk","Neukirchen","Pennewang","Pichl","Puchberg","Redlham","Roitham","Schleißheim","Sipbachzell","Steinhaus","St. Agatha","St. Georgen","Thalheim","Tollet","Weißkirchen"]},"Salzburg":{"Salzburg (Stadt)":["Salzburg"],"Hallein":["Abtenau","Adnet","Annaberg-Lungötz","Bad Dürrnberg","Ebenau","Golling","Hallein","Hintersee","Krispl","Kuchl","Oberalm","Puch","Rußbach","St. Koloman","Scheffau","Schwarzach"],"Salzburg-Umgebung":["Anif","Bergheim","Bürmoos","Elixhausen","Elsbethen","Eugendorf","Faistenau","Fuschl am See","Großgmain","Hallwang","Henndorf","Hof bei Salzburg","Koppl","Mattsee","Neumarkt","Nußdorf","Obertrum","Plainfeld","Puch","Schleedorf","Seekirchen","St. Georgen","Thalgau","Wals-Siezenheim"],"St. Johann im Pongau":["Altenmarkt","Annaberg","Bischofshofen","Eben","Flachau","Forstau","Goldegg","Großarl","Hüttau","Kleinarl","Mühlbach","Pfarrwerfen","Radstadt","Schwarzach","St. Johann","St. Martin","St. Veit","Untertauern","Wagrain","Werfen","Werfenweng"],"Tamsweg":["Göriach","Lessach","Mariapfarr","Mauterndorf","Muhr","Ramingstein","St. Andrä","St. Margarethen","St. Michael","Tamsweg","Thomatal","Tweng","Unternberg","Weißpriach"],"Zell am See":["Bramberg","Bruck","Dienten","Fusch","Hollersbach","Kaprun","Kirchberg","Krimml","Lend","Lofer","Maishofen","Maria Alm","Mittersill","Niedernsill","Piesendorf","Rauris","Saalbach-Hinterglemm","Saalfelden","St. Martin","St. Veit","Stuhlfelden","Taxenbach","Unken","Uttendorf","Viehhofen","Zell am See"]},"Steiermark":{"Bruck-Mürzzuschlag":["Aflenz","Breitenau","Bruck an der Mur","Frohnleiten","Kapfenberg","Kindberg","Krieglach","Langenwang","Mariazell","Mürzzuschlag","Neuberg","Pernegg","St. Barbara","St. Lorenzen","St. Marein","Thörl","Turnau","Veitsch","Wartberg"],"Deutschlandsberg":["Bad Gams","Deutschlandsberg","Eibiswald","Frauental","Groß St. Florian","Hollenegg","Kitzeck","Lannach","Preding","Schwanberg","Stainz","Wettmannstätten"],"Graz (Stadt)":["Graz"],"Graz-Umgebung":["Dobl","Feldkirchen","Fernitz","Gössendorf","Gratwein","Gratkorn","Hart","Hitzendorf","Kalsdorf","Kainbach","Laßnitzhöhe","Lieboch","Nestelbach","Pirka","Raaba","Seiersberg","Stattegg","Thal","Übelbach","Vasoldsberg","Weinitzen"],"Hartberg-Fürstenfeld":["Bad Blumau","Birkfeld","Friedberg","Fürstenfeld","Grafendorf","Hartberg","Kaindorf","Kirchberg an der Raab","Lafnitz","Loipersdorf","Mönichwald","Neudau","Pöllau","Rohrbach","St. Johann","Vorau","Waldbach"],"Leibnitz":["Ehrenhausen","Gamlitz","Gleinstätten","Heimschuh","Kaindorf","Kitzeck","Leutschach","Merkendorf","Mureck","Oberhaag","Pölfing-Brunn","Spielfeld","St. Andrä","St. Johann","Stainz","Tillmitsch","Wagna","Wildon"],"Leoben":["Breitenau","Eisenerz","Kalwang","Kammern","Kraubath","Leoben","Mautern","Niklasdorf","Proleb","Radmer","St. Michael","St. Stefan","Traboch","Trofaiach","Vordernberg"],"Liezen":["Admont","Aich","Aigen","Altaussee","Ardning","Bad Aussee","Bad Mitterndorf","Donnersbach","Gröbming","Grundlsee","Hall","Haus im Ennstal","Irdning","Kleinsölk","Landl","Liezen","Niederöblarn","Öblarn","Ramsau","Rottenmann","Schladming","Selzthal","Stainach","Trieben","Weißenbach","Wörschach"],"Murau":["Frojach","Hohentauern","Katsch","Krakau","Murau","Niederwölz","Oberwölz","Ranten","Schöder","Stadl","St. Blasen","St. Georgen","St. Lambrecht","St. Lorenzen","Teufenbach","Unzmarkt","Zeutschach"],"Murtal":["Fohnsdorf","Judenburg","Knittelfeld","Kobenz","Mariahof","Obdach","Pöls","Rachau","Seckau","Spielberg","St. Georgen","St. Margarethen","Weißkirchen","Zeltweg"],"Südoststeiermark":["Anger","Fehring","Feldbach","Gnas","Halbenrain","Kirchbach","Klöch","Mureck","Murfeld","Oberhaag","Radkersburg","Riegersburg","St. Anna","St. Peter","Straden","Tieschen"]},"Tirol":{"Innsbruck (Stadt)":["Innsbruck"],"Imst":["Arzl im Pitztal","Haiming","Imst","Imsterberg","Karres","Karrösten","Längenfeld","Mieming","Mils","Mötz","Nassereith","Obsteig","Rietz","Roppen","Sautens","Silz","Sölden","Stams","Tarrenz","Umhausen","Wenns"],"Innsbruck-Land":["Absam","Aldrans","Ampass","Axams","Baumkirchen","Birgitz","Ellbögen","Flaurling","Fritzens","Gnadenwald","Götzens","Hall in Tirol","Hatting","Kematen","Kolsass","Lans","Mils","Mutters","Natters","Oberhofen","Patsch","Pfaffenhofen","Ranggen","Rum","Rinn","Schönberg","Sellrain","Sistrans","Tulfes","Thaur","Volders","Völs","Wattens","Zirl"],"Kitzbühel":["Aurach","Brixen im Thale","Ellmau","Going","Hopfgarten","Itter","Jochberg","Kelchsau","Kirchberg","Kirchdorf","Kitzbühel","Kössen","Reith","Scheffau","Söll","St. Johann","Westendorf"],"Kufstein":["Angath","Angerberg","Breitenbach","Brixlegg","Erl","Kirchbichl","Kramsach","Kufstein","Langkampfen","Mariastein","Münster","Niederndorf","Radfeld","Rattenberg","Reith","Schwoich","Thiersee","Wörgl"],"Landeck":["Fendels","Fiss","Flirsch","Grins","Ischgl","Kauns","Kaunertal","Ladis","Landeck","Nauders","Pfunds","Prutz","Ried im Oberinntal","Serfaus","See","St. Anton am Arlberg","Stanzach","Tobadill","Tösens","Zams"],"Lienz":["Abfaltersbach","Ainet","Amlach","Anras","Assling","Außervillgraten","Dölsach","Gaimberg","Heinfels","Hopfgarten im Defereggen","Innervillgraten","Kals am Großglockner","Kartitsch","Lavant","Leisach","Lienz","Matrei in Osttirol","Nikolsdorf","Nußdorf-Debant","Oberlienz","Obertilliach","Prägraten","Sillian","St. Jakob","St. Johann","St. Veit","Strassen","Tristach","Untertilliach","Virgen"],"Reutte":["Biberwier","Bichlbach","Breitenwang","Ehrwald","Elbigenalp","Elmen","Forchach","Grän","Häselgehr","Heiterwang","Höfen","Holzgau","Jungholz","Lechaschau","Lermoos","Musau","Namlos","Nesselwängle","Pflach","Pinswang","Reutte","Schattwald","Stanzach","Steeg","Tannheim","Vils","Wängle","Weißenbach","Zöblen"],"Schwaz":["Achenkirch","Buch in Tirol","Eben am Achensee","Fügenberg","Fügen","Gerlos","Hart im Zillertal","Hippach","Jenbach","Kaltenbach","Mayrhofen","Münster","Neukirchen","Pill","Rattenberg","Rohrberg","Schwaz","Stans","Stumm","Terfens","Uderns","Vomp","Weer","Weerberg","Wiesing","Zell am Ziller","Zellberg"]},"Vorarlberg":{"Bludenz":["Bartholomäberg","Bludenz","Brand","Bürs","Bürserberg","Dalaas","Fontanella","Gaschurn","Klösterle","Lech","Lorüns","Ludesch","Nüziders","Raggal","St. Anton im Montafon","St. Gallenkirch","St. Gerold","Schruns","Silbertal","Stallehr","Thüringen","Vandans"],"Bregenz":["Alberschwende","Andelsbuch","Au","Bezau","Bildstein","Bizau","Bregenz","Buch","Doren","Egg","Eichenberg","Hard","Hittisau","Höchst","Hörbranz","Kennelbach","Krumbach","Langenegg","Langen","Lingenau","Lochau","Mellau","Mittelberg","Möggers","Moos","Reuthe","Riefensberg","Schwarzach","Sibratsgfäll","Sulzberg","Wolfurt"],"Dornbirn":["Dornbirn","Hohenems","Lustenau"],"Feldkirch":["Düns","Dünserberg","Feldkirch","Frastanz","Furx","Göfis","Koblach","Laterns","Meiningen","Muntlix","Rankweil","Röns","Röthis","Schlins","Schnifis","Sulz","Übersaxen","Viktorsberg","Weiler","Zwischenwasser"]},"Wien":{"Wien":["1. Bezirk (Innere Stadt)","2. Bezirk (Leopoldstadt)","3. Bezirk (Landstraße)","4. Bezirk (Wieden)","5. Bezirk (Margareten)","6. Bezirk (Mariahilf)","7. Bezirk (Neubau)","8. Bezirk (Josefstadt)","9. Bezirk (Alsergrund)","10. Bezirk (Favoriten)","11. Bezirk (Simmering)","12. Bezirk (Meidling)","13. Bezirk (Hietzing)","14. Bezirk (Penzing)","15. Bezirk (Rudolfsheim)","16. Bezirk (Ottakring)","17. Bezirk (Hernals)","18. Bezirk (Währing)","19. Bezirk (Döbling)","20. Bezirk (Brigittenau)","21. Bezirk (Floridsdorf)","22. Bezirk (Donaustadt)","23. Bezirk (Liesing)"]}};
-
-function renderGewerke(offeneKats) {
-  if (!offeneKats) offeneKats = new Set();
-  const container = document.getElementById('gewerke-container');
-  if (!container) return;
-  container.innerHTML = '';
-  let idx = 0;
-  for (const [kat, gewerke] of Object.entries(GEWERKE)) {
-    const katId = 'kat_' + idx++;
-    const emoji = GEWERKE_EMOJIS[kat] || '';
-    const alleAusgewaehlt = gewerke.every(g => ausgewaehlteGewerke.has(g));
-    const teilweiseAusgewaehlt = gewerke.some(g => ausgewaehlteGewerke.has(g)) && !alleAusgewaehlt;
-    const katDiv = document.createElement('div');
-    katDiv.style.cssText = 'border:1.5px solid var(--rand);border-radius:10px;margin-bottom:8px;overflow:hidden;';
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:' + (alleAusgewaehlt ? 'var(--blau-hell)' : 'var(--hell)') + ';user-select:none;';
-    const katCheck = document.createElement('div');
-    katCheck.style.cssText = 'width:20px;height:20px;border:2px solid ' + (alleAusgewaehlt ? 'var(--blau)' : teilweiseAusgewaehlt ? 'var(--blau)' : 'var(--rand2)') + ';border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:' + (alleAusgewaehlt ? 'var(--blau)' : teilweiseAusgewaehlt ? 'rgba(37,99,235,0.15)' : 'var(--weiss)') + ';transition:all 0.15s;';
-    katCheck.innerHTML = alleAusgewaehlt ? '<span style="color:white;font-size:12px;font-weight:700;">✓</span>' : teilweiseAusgewaehlt ? '<span style="color:var(--blau);font-size:11px;font-weight:700;">–</span>' : '';
-    katCheck.addEventListener('click', (e) => { e.stopPropagation(); toggleKategorie(kat); });
-    const titel = document.createElement('div');
-    titel.style.cssText = 'flex:1;font-size:14px;font-weight:600;color:' + (alleAusgewaehlt ? 'var(--blau-dunkel)' : 'var(--text)') + ';';
-    titel.textContent = emoji + (emoji ? ' ' : '') + kat;
-    const anzahl = gewerke.filter(g => ausgewaehlteGewerke.has(g)).length;
-    const badge = document.createElement('div');
-    badge.style.cssText = 'font-size:11px;font-weight:700;color:' + (anzahl > 0 ? 'var(--blau)' : 'var(--text-dim)') + ';background:' + (anzahl > 0 ? 'rgba(37,99,235,0.1)' : 'transparent') + ';padding:2px 8px;border-radius:10px;flex-shrink:0;';
-    badge.textContent = anzahl > 0 ? (anzahl + '/' + gewerke.length) : (gewerke.length + '');
-    const pfeil = document.createElement('div');
-    pfeil.style.cssText = 'font-size:12px;color:var(--text-dim);flex-shrink:0;transition:transform 0.2s;';
-    pfeil.textContent = '▾';
-    pfeil.id = katId + '_pfeil';
-    header.appendChild(katCheck);
-    header.appendChild(titel);
-    header.appendChild(badge);
-    header.appendChild(pfeil);
-    const body = document.createElement('div');
-    body.id = katId + '_body';
-    const istOffen = offeneKats.has(katId);
-    body.style.cssText = 'display:' + (istOffen ? 'block' : 'none') + ';padding:12px;background:var(--weiss);border-top:1px solid var(--rand);';
-    if (istOffen) pfeil.style.transform = 'rotate(180deg)';
-    const grid = document.createElement('div');
-    grid.className = 'gewerke-grid';
-    gewerke.forEach(g => {
-      const label = document.createElement('div');
-      label.className = 'gewerk-check' + (ausgewaehlteGewerke.has(g) ? ' ausgewaehlt' : '');
-      label.innerHTML = '<div class="check-box">' + (ausgewaehlteGewerke.has(g) ? '✓' : '') + '</div>' + g;
-      label.addEventListener('click', () => toggleGewerk(g, label));
-      grid.appendChild(label);
-    });
-    body.appendChild(grid);
-    header.addEventListener('click', (e) => {
-      if (e.target === katCheck || katCheck.contains(e.target)) return;
-      const isOffen = body.style.display !== 'none';
-      body.style.display = isOffen ? 'none' : 'block';
-      pfeil.style.transform = isOffen ? '' : 'rotate(180deg)';
-    });
-    katDiv.appendChild(header);
-    katDiv.appendChild(body);
-    container.appendChild(katDiv);
-  }
+// Zeigt eine klare Meldung im Dashboard an, statt ewig zu laden.
+function zeigeFehler(text) {
+  const liste = document.getElementById('projekte-liste');
+  if (liste) liste.innerHTML = '<div style="padding:24px;text-align:center;color:#b91c1c;font-size:14px;line-height:1.6;">' + text + '</div>';
+  const ov = document.getElementById('karte-overlay');
+  if (ov) ov.textContent = text;
 }
 
-function getOffeneKats() {
-  const offene = new Set();
-  document.querySelectorAll('[id^="kat_"][id$="_body"]').forEach(b => {
-    if (b.style.display !== 'none') offene.add(b.id.replace('_body', ''));
-  });
-  return offene;
-}
-
-function toggleKategorie(kat) {
-  const gewerke = GEWERKE[kat];
-  const alleAusgewaehlt = gewerke.every(g => ausgewaehlteGewerke.has(g));
-  if (alleAusgewaehlt) { gewerke.forEach(g => ausgewaehlteGewerke.delete(g)); }
-  else { gewerke.forEach(g => ausgewaehlteGewerke.add(g)); }
-  renderGewerke(getOffeneKats()); updateGewerkeTags(); updatePreis();
-}
-
-function toggleGewerk(g, el) {
-  if (ausgewaehlteGewerke.has(g)) { ausgewaehlteGewerke.delete(g); el.classList.remove('ausgewaehlt'); el.querySelector('.check-box').textContent = ''; }
-  else { ausgewaehlteGewerke.add(g); el.classList.add('ausgewaehlt'); el.querySelector('.check-box').textContent = '✓'; }
-  renderGewerke(getOffeneKats()); updateGewerkeTags(); updatePreis();
-}
-
-function updateGewerkeTags() {
-  const container = document.getElementById('gewerke-tags');
-  if (ausgewaehlteGewerke.size === 0) {
-    container.innerHTML = '<span style="color:var(--text-dim);font-size:13px;">Noch nichts ausgewählt</span>';
-  } else {
-    let html = '';
-    for (const [kat, gewerke] of Object.entries(GEWERKE)) {
-      const ausgewaehlt = gewerke.filter(g => ausgewaehlteGewerke.has(g));
-      if (ausgewaehlt.length === gewerke.length) {
-        const emoji = GEWERKE_EMOJIS[kat] || '';
-        html += '<span class="tag" style="background:rgba(37,99,235,0.15);font-weight:700;">' + emoji + (emoji ? ' ' : '') + kat + ' (alle)</span>';
-      } else { ausgewaehlt.forEach(g => { html += '<span class="tag">' + g + '</span>'; }); }
-    }
-    container.innerHTML = html;
-  }
-}
-
-function alleGewerkeAuswaehlen() { Object.values(GEWERKE).flat().forEach(g => ausgewaehlteGewerke.add(g)); renderGewerke(getOffeneKats()); updateGewerkeTags(); updatePreis(); }
-function alleGewerkeAbwaehlen() { ausgewaehlteGewerke.clear(); renderGewerke(getOffeneKats()); updateGewerkeTags(); updatePreis(); }
-
-function renderBundeslaender() {
-  const container = document.getElementById('bl-accordion');
-  if (!container) return;
-  const offene = new Set();
-  container.querySelectorAll('[id$="_bl_body"]').forEach(b => { if (b.style.display !== 'none') offene.add(b.id); });
-  container.innerHTML = '';
-  BUNDESLAENDER.forEach(bl => {
-    if (!OESTERREICH[bl]) return;
-    const bezirke = Object.keys(OESTERREICH[bl]);
-    const blId = 'bl_' + bl.replace(/[^a-zA-Z0-9]/g, '_');
-    const istGewaehlt = ausgewaehlteBL.has(bl);
-    const anzBez = bezirke.filter(bez => ausgewaehlteBez.has(bl + '||' + bez)).length;
-    const istOffen = offene.has(blId + '_bl_body');
-    const katDiv = document.createElement('div');
-    katDiv.style.cssText = 'border:1.5px solid var(--rand);border-radius:10px;margin-bottom:8px;overflow:hidden;';
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:' + (istGewaehlt ? 'var(--blau-hell)' : 'var(--hell)') + ';user-select:none;border-bottom:' + (istOffen ? '1px solid var(--rand)' : '0px') + ';';
-    const blCheck = document.createElement('div');
-    blCheck.style.cssText = 'width:20px;height:20px;border:2px solid ' + (istGewaehlt ? 'var(--blau)' : 'var(--rand2)') + ';border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:' + (istGewaehlt ? 'var(--blau)' : 'var(--weiss)') + ';transition:all 0.15s;';
-    blCheck.innerHTML = istGewaehlt ? '<span style="color:white;font-size:12px;font-weight:700;">✓</span>' : '';
-    blCheck.addEventListener('click', e => { e.stopPropagation(); toggleBL(bl); });
-    const titel = document.createElement('div');
-    titel.style.cssText = 'flex:1;font-size:14px;font-weight:600;color:' + (istGewaehlt ? 'var(--blau-dunkel)' : 'var(--text)') + ';';
-    titel.textContent = bl;
-    const badge = document.createElement('div');
-    badge.style.cssText = 'font-size:11px;font-weight:700;color:' + (anzBez > 0 ? 'var(--blau)' : 'var(--text-dim)') + ';background:' + (anzBez > 0 ? 'rgba(37,99,235,0.1)' : 'transparent') + ';padding:2px 8px;border-radius:10px;flex-shrink:0;';
-    badge.textContent = anzBez > 0 ? (anzBez + '/' + bezirke.length + ' Bezirke') : (bezirke.length + ' Bezirke');
-    const pfeil = document.createElement('div');
-    pfeil.id = blId + '_pfeil';
-    pfeil.style.cssText = 'font-size:12px;color:var(--text-dim);flex-shrink:0;transition:transform 0.2s;';
-    pfeil.textContent = '▾';
-    if (istOffen) pfeil.style.transform = 'rotate(180deg)';
-    header.appendChild(blCheck); header.appendChild(titel); header.appendChild(badge); header.appendChild(pfeil);
-    const body = document.createElement('div');
-    body.id = blId + '_bl_body';
-    body.style.cssText = 'display:' + (istOffen ? 'block' : 'none') + ';padding:12px;background:var(--weiss);border-top:1px solid var(--rand);';
-    const bezGrid = document.createElement('div');
-    bezGrid.className = 'gewerke-grid';
-    bezirke.forEach(bez => {
-      const key = bl + '||' + bez;
-      const item = document.createElement('div');
-      item.className = 'gewerk-check' + (ausgewaehlteBez.has(key) ? ' ausgewaehlt' : '');
-      item.innerHTML = '<div class="check-box">' + (ausgewaehlteBez.has(key) ? '✓' : '') + '</div>' + bez;
-      item.addEventListener('click', () => {
-        if (ausgewaehlteBez.has(key)) { ausgewaehlteBez.delete(key); item.classList.remove('ausgewaehlt'); item.querySelector('.check-box').textContent = ''; }
-        else { ausgewaehlteBez.add(key); item.classList.add('ausgewaehlt'); item.querySelector('.check-box').textContent = '✓'; }
-        renderBundeslaender(); updateGebietZusammenfassung(); updatePreis();
+// Stellt sicher, dass die Supabase-Bibliothek geladen ist – mit Fallback-CDN,
+// falls die erste Quelle (z. B. durch einen Inhalts-/Werbeblocker) blockiert wurde.
+async function stelleSupabaseSicher() {
+  if (window.supabase && window.supabase.createClient) return;
+  const quellen = [
+    'https://unpkg.com/@supabase/supabase-js@2',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+  ];
+  for (const url of quellen) {
+    try {
+      await new Promise((ok, fehler) => {
+        const s = document.createElement('script');
+        s.src = url; s.onload = ok; s.onerror = fehler;
+        document.head.appendChild(s);
       });
-      bezGrid.appendChild(item);
-    });
-    body.appendChild(bezGrid);
-    header.addEventListener('click', e => {
-      if (e.target === blCheck || blCheck.contains(e.target)) return;
-      const offen = body.style.display !== 'none';
-      body.style.display = offen ? 'none' : 'block';
-      pfeil.style.transform = offen ? '' : 'rotate(180deg)';
-      header.style.borderBottom = offen ? '0px' : '1px solid var(--rand)';
-    });
-    katDiv.appendChild(header); katDiv.appendChild(body); container.appendChild(katDiv);
-  });
-}
-
-function toggleBL(bl) {
-  if (ausgewaehlteBL.has(bl)) {
-    ausgewaehlteBL.delete(bl);
-    [...ausgewaehlteBez].filter(k => k.startsWith(bl + '||')).forEach(k => ausgewaehlteBez.delete(k));
-  } else {
-    ausgewaehlteBL.add(bl);
-    Object.keys(OESTERREICH[bl] || {}).forEach(bez => ausgewaehlteBez.add(bl + '||' + bez));
-    ganzOe = false;
-    document.getElementById('ganz-oe-btn').classList.remove('ausgewaehlt');
-    document.getElementById('ganz-oe-check').textContent = '';
+      if (window.supabase && window.supabase.createClient) return;
+    } catch (e) { /* nächste Quelle versuchen */ }
   }
-  renderBundeslaender(); updateGebietZusammenfassung(); updatePreis();
+  throw new Error('Die Datenbank-Bibliothek konnte nicht geladen werden. Bitte deaktivieren Sie einen evtl. aktiven Inhalts-/Werbeblocker für project-scout.at und laden die Seite neu – oder verwenden Sie einen anderen Browser.');
 }
 
-function toggleGanzOe() {
-  ganzOe = !ganzOe;
-  document.getElementById('ganz-oe-btn').classList.toggle('ausgewaehlt', ganzOe);
-  document.getElementById('ganz-oe-check').textContent = ganzOe ? '✓' : '';
-  ausgewaehlteBL.clear(); ausgewaehlteBez.clear(); ausgewaehlteGem.clear();
-  if (ganzOe) {
-    BUNDESLAENDER.forEach(function(bl) {
-      if (!OESTERREICH[bl]) return;
-      ausgewaehlteBL.add(bl);
-      Object.keys(OESTERREICH[bl]).forEach(function(bez) { ausgewaehlteBez.add(bl + '||' + bez); });
-    });
-  }
-  renderBundeslaender(); updateGebietZusammenfassung(); updatePreis();
-}
-
-function updateGebietZusammenfassung() {
-  const el = document.getElementById('gebiet-zusammenfassung');
-  if (!el) return;
-  if (ganzOe) { el.innerHTML = '<div class="tag-liste"><span class="tag">🇦🇹 Ganz Österreich</span></div>'; return; }
-  let tags = '';
-  ausgewaehlteBL.forEach(bl => {
-    const bezImBL = [...ausgewaehlteBez].filter(k => k.startsWith(bl + '||'));
-    if (bezImBL.length === 0) tags += '<span class="tag">📍 ' + bl + ' (alle Bezirke)</span>';
-    else bezImBL.forEach(bezKey => { const bez = bezKey.split('||')[1]; tags += '<span class="tag">📍 ' + bez + '</span>'; });
-  });
-  el.innerHTML = tags ? '<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px;">Auswahl:</div><div class="tag-liste">' + tags + '</div>' : '';
-}
-
-function zeitraumWaehlen(tage, el) {
-  gewaehlterZeitraum = tage;
-  document.querySelectorAll('.zeitraum-karte').forEach(k => k.classList.remove('ausgewaehlt'));
-  el.classList.add('ausgewaehlt');
-  document.getElementById('kosten-zeitraum').textContent = tage + ' Tag' + (tage > 1 ? 'e' : '');
-  const eigene = document.getElementById('zeitraum-eigene');
-  if (eigene) eigene.value = '';
-  updatePreis();
-}
-
-function zeitraumEigeneEingabe(wert) {
-  const tage = parseInt(wert);
-  if (!tage || tage < 10) return;
-  gewaehlterZeitraum = tage;
-  document.querySelectorAll('.zeitraum-karte').forEach(k => k.classList.remove('ausgewaehlt'));
-  document.getElementById('kosten-zeitraum').textContent = tage + ' Tage';
-  updatePreis();
-}
-
-const PREIS_PRO_KAT = 7.00, PREIS_PRO_TAG = 0.50, PREIS_MAX = 149.00, PREIS_GANZ_OE_BL = 50.00;
-
-function berechneBLKosten(n) {
-  let t = 0;
-  for (let i = 0; i < n; i++) t += Math.max(8.00 - i * 0.50, 0);
-  return Math.round(t * 100) / 100;
-}
-
-function ermittleAnzahlKategorien() {
-  let count = 0;
-  for (const [kat, gewerke] of Object.entries(GEWERKE)) {
-    if (gewerke.some(g => ausgewaehlteGewerke.has(g))) count++;
-  }
-  return count;
-}
-
-function berechnePreis() {
-  const kat = ermittleAnzahlKategorien();
-  const nBL = ganzOe ? 9 : ausgewaehlteBL.size;
-  const bl = ganzOe ? PREIS_GANZ_OE_BL : (nBL > 0 ? berechneBLKosten(nBL) : 0);
-  return Math.min((kat * PREIS_PRO_KAT) + bl + (gewaehlterZeitraum * PREIS_PRO_TAG), PREIS_MAX);
-}
-
-function updatePreis() {
-  const preis = berechnePreis();
-  const el = document.getElementById('preis-anzeige');
-  const details = document.getElementById('preis-details');
-  const aufschluss = document.getElementById('preis-aufschluss');
-  if (!el) return;
-  el.textContent = '€ ' + preis.toFixed(2);
-  const anzahlKat = ermittleAnzahlKategorien();
-  const anzahlBL = ganzOe ? 9 : Math.max(ausgewaehlteBL.size, 1);
-  const gebiet = ganzOe ? 'Ganz Österreich' : (ausgewaehlteBL.size > 0 ? [...ausgewaehlteBL].join(', ') : 'Noch kein Gebiet');
-  if (details) details.textContent = gebiet + ' · ' + anzahlKat + ' Kategorien · ' + gewaehlterZeitraum + ' Tage';
-  if (aufschluss) {
-    const istMax = preis >= PREIS_MAX;
-    aufschluss.innerHTML =
-      '<div style="font-size:12px;color:var(--text-dim);border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;"><strong style="color:var(--text-mid);">Preiszusammensetzung</strong></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;"><span>' + anzahlKat + ' Gewerke × € ' + PREIS_PRO_KAT.toFixed(2) + '</span><span>€ ' + (anzahlKat * PREIS_PRO_KAT).toFixed(2) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;"><span>' + (ganzOe ? 'Ganz Österreich (Pauschal)' : anzahlBL + ' Bundesland' + (anzahlBL !== 1 ? '/-länder (Rabatt)' : '')) + '</span><span>€ ' + (ganzOe ? PREIS_GANZ_OE_BL : berechneBLKosten(anzahlBL)).toFixed(2) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);padding:3px 0;border-bottom:1px solid var(--rand);padding-bottom:8px;margin-bottom:8px;"><span>' + gewaehlterZeitraum + ' Tage × € ' + PREIS_PRO_TAG.toFixed(2) + '</span><span>€ ' + (gewaehlterZeitraum * PREIS_PRO_TAG).toFixed(2) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:2px 0;"><span style="color:var(--text);">Gesamt' + (istMax ? ' (Maximalpreis)' : '') + '</span><span style="color:var(--blau);">€ ' + preis.toFixed(2) + '</span></div>';
-  }
-}
-
-function renderZusammenfassung() {
-  const vorname  = document.getElementById('vorname').value;
-  const nachname = document.getElementById('nachname').value;
-  const firma    = document.getElementById('firma').value;
-  const email    = document.getElementById('email').value;
-  const gebiet   = ganzOe ? '🇦🇹 Ganz Österreich' : 'Ausgewählte Regionen';
-  const name     = [vorname, nachname].filter(Boolean).join(' ');
-  document.getElementById('zusammenfassung').innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
-    '<div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:12px 16px;"><div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">Name</div><div style="font-size:14px;font-weight:600;">' + name + (firma ? ' · ' + firma : '') + '</div></div>' +
-    '<div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:12px 16px;"><div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">E-Mail</div><div style="font-size:14px;font-weight:600;">' + email + '</div></div>' +
-    '<div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:12px 16px;"><div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">Gebiet</div><div style="font-size:14px;font-weight:600;">' + gebiet + '</div></div>' +
-    '<div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:12px 16px;"><div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">Gewerke</div><div style="font-size:14px;font-weight:600;">' + ausgewaehlteGewerke.size + ' ausgewählt</div></div>' +
-    '</div>' +
-    '<div class="tag-liste">' + [...ausgewaehlteGewerke].map(g => '<span class="tag">' + g + '</span>').join('') + '</div>';
-  updatePreis();
-}
-
-async function initChat() {
-  const homepage = document.getElementById('homepage').value.trim();
-  const begruessung = homepage
-    ? 'Hallo! Ich habe Ihre Konfiguration geladen.\n\n✅ Ihre Homepage (' + homepage + ') wurde erkannt und wird vom Agenten berücksichtigt.\n\nWas suchen Sie genau?'
-    : 'Hallo! Ich habe Ihre Konfiguration geladen.\n\n💡 Mit Ihrer Homepage erkennt der Agent automatisch Ihre Gewerke.\n\nWas suchen Sie genau?';
-  document.getElementById('ki-begruessung').textContent = begruessung;
-  chatVerlauf = [{ role: 'assistant', content: begruessung }];
-}
-
-function chatNachrichtHinzufuegen(text, istKi) {
-  const box = document.getElementById('chat-box');
-  const div = document.createElement('div');
-  div.className = 'chat-nachricht';
-  div.innerHTML = '<div class="chat-avatar ' + (istKi ? 'ki' : 'user') + '">' + (istKi ? 'KI' : 'S') + '</div><div class="chat-text">' + text.replace(/\n/g, '<br>') + '</div>';
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
-
-function typingAnzeigen() {
-  const box = document.getElementById('chat-box');
-  const div = document.createElement('div');
-  div.className = 'chat-nachricht';
-  div.id = 'typing-indicator';
-  div.innerHTML = '<div class="chat-avatar ki">KI</div><div class="chat-text"><div class="typing"><span></span><span></span><span></span></div></div>';
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
-
-function typingEntfernen() { const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
-
-async function chatSenden() {
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  chatNachrichtHinzufuegen(text, false);
-  chatVerlauf.push({ role: 'user', content: text });
-  typingAnzeigen();
+// ── INIT ──
+async function init() {
   try {
-    const homepageInfo = document.getElementById('homepage').value.trim();
-    const blKuerzel = { "Burgenland":"BGR","Kärnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W" };
-    const bundeslaenderAuswahl = ganzOe ? [] : [...ausgewaehlteBL].map(bl => blKuerzel[bl] || bl).filter(Boolean);
-    const response = await fetch('https://bkhjekpwyngoixnlizxo.supabase.co/functions/v1/chat-assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatVerlauf, gewerke: [...ausgewaehlteGewerke], bundeslaender: bundeslaenderAuswahl, ganz_oesterreich: ganzOe, zeitraum_tage: gewaehlterZeitraum, homepage: homepageInfo || null })
-    });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    const data = await response.json();
-    const antwort = data.antwort || 'Keine Antwort erhalten.';
-    const paramMatch = antwort.match(/<params>(.*?)<\/params>/s);
-    if (paramMatch) { try { chatVerfeinerung = paramMatch[1]; } catch(e) {} }
-    const saubereAntwort = antwort.replace(/<params>.*?<\/params>/s, '').trim();
-    typingEntfernen();
-    chatNachrichtHinzufuegen(saubereAntwort, true);
-    chatVerlauf.push({ role: 'assistant', content: antwort });
-  } catch(e) {
-    typingEntfernen();
-    chatNachrichtHinzufuegen('Chat momentan nicht verfügbar. Sie können trotzdem fortfahren.', true);
+    if (!kundenId) { zeigeKeinZugang(); return; }
+    await stelleSupabaseSicher();
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await ladeDaten();
+  } catch (e) {
+    console.error('Init-Fehler:', e);
+    zeigeFehler((e && e.message) ? e.message : 'Unbekannter Fehler beim Laden.');
   }
 }
 
-function chatEnter(e) { if (e.key === 'Enter') chatSenden(); }
+async function ladeDaten() {
+  try {
+    const { data: kunde } = await sb.from('kunden').select('firmenname').eq('id', kundenId).single();
+    if (kunde) {
+      document.getElementById('header-firma').textContent = kunde.firmenname || 'Dashboard';
+    }
 
-async function bezahlen() {
-  const vorname  = document.getElementById('vorname').value.trim();
-  const nachname = document.getElementById('nachname').value.trim();
-  const firma    = document.getElementById('firma').value.trim();
-  const email    = document.getElementById('email').value.trim();
-  const homepage = document.getElementById('homepage').value.trim();
-  if (!vorname || !nachname || !email) { alert('Bitte zur\u00fcckgehen und alle Pflichtfelder ausf\u00fcllen.'); return; }
-  const widerrufOk = document.getElementById('widerruf-check');
-  if (!widerrufOk || !widerrufOk.checked) {
-    alert('Bitte best\u00e4tigen Sie die Zustimmung zum sofortigen Start (K\u00e4stchen oberhalb des Buttons), um fortzufahren.');
+    // Alle abgeschlossenen Aufträge des Kunden
+    const { data: auftraege } = await sb
+      .from('suchanfragen').select('*')
+      .eq('kunden_id', kundenId).eq('status', 'abgeschlossen')
+      .order('erstellt_am', { ascending: false });
+    alleAuftraege = auftraege || [];
+    rendereAuftraege();
+
+    // ALLE Projekte des Kunden laden (nicht laufspezifisch)
+    await ladeProjekte();
+
+  } catch(e) {
+    console.error('Ladefehler:', e);
+    zeigeFehler('Fehler beim Laden der Daten: ' + ((e && e.message) ? e.message : e));
+  }
+}
+
+// ── ALLE PROJEKTE DES KUNDEN LADEN ──
+async function ladeProjekte() {
+  const { data: projekte, error } = await sb
+    .from('projekte').select('*')
+    .eq('kunden_id', kundenId)
+    .order('erstmals_gefunden', { ascending: false });
+  if (error) throw new Error('Projekte konnten nicht geladen werden: ' + error.message);
+
+  alleProjekte = projekte || [];
+  ignoriertIds = new Set(alleProjekte.filter(p => p.ignorieren).map(p => p.id));
+  gemerkteIds  = new Set(alleProjekte.filter(p => p.gemerkt).map(p => p.id));
+
+  // Meta-Info: letzter Lauf
+  if (alleAuftraege.length > 0) {
+    const letzter = alleAuftraege[0];
+    const datum = new Date(letzter.erstellt_am).toLocaleDateString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const bl = letzter.ganz_oesterreich ? 'Ganz Österreich' : (Array.isArray(letzter.bundeslaender) ? letzter.bundeslaender.join(', ') : '–');
+    document.getElementById('header-meta').textContent =
+      `${alleAuftraege.length} Scout-Läufe · Letzter: ${datum} · ${bl}`;
+  }
+
+  aktualisiereStats();
+  baueFilter();
+  rendereListe();
+  rendereMerkliste();
+  aktualisiereKarte();
+}
+
+// ── STATS ──
+function aktualisiereStats() {
+  const sichtbar = alleProjekte.filter(p => !p.ignorieren);
+  document.getElementById('stat-gesamt').textContent = sichtbar.length;
+  // "Neu" = letzte 7 Tage
+  document.getElementById('stat-neu').textContent =
+    sichtbar.filter(p => (Date.now() - new Date(p.erstmals_gefunden).getTime()) < 7*24*60*60*1000).length;
+  document.getElementById('stat-hoch').textContent =
+    sichtbar.filter(p => (p.relevanz||0) >= 8).length;
+  aktualisiereMerklisteBadge();
+}
+
+function aktualisiereMerklisteBadge() {
+  const anzahl = gemerkteIds.size;
+  const badge  = document.getElementById('merkliste-badge');
+  const stat   = document.getElementById('stat-merkliste');
+  const tab    = document.getElementById('tab-merkliste');
+  stat.textContent  = anzahl;
+  badge.textContent = anzahl;
+  if (anzahl > 0) { badge.classList.add('sichtbar'); tab.classList.add('gold-tab'); }
+  else            { badge.classList.remove('sichtbar'); tab.classList.remove('gold-tab'); }
+}
+
+// ── FILTER ──
+function baueFilter() {
+  const sichtbar      = alleProjekte.filter(p => !p.ignorieren);
+  const kategorien    = [...new Set(sichtbar.map(p => p.kategorie).filter(Boolean))].sort();
+  const phasen        = [...new Set(sichtbar.map(p => p.phase).filter(Boolean))].sort();
+  const bundeslaender = [...new Set(sichtbar.map(p => p.bundesland).filter(Boolean))].sort();
+  baueFilterGruppe('filter-kategorie',  kategorien,    'kategorie',  sichtbar);
+  baueFilterGruppe('filter-phase',      phasen,        'phase',      sichtbar);
+  baueFilterGruppe('filter-bundesland', bundeslaender, 'bundesland', sichtbar);
+}
+
+function baueFilterGruppe(containerId, werte, filterKey, projekte) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  werte.forEach(wert => {
+    const anzahl = projekte.filter(p => p[filterKey] === wert).length;
+    const item = document.createElement('div');
+    item.className = 'filter-item';
+    item.innerHTML = `<div class="filter-dot"></div><span>${wert}</span><span class="filter-count">${anzahl}</span>`;
+    item.addEventListener('click', () => {
+      if (aktiveFilter[filterKey].has(wert)) { aktiveFilter[filterKey].delete(wert); item.classList.remove('aktiv'); }
+      else { aktiveFilter[filterKey].add(wert); item.classList.add('aktiv'); }
+      rendereListe(); aktualisiereKarte();
+    });
+    container.appendChild(item);
+  });
+}
+
+function gefilterteProjekte() {
+  const suche = (document.getElementById('suche')?.value || '').toLowerCase();
+  return alleProjekte.filter(p => {
+    if (aktiveFilter.kategorie.size  > 0 && !aktiveFilter.kategorie.has(p.kategorie))   return false;
+    if (aktiveFilter.phase.size      > 0 && !aktiveFilter.phase.has(p.phase))            return false;
+    if (aktiveFilter.bundesland.size > 0 && !aktiveFilter.bundesland.has(p.bundesland)) return false;
+    if (suche && !`${p.titel} ${p.ort} ${p.beschreibung} ${p.kategorie}`.toLowerCase().includes(suche)) return false;
+    return true;
+  });
+}
+
+// ── LISTE ──
+function rendereListe() {
+  const container = document.getElementById('projekte-liste');
+  const sort = document.getElementById('sortierung')?.value || 'relevanz';
+  let projekte = gefilterteProjekte();
+  if (sort === 'relevanz') projekte.sort((a,b) => (b.relevanz||0)-(a.relevanz||0));
+  else if (sort === 'datum') projekte.sort((a,b) => new Date(b.erstmals_gefunden)-new Date(a.erstmals_gefunden));
+  else if (sort === 'ort') projekte.sort((a,b) => (a.ort||'').localeCompare(b.ort||''));
+  if (!projekte.length) {
+    container.innerHTML = '<div class="leer-state"><div class="leer-icon">🔍</div><div class="leer-text">Keine Projekte – Filter anpassen?</div></div>';
     return;
   }
-  const btn = document.getElementById('bezahl-btn');
-  btn.disabled = true; btn.textContent = '\u23f3 Wird vorbereitet...';
-  zeigeStatus('Bestellung wird vorbereitet...', 'laden');
-  try {
-    // Kundenanlage, Suchanfrage UND Preisberechnung laufen jetzt serverseitig
-    // in der create-checkout Edge Function. Der Browser schickt nur die Auswahl,
-    // KEINEN Preis (Manipulation ausgeschlossen).
-    const blKuerzel = { "Burgenland":"BGR","K\u00e4rnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W" };
-    const bundeslaenderListe = ganzOe ? ['W','NOE','OOE','SBG','STK','KTN','TIR','VBG','BGR'] : [...ausgewaehlteBL].map(bl => blKuerzel[bl] || bl);
-    const bezirkeListe   = [...ausgewaehlteBez].map(k => k.split('||')[1]);
-    const gemeindenListe = [...ausgewaehlteGem].map(k => k.split('||')[2]);
-    const checkoutRes = await fetch(CREATE_CHECKOUT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email, vorname, nachname,
-        firmenname: firma || null,
-        homepage: homepage || null,
-        gewerke: [...ausgewaehlteGewerke],
-        bundeslaender: bundeslaenderListe,
-        bezirke: bezirkeListe,
-        gemeinden: gemeindenListe,
-        ganz_oesterreich: ganzOe,
-        zeitraum_tage: gewaehlterZeitraum,
-        chat_verfeinerung: chatVerfeinerung || null
-      })
-    });
-    if (!checkoutRes.ok) {
-      let msg = 'Checkout konnte nicht erstellt werden.';
-      try { const e = await checkoutRes.json(); if (e && e.fehler) msg = e.fehler; } catch(_) {}
-      throw new Error(msg);
-    }
-    const { url, kunden_id, suchanfrage_id } = await checkoutRes.json();
-    if (kunden_id) sessionStorage.setItem('bs_kunden_id', kunden_id);
-    if (suchanfrage_id) sessionStorage.setItem('bs_suchanfrage_id', suchanfrage_id);
-    sessionStorage.setItem('bs_email', email);
-    zeigeStatus('\u2705 Weiterleitung zu Stripe...', 'erfolg');
-    btn.textContent = '\u23f3 Weiterleitung...';
-    window.location.href = url;
-  } catch(fehler) {
-    console.error('Fehler:', fehler.message);
-    zeigeStatus('\u274c Fehler: ' + fehler.message, 'fehler');
-    btn.disabled = false; btn.textContent = '\ud83d\udcb3 Jetzt bezahlen & starten';
+  container.innerHTML = projekte.map(p => projektKarteHTML(p, false)).join('');
+  bindEvents(container);
+}
+
+// ── MERKLISTE ──
+function rendereMerkliste() {
+  const leer   = document.getElementById('merkliste-leer');
+  const inhalt = document.getElementById('merkliste-inhalt');
+  const liste  = document.getElementById('merkliste-liste');
+  const sub    = document.getElementById('merkliste-header-sub');
+  const gemerkt = alleProjekte.filter(p => gemerkteIds.has(p.id));
+  if (gemerkt.length === 0) {
+    leer.style.display = 'block'; inhalt.style.display = 'none';
+  } else {
+    leer.style.display = 'none'; inhalt.style.display = 'block';
+    sub.textContent = `${gemerkt.length} Projekt${gemerkt.length !== 1 ? 'e' : ''} zur Nachverfolgung vorgemerkt`;
+    liste.innerHTML = gemerkt.map(p => projektKarteHTML(p, true)).join('');
+    bindEvents(liste);
   }
+  aktualisiereMerklisteBadge();
 }
 
-function zeigeStatus(text, typ) {
-  const el = document.getElementById('scout-status');
-  if (!el) return;
-  const farben = { laden:'#f0f9ff', erfolg:'#f0fdf4', fehler:'#fef2f2' };
-  const randfarben = { laden:'#bae6fd', erfolg:'#bbf7d0', fehler:'#fecaca' };
-  const textfarben = { laden:'#0369a1', erfolg:'#15803d', fehler:'#dc2626' };
-  el.style.cssText = 'display:block;padding:12px 16px;border-radius:8px;background:' + farben[typ] + ';border:1px solid ' + randfarben[typ] + ';color:' + textfarben[typ] + ';font-size:14px;margin-top:14px;';
-  el.textContent = text;
+// ── KARTE HTML ──
+function projektKarteHTML(p, inMerkliste) {
+  const rel       = p.relevanz || 0;
+  const relKlasse = rel >= 8 ? 'rel-hoch' : rel >= 5 ? 'rel-mittel' : 'rel-niedrig';
+  const ignoriert = ignoriertIds.has(p.id);
+  const gemerkt   = gemerkteIds.has(p.id);
+  const istNeu    = (Date.now() - new Date(p.erstmals_gefunden).getTime()) < 7*24*60*60*1000;
+  return `
+  <div class="projekt-karte ${ignoriert?'ignoriert':''} ${gemerkt?'gemerkt':''}" id="pk-${p.id}">
+    <div class="relevanz-badge ${relKlasse}">${rel}</div>
+    <div class="projekt-body">
+      <div class="projekt-titel">${escHtml(p.titel||'–')}
+        ${gemerkt ? '<span class="tag tag-gemerkt">⭐ Vorgemerkt</span>' : ''}
+        ${istNeu  ? '<span class="tag tag-neu">NEU</span>' : ''}
+      </div>
+      <div class="projekt-meta">
+        ${p.kategorie  ? `<span class="tag tag-kat">${escHtml(p.kategorie)}</span>` : ''}
+        ${p.phase      ? `<span class="tag tag-phase">${escHtml(p.phase)}</span>` : ''}
+        ${p.bundesland ? `<span class="tag tag-bl">${escHtml(p.bundesland)}</span>` : ''}
+        ${p.volumen    ? `<span class="tag tag-vol">${escHtml(p.volumen)}</span>` : ''}
+      </div>
+      <div class="projekt-beschreibung">${escHtml(p.beschreibung||'')}</div>
+      <div class="projekt-ort">📍 ${escHtml(p.ort||'')}${p.bezirk?' · '+escHtml(p.bezirk):''}</div>
+    </div>
+    <div class="projekt-actions">
+      ${p.artikel_url ? `<a href="${escHtml(p.artikel_url)}" target="_blank" class="btn-link">→ Artikel</a>` : ''}
+      <button class="btn-merken ${gemerkt?'aktiv':''}" data-id="${p.id}">${gemerkt?'⭐ Vorgemerkt':'☆ Merken'}</button>
+      ${!inMerkliste ? `<button class="btn-ignorieren ${ignoriert?'aktiv':''}" data-id="${p.id}">${ignoriert?'✓ Ignoriert':'Ignorieren'}</button>` : ''}
+    </div>
+  </div>`;
 }
 
-function toggleSchritt(nr) {
-  const ziel = document.getElementById('s' + nr);
-  if (!ziel) return;
-  if (ziel.classList.contains('aktiv')) return;
-  if (!ziel.classList.contains('erledigt')) return;
-  document.querySelectorAll('.schritt.aktiv').forEach(s => s.classList.remove('aktiv'));
-  ziel.classList.add('aktiv');
-  ziel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function bindEvents(container) {
+  container.querySelectorAll('.btn-merken').forEach(btn =>
+    btn.addEventListener('click', async e => { e.stopPropagation(); await toggleMerken(btn.dataset.id); }));
+  container.querySelectorAll('.btn-ignorieren').forEach(btn =>
+    btn.addEventListener('click', async e => { e.stopPropagation(); await toggleIgnorieren(btn.dataset.id); }));
 }
 
-function weiter(nr) {
-  if (nr === 1) {
-    const vorname  = document.getElementById('vorname').value.trim();
-    const nachname = document.getElementById('nachname').value.trim();
-    const email    = document.getElementById('email').value.trim();
-    const email2   = document.getElementById('email2').value.trim();
-    if (!vorname)  { alert('Bitte Vornamen eingeben.'); return; }
-    if (!nachname) { alert('Bitte Nachnamen eingeben.'); return; }
-    if (!email)    { alert('Bitte E-Mail-Adresse eingeben.'); return; }
-    if (!email.includes('@')) { alert('Bitte gültige E-Mail-Adresse eingeben.'); return; }
-    if (!email2)   { alert('Bitte E-Mail-Adresse im Bestätigungsfeld eingeben.'); return; }
-    if (email.toLowerCase() !== email2.toLowerCase()) {
-      alert('Die E-Mail-Adressen stimmen nicht überein. Bitte beide Felder manuell ausfüllen.');
+async function toggleMerken(id) {
+  const neu = !gemerkteIds.has(id);
+  await sb.from('projekte').update({ gemerkt: neu }).eq('id', id);
+  neu ? gemerkteIds.add(id) : gemerkteIds.delete(id);
+  rendereListe(); rendereMerkliste();
+}
+
+async function toggleIgnorieren(id) {
+  const neu = !ignoriertIds.has(id);
+  await sb.from('projekte').update({ ignorieren: neu }).eq('id', id);
+  if (neu) {
+    ignoriertIds.add(id);
+    if (gemerkteIds.has(id)) { gemerkteIds.delete(id); await sb.from('projekte').update({ gemerkt: false }).eq('id', id); }
+  } else { ignoriertIds.delete(id); }
+  aktualisiereStats(); rendereListe(); rendereMerkliste();
+}
+
+// ── KARTE ──
+function aktualisiereKarte() {
+  const karteDiv = document.getElementById('karte');
+  if (!karteDiv) return;
+  const projekte = gefilterteProjekte().filter(p => !p.ignorieren);
+  const overlay  = document.getElementById('karte-overlay');
+  overlay.textContent = 'Karte wird geladen...';
+
+  // Karte initialisieren falls noch nicht vorhanden
+  if (!karteInstanz) {
+    karteInstanz = new google.maps.Map(karteDiv, {
+      center: { lat: 47.5, lng: 14.0 },
+      zoom: 7,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
+      styles: [
+        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+      ]
+    });
+  }
+
+  // Alte Marker entfernen
+  karteMarker.forEach(m => m.setMap(null));
+  karteMarker = [];
+
+  if (!projekte.length) {
+    overlay.textContent = 'Keine Projekte für diese Filterauswahl';
+    return;
+  }
+
+  const geocoder = new google.maps.Geocoder();
+  const infoWindow = new google.maps.InfoWindow();
+  let mitKoords = 0;
+
+  // Setzt einen Marker an die gegebene Position (pos = {lat,lng} oder google LatLng).
+  function platziereMarker(p, pos) {
+    const farbe = (p.relevanz||0) >= 8 ? '#16a34a' : (p.relevanz||0) >= 5 ? '#d97706' : '#dc2626';
+    const marker = new google.maps.Marker({
+      position: pos,
+      map: karteInstanz,
+      title: p.titel || '',
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: farbe,
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      }
+    });
+
+    marker.addListener('click', () => {
+      const inhalt = `
+        <div style="font-family:'Inter',sans-serif;max-width:260px;padding:4px 0;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">
+            ${escHtml(p.kategorie||'')} · Relevanz ${p.relevanz||0}/10
+          </div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#111;line-height:1.4;">
+            ${escHtml(p.titel||'')}
+          </div>
+          <div style="font-size:12px;color:#555;margin-bottom:4px;">
+            📍 ${escHtml(p.ort||'')}${p.bezirk ? ' · ' + escHtml(p.bezirk) : ''}
+          </div>
+          <div style="font-size:12px;color:#555;margin-bottom:8px;">
+            ${escHtml(p.phase||'')}${p.volumen ? ' · ' + escHtml(p.volumen) : ''}
+          </div>
+          ${p.artikel_url
+            ? `<a href="${escHtml(p.artikel_url)}" target="_blank"
+                 style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">
+                 → Zum Artikel
+               </a>`
+            : ''}
+        </div>`;
+      infoWindow.setContent(inhalt);
+      infoWindow.open(karteInstanz, marker);
+    });
+
+    karteMarker.push(marker);
+    mitKoords++;
+    overlay.textContent = `${mitKoords} Projekte auf Karte`;
+  }
+
+  projekte.forEach(p => {
+    // 1) Bevorzugt: vom Agent gespeicherte Koordinaten verwenden – schnell und
+    //    ohne Geocoding-Anfrage (spart Kosten und vermeidet Rate-Limits).
+    if (p.lat != null && p.lng != null && !isNaN(Number(p.lat)) && !isNaN(Number(p.lng))) {
+      platziereMarker(p, { lat: Number(p.lat), lng: Number(p.lng) });
       return;
     }
-  }
-  if (nr === 2) { if (ausgewaehlteGewerke.size === 0) { alert('Bitte mindestens ein Gewerk auswählen.'); return; } }
-  if (nr === 3) { if (!ganzOe && ausgewaehlteBL.size === 0) { alert('Bitte mindestens ein Bundesland auswählen oder „Ganz Österreich" wählen.'); return; } }
-  const aktuell = document.getElementById('s' + nr);
-  aktuell.classList.remove('aktiv');
-  aktuell.classList.add('erledigt');
-  document.getElementById('s' + nr + '-status').textContent = '✓ erledigt';
-  const naechster = document.getElementById('s' + (nr + 1));
-  if (naechster) {
-    naechster.classList.add('aktiv');
-    if (nr + 1 === 2) renderGewerke();
-    if (nr + 1 === 3) renderBundeslaender();
-    if (nr + 1 === 4) initChat();
-    if (nr + 1 === 5) renderZusammenfassung();
-    naechster.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+    // 2) Fallback für ältere Projekte ohne gespeicherte Koordinaten:
+    //    einmaliges Live-Geocoding über den Ortsnamen.
+    if (p.ort) {
+      geocoder.geocode({ address: p.ort + ', Österreich', region: 'AT' }, (results, status) => {
+        if (status !== 'OK' || !results[0]) return;
+        platziereMarker(p, results[0].geometry.location);
+      });
+    }
+  });
 }
 
-function zurueck(nr) {
-  const aktuell = document.getElementById('s' + nr);
-  aktuell.classList.remove('aktiv');
-  document.getElementById('s' + nr + '-status').textContent = nr === 4 ? 'optional' : 'ausstehend';
-  const vorheriger = document.getElementById('s' + (nr - 1));
-  if (vorheriger) {
-    vorheriger.classList.remove('erledigt');
-    vorheriger.classList.add('aktiv');
-    document.getElementById('s' + (nr - 1) + '-status').textContent = 'ausstehend';
-    vorheriger.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// ── SCOUT-LÄUFE SIDEBAR ──
+function rendereAuftraege() {
+  const container = document.getElementById('laufe-liste');
+  if (!alleAuftraege.length) {
+    container.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:var(--text-dim);">Noch keine Läufe</div>';
+    return;
   }
+  container.innerHTML = alleAuftraege.map((a, i) => {
+    const datum = new Date(a.erstellt_am).toLocaleDateString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const bl = a.ganz_oesterreich ? 'Ganz Österreich' : (Array.isArray(a.bundeslaender) ? a.bundeslaender.join(', ') : '–');
+    return `<div class="lauf-item ${i===0?'aktiv':''}" data-id="${a.id}">
+      <div class="lauf-datum">${datum}${i===0?' <span style="font-size:10px;color:var(--blau);font-weight:600;">NEU</span>':''}</div>
+      <div class="lauf-titel">${escHtml(bl)}</div>
+    </div>`;
+  }).join('');
+  // Klick auf Lauf → zeigt nur Projekte dieses Laufs (optional filter)
+  container.querySelectorAll('.lauf-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.lauf-item').forEach(l => l.classList.remove('aktiv'));
+      item.classList.add('aktiv');
+    });
+  });
 }
 
-function toggleFaq(el) { el.parentElement.classList.toggle('offen'); }
+// ── EXCEL ──
+window.exportiereExcel = function() {
+  const projekte = gefilterteProjekte();
+  if (!projekte.length) { alert('Keine Projekte zum Exportieren.'); return; }
+  const zeilen = projekte.map(p => ({
+    'Titel': p.titel||'', 'Ort': p.ort||'', 'Bezirk': p.bezirk||'',
+    'Bundesland': p.bundesland||'', 'Kategorie': p.kategorie||'',
+    'Phase': p.phase||'', 'Volumen': p.volumen||'', 'Relevanz': p.relevanz||'',
+    'Quelle': p.quelle||'', 'Artikel URL': p.artikel_url||'',
+    'Beschreibung': p.beschreibung||'',
+    'Gefunden am': p.erstmals_gefunden ? new Date(p.erstmals_gefunden).toLocaleDateString('de-AT') : '',
+    'Ignoriert': p.ignorieren ? 'Ja' : 'Nein',
+    'Vorgemerkt': gemerkteIds.has(p.id) ? 'Ja' : 'Nein',
+  }));
+  const ws = XLSX.utils.json_to_sheet(zeilen);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ProjectScout Projekte');
+  ws['!cols'] = [{wch:40},{wch:20},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:10},{wch:20},{wch:50},{wch:60},{wch:15},{wch:10},{wch:12}];
+  XLSX.writeFile(wb, `ProjectScout_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
 
-renderGewerke();
-renderBundeslaender();
-updatePreis();
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function zeigeKeinZugang() {
+  document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--hell);font-family:'Inter',sans-serif;text-align:center;padding:40px;"><div><div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;">Project<span style="color:var(--blau);">Scout</span></div><div style="color:var(--text-dim);margin-top:12px;font-size:15px;">Kein Zugang – bitte verwenden Sie den Link aus Ihrer E-Mail.</div><a href="index.html" style="display:inline-block;margin-top:24px;background:var(--blau);color:white;padding:12px 28px;border-radius:8px;font-weight:600;text-decoration:none;">→ Neuen Scout-Lauf starten</a></div></div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('aktiv'));
+      document.querySelectorAll('.tab-inhalt').forEach(t => t.classList.remove('aktiv'));
+      tab.classList.add('aktiv');
+      const t = tab.dataset.tab;
+      if (t === 'liste')     document.getElementById('tab-liste').classList.add('aktiv');
+      if (t === 'karte')     document.getElementById('tab-karte').classList.add('aktiv');
+      if (t === 'merkliste') document.getElementById('tab-merkliste-inhalt').classList.add('aktiv');
+      if (t === 'karte') setTimeout(() => aktualisiereKarte(), 100);
+    });
+  });
+  document.getElementById('btn-excel')?.addEventListener('click', exportiereExcel);
+  document.getElementById('suche')?.addEventListener('input', rendereListe);
+  document.getElementById('sortierung')?.addEventListener('change', rendereListe);
+});
+
+init();
 </script>
 </body>
 </html>
