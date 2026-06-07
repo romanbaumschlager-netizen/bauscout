@@ -11,6 +11,7 @@
 
 ## Seiten
 - [Startseite](https://project-scout.at/): Funktionsweise, Branchen/Gewerke, abgedeckte Regionen, Preisrechner und häufige Fragen.
+- [Wie es funktioniert](https://project-scout.at/wie-es-funktioniert.html): Detaillierte Erklärung der KI-Recherche, durchsuchte Quellen und ehrliche Grenzen.
 - [Impressum, Datenschutz & AGB](https://project-scout.at/impressum.html): Betreiber, DSGVO-Datenschutzerklärung, Geschäftsbedingungen.
 
 ## Kurzfakten
