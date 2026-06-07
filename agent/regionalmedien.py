@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+ProjectScout – Regionalmedien-Ernte (Saeule C)
+==============================================
+Liest die RegionalMedien-Austria-Plattform **meinbezirk.at** DIREKT aus –
+Bezirk fuer Bezirk, Gemeinde fuer Gemeinde, ueber alle Rubriken – statt zu
+hoffen, dass eine Suchmaschine die Artikel hochspuelt. Damit wird jeder Bezirk
+gleich tief abgedeckt (Kirchdorf wie Dornbirn).
+
+Das Modul ist **selbst-konfigurierend**: Bezirks- und Gemeinde-Adressen werden
+zur Laufzeit von der Live-Seite entdeckt (keine geratene Adressliste, die
+veraltet). Alles wird protokolliert, damit der erste echte Lauf zugleich der
+Live-Test ist.
+
+Ablauf:
+  Bundesland-Seite  -> Bezirks-Adressen entdecken (+ Validierung)
+  Bezirks-Seite     -> Gemeinde-Adressen entdecken + Rubrik-Erstabruf
+  Gemeinde-Seiten   -> feingranularer Erstabruf (erreicht auch aeltere Beitraege,
+                       weil pro Gemeinde wenig Volumen anfaellt)
+  Artikel laden     -> Datum / Region / Rubrik aus Metadaten + Volltext
+  Filter            -> nur Zeitfenster + passendes Bundesland
+  ->  Liste von {url, titel, datum, datum_dt, ort, region, kategorie, text}
+
+Die KI-Analyse (Bau-Relevanz) macht der Agent. Dieses Modul liefert nur die
+bereits gefilterten Artikel-Texte. So bleibt es einzeln testbar.
+
+Standalone-Selbsttest:
+    python agent/regionalmedien.py
+  -> erntet beispielhaft den Bezirk Kirchdorf und prueft, ob die beiden
+     bekannten Bauprojekte (Billa-Areal, Micheldorf-Hotel) gefunden werden.
+"""
+from __future__ import annotations
+
+import re
+import time
+from datetime import datetime, timezone, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
+from bs4 import BeautifulSoup
+
+# -----------------------------------------------------------------------------
+# Konfiguration
+# -----------------------------------------------------------------------------
+BASIS = "https://www.meinbezirk.at"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept-Language": "de-AT,de;q=0.9,en;q=0.6",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+TIMEOUT = 20
+
+# Bundesland-Kuerzel -> meinbezirk-Slug der Bundesland-Startseite
+BL_SLUG = {
+    "W":   "wien",
+    "NOE": "niederoesterreich",
+    "OOE": "oberoesterreich",
+    "SBG": "salzburg",
+    "STK": "steiermark",
+    "KTN": "kaernten",
+    "TIR": "tirol",
+    "VBG": "vorarlberg",
+    "BGR": "burgenland",
+}
+
+# Rubriken, die fuer Bauprojekte relevant sind. "" = die "Alle"-Bezirksseite.
+# Bauprojekte verteilen sich bei meinbezirk ueber mehrere Rubriken (Lokales,
+# Wirtschaft, Politik, Bauen) – deshalb werden ALLE gelesen, nicht nur "Bauen".
+RUBRIKEN = ["", "c-lokales", "c-wirtschaft", "c-politik", "c-bauen", "c-motor"]
+
+# Einzelne Segmente, die KEINE Bezirke sind (zum Aussortieren bei der Entdeckung)
+STOP_SEGMENTE = {
+    "login", "search", "newsletter", "epaper", "event", "tag", "s", "cad",
+    "build", "list", "profile", "c-freizeit", "c-lokales", "c-politik",
+    "c-sport", "c-wirtschaft", "c-leute", "c-bauen", "c-motor", "c-reisen",
+    "c-gesundheit", "c-regionauten-community", "jobs", "impressum", "agb",
+    "datenschutz", "kontakt", "ueber-uns", "oesterreich",
+}
+
+# Artikel-URL: ... /c-<rubrik>/<slug>_a<Ziffern>
+RE_ARTIKEL = re.compile(r'(?:' + re.escape(BASIS) + r')?(/[^"\'\s]+?/c-[^"\'/]+/[^"\'/]+_a\d+)')
+# Gemeinde-Adresse: /<Name>-<XX>  (XX = 2 Grossbuchstaben = Kfz-Bezirkskennzeichen)
+RE_GEMEINDE = re.compile(r'href="(/[A-Za-zÄÖÜäöüß][^"/]*-[A-Z]{2})"')
+# Bezirks-Kandidat: einzelnes Kleinbuchstaben-Segment
+RE_BEZIRK_KAND = re.compile(r'href="(/[a-z][a-z0-9-]{2,40})"')
+
+
+# -----------------------------------------------------------------------------
+# Low-Level
+# -----------------------------------------------------------------------------
+def _session() -> requests.Session:
+    s = requests.Session()
+    s.headers.update(HEADERS)
+    return s
+
+
+def _get(url: str, s: requests.Session, versuche: int = 2) -> str | None:
+    for i in range(versuche):
+        try:
+            r = s.get(url, timeout=TIMEOUT)
+            if r.status_code == 200 and r.text:
+                return r.text
+            if r.status_code in (429, 503):
+                time.sleep(2 + i * 2)
+        except Exception:
+            time.sleep(1 + i)
+    return None
+
+
+def _meta(soup: BeautifulSoup, key: str) -> str:
+    m = soup.find("meta", attrs={"property": key}) or soup.find("meta", attrs={"name": key})
+    c = m.get("content") if m else None
+    return c.strip() if c else ""
+
+
+def _voll_url(pfad: str) -> str:
+    return pfad if pfad.startswith("http") else BASIS + pfad
+
+
+def _docid(pfad: str) -> str:
+    m = re.search(r"_a(\d+)", pfad)
+    return m.group(1) if m else pfad
+
+
+# -----------------------------------------------------------------------------
+# Entdeckung der Struktur (selbst-konfigurierend)
+# -----------------------------------------------------------------------------
+def _ist_bezirksseite(html: str, slug: str) -> bool:
+    """Heuristik: ist die abgerufene Seite wirklich eine Bezirks-Startseite?"""
+    if not html:
+        return False
+    soup = BeautifulSoup(html, "html.parser")
+    titel = _meta(soup, "og:title")
+    typ = _meta(soup, "og:type")
+    url = _meta(soup, "og:url")
+    return (typ == "website"
+            and titel.startswith("Aktuelle Nachrichten aus")
+            and url.rstrip("/").endswith("/" + slug))
+
+
+def entdecke_bezirke(bl_kuerzel: str, s: requests.Session, log=print) -> list[str]:
+    """Liest die Bundesland-Seite und entdeckt + validiert die Bezirks-Slugs."""
+    bl_slug = BL_SLUG.get(bl_kuerzel)
+    if not bl_slug:
+        log(f"     [meinbezirk] Unbekanntes Bundesland-Kuerzel: {bl_kuerzel}")
+        return []
+    html = _get(f"{BASIS}/{bl_slug}", s)
+    if not html:
+        log(f"     [meinbezirk] Bundesland-Seite /{bl_slug} nicht erreichbar")
+        return []
+
+    kandidaten = []
+    gesehen = set()
+    for m in RE_BEZIRK_KAND.finditer(html):
+        seg = m.group(1).lstrip("/")
+        if seg in STOP_SEGMENTE or seg in gesehen or "-ki" in seg.lower():
+            continue
+        if seg.startswith("c-") or "/" in seg:
+            continue
+        gesehen.add(seg)
+        kandidaten.append(seg)
+
+    # Kandidaten parallel validieren (echte Bezirksseite?)
+    bezirke = []
+    def pruefe(seg):
+        h = _get(f"{BASIS}/{seg}", s)
+        return seg if _ist_bezirksseite(h, seg) else None
+
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        for fut in as_completed([ex.submit(pruefe, k) for k in kandidaten]):
+            r = fut.result()
+            if r:
+                bezirke.append(r)
+
+    bezirke = sorted(set(bezirke))
+    log(f"     [meinbezirk] {bl_kuerzel}: {len(bezirke)} Bezirke entdeckt")
+    return bezirke
+
+
+def entdecke_gemeinden(bezirk_slug: str, html: str | None = None,
+                       s: requests.Session | None = None) -> list[str]:
+    """Entdeckt die Gemeinde-Adressen (/<Name>-XX) aus der Bezirks-Seite."""
+    if html is None and s is not None:
+        html = _get(f"{BASIS}/{bezirk_slug}", s)
+    if not html:
+        return []
+    gem = []
+    gesehen = set()
+    for m in RE_GEMEINDE.finditer(html):
+        p = m.group(1)
+        if p not in gesehen:
+            gesehen.add(p)
+            gem.append(p)
+    return gem
+
+
+# -----------------------------------------------------------------------------
+# Artikel sammeln + laden
+# -----------------------------------------------------------------------------
+def sammle_artikel_links(seiten_url: str, s: requests.Session) -> list[str]:
+    """Alle Artikel-Pfade aus einer Listen-/Bezirks-/Gemeinde-Seite."""
+    html = _get(seiten_url, s)
+    if not html:
+        return []
+    out, gesehen = [], set()
+    for m in RE_ARTIKEL.finditer(html):
+        p = m.group(1).split("?")[0].split("#")[0]
+        if p not in gesehen:
+            gesehen.add(p)
+            out.append(p)
+    return out
+
+
+def _text_aus_artikel(soup: BeautifulSoup) -> str:
+    for tag in soup(["script", "style", "noscript", "nav", "header", "footer", "form"]):
+        tag.decompose()
+    # Bevorzugt <article>, sonst Hauptinhalt
+    haupt = soup.find("article") or soup.find("main") or soup.body or soup
+    txt = haupt.get_text(" ", strip=True)
+    txt = re.sub(r"\s+", " ", txt)
+    return txt[:6000]
+
+
+def lade_artikel(pfad: str, s: requests.Session) -> dict | None:
+    """Laedt einen Artikel und liest Metadaten + Volltext aus."""
+    html = _get(_voll_url(pfad), s)
+    if not html:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    datum_roh = _meta(soup, "article:published_time")
+    datum_dt = None
+    if datum_roh:
+        try:
+            datum_dt = datetime.fromisoformat(datum_roh.replace("Z", "+00:00"))
+            if datum_dt.tzinfo is None:
+                datum_dt = datum_dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            datum_dt = None
+    return {
+        "url":       _voll_url(pfad),
+        "docid":     _docid(pfad),
+        "titel":     _meta(soup, "og:title"),
+        "datum":     datum_roh,
+        "datum_dt":  datum_dt,
+        "state":     _meta(soup, "pp:state"),       # z.B. "ooe"
+        "region":    _meta(soup, "pp:region"),      # z.B. "kirchdorf_krems"
+        "kategorie": _meta(soup, "pp:category"),    # z.B. "lokales"
+        "beschreibung": _meta(soup, "og:description"),
+        "text":      _text_aus_artikel(soup),
+    }
+
+
+# Bundesland-Kuerzel -> meinbezirk pp:state-Wert
+_STATE_ZU_BL = {
+    "w": "W", "wien": "W",
+    "noe": "NOE", "niederoesterreich": "NOE",
+    "ooe": "OOE", "oberoesterreich": "OOE",
+    "sbg": "SBG", "szg": "SBG", "salzburg": "SBG",
+    "stmk": "STK", "stk": "STK", "steiermark": "STK",
+    "ktn": "KTN", "kaernten": "KTN",
+    "t": "TIR", "tir": "TIR", "tirol": "TIR",
+    "vbg": "VBG", "vorarlberg": "VBG",
+    "bgld": "BGR", "bgr": "BGR", "burgenland": "BGR",
+}
+
+
+def _bl_aus_state(state: str) -> str:
+    return _STATE_ZU_BL.get((state or "").strip().lower(), "")
+
+
+def _im_fenster(datum_dt, cutoff_dt, heute_dt) -> bool:
+    if datum_dt is None:
+        return True   # ohne Datum lieber behalten (Agent entscheidet)
+    return cutoff_dt <= datum_dt <= (heute_dt + timedelta(days=2))
+
+
+# -----------------------------------------------------------------------------
+# Oeffentliche Hauptfunktion
+# -----------------------------------------------------------------------------
+def ernte_meinbezirk(bundeslaender: list[str],
+                     cutoff_dt: datetime,
+                     heute_dt: datetime,
+                     bezirke_filter: list[str] | None = None,
+                     gemeinden_filter: list[str] | None = None,
+                     zeit_ok=lambda: True,
+                     max_artikel: int = 1200,
+                     max_workers: int = 16,
+                     log=print) -> list[dict]:
+    """
+    Erntet meinbezirk fuer die gewaehlten Bundeslaender.
+
+    bezirke_filter / gemeinden_filter: optionale Namensfilter (Teilstring,
+    klein geschrieben). Sind sie gesetzt, werden nur passende Bezirke/Gemeinden
+    geerntet (zielgenau, wenn der Kunde eingrenzt). Sonst das ganze Bundesland.
+    """
+    s = _session()
+    bezirke_filter = [b.lower() for b in (bezirke_filter or [])]
+    gemeinden_filter = [g.lower() for g in (gemeinden_filter or [])]
+
+    # 1) Bezirke je Bundesland entdecken + Listen-/Gemeinde-Seiten zusammenstellen
+    listen_urls: list[str] = []
+    for bl in bundeslaender:
+        if not zeit_ok():
+            break
+        bezirke = entdecke_bezirke(bl, s, log)
+        if bezirke_filter:
+            bezirke = [b for b in bezirke if any(f in b for f in bezirke_filter)]
+        for bez in bezirke:
+            if not zeit_ok():
+                break
+            bez_html = _get(f"{BASIS}/{bez}", s)
+            # Rubrik-Erstabrufe des Bezirks
+            for ru in RUBRIKEN:
+                listen_urls.append(f"{BASIS}/{bez}" + (f"/{ru}" if ru else ""))
+            # Gemeinde-Seiten des Bezirks (feingranular -> erreicht auch Aelteres)
+            gemeinden = entdecke_gemeinden(bez, html=bez_html)
+            if gemeinden_filter:
+                gemeinden = [g for g in gemeinden
+                             if any(f in g.lower() for f in gemeinden_filter)]
+            listen_urls.extend(_voll_url(g) for g in gemeinden)
+            log(f"     [meinbezirk] {bez}: {len(gemeinden)} Gemeinde-Seiten + {len(RUBRIKEN)} Rubriken")
+
+    # 2) Artikel-Links aus allen Listen-/Gemeinde-Seiten parallel sammeln
+    artikel_pfade: set[str] = set()
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(sammle_artikel_links, u, s): u for u in listen_urls}
+        for fut in as_completed(futs):
+            if not zeit_ok():
+                break
+            try:
+                for p in fut.result():
+                    artikel_pfade.add(p)
+            except Exception:
+                pass
+    log(f"     [meinbezirk] {len(artikel_pfade)} eindeutige Artikel-Links gesammelt "
+        f"(aus {len(listen_urls)} Listen-/Gemeinde-Seiten)")
+
+    # 3) Artikel laden + filtern (Zeitfenster + Bundesland)
+    erlaubte_bl = set(bundeslaender)
+    treffer: list[dict] = []
+    geprueft = 0
+    pfade = list(artikel_pfade)[:max_artikel]
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(lade_artikel, p, s): p for p in pfade}
+        for fut in as_completed(futs):
+            if not zeit_ok():
+                log("     [meinbezirk] Zeitbudget erreicht – Artikel-Laden gestoppt.")
+                break
+            geprueft += 1
+            try:
+                art = fut.result()
+            except Exception:
+                art = None
+            if not art:
+                continue
+            # Bundesland-Filter (wenn pp:state vorhanden)
+            bl_art = _bl_aus_state(art["state"])
+            if bl_art and erlaubte_bl and bl_art not in erlaubte_bl:
+                continue
+            # Zeitfenster
+            if not _im_fenster(art["datum_dt"], cutoff_dt, heute_dt):
+                continue
+            treffer.append(art)
+
+    log(f"     [meinbezirk] {geprueft} Artikel geladen -> {len(treffer)} im Zeitfenster/Bundesland")
+    return treffer
+
+
+# -----------------------------------------------------------------------------
+# Standalone-Selbsttest (read-only)
+# -----------------------------------------------------------------------------
+if __name__ == "__main__":
+    print("ProjectScout – Regionalmedien-Ernte: SELBSTTEST (read-only)")
+    print("Zeitpunkt:", datetime.now().isoformat(), "\n")
+
+    heute = datetime.now(timezone.utc)
+    cutoff = heute - timedelta(days=120)
+
+    artikel = ernte_meinbezirk(
+        bundeslaender=["OOE"],
+        cutoff_dt=cutoff,
+        heute_dt=heute,
+        bezirke_filter=["kirchdorf"],   # nur Bezirk Kirchdorf zum Test
+        max_artikel=400,
+        max_workers=12,
+        log=print,
+    )
+
+    print(f"\nGEERNTET: {len(artikel)} Artikel im Bezirk Kirchdorf (letzte 120 Tage)\n")
+    # Stichprobe
+    for a in sorted(artikel, key=lambda x: x.get("datum") or "", reverse=True)[:12]:
+        print(f"  {a['datum'] or '?':25s} [{a['kategorie']:10s}] {a['titel'][:60]}")
+
+    # Werden die zwei bekannten Bauprojekte gefunden?
+    ziele = {"8597473": "Billa-Areal", "8526871": "Micheldorf-Hotel"}
+    gefunden = {d: any(a["docid"] == d for a in artikel) for d in ziele}
+    print("\nZielartikel-Check:")
+    for d, label in ziele.items():
+        print(f"  {label:18s} (docid {d}): {'GEFUNDEN ✓' if gefunden[d] else 'NICHT gefunden ✗'}")
+
+    print("\n=== ENDE Selbsttest ===")
