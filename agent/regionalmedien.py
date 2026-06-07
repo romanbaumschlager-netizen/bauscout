@@ -180,6 +180,46 @@ def entdecke_bezirke(bl_kuerzel: str, s: requests.Session, log=print) -> list[st
     return bezirke
 
 
+def _slug_kandidaten(bezirk_name: str) -> list[str]:
+    """Leitet aus einem Bezirksnamen moegliche meinbezirk-Slugs ab.
+    'Kirchdorf an der Krems' -> {'kirchdorf','kirchdorf-an-der-krems','kirchdorf-krems'};
+    'Linz-Land' -> {'linz','linz-land'}. Welcher real existiert, entscheidet
+    die Live-Validierung."""
+    toks = _norm_txt(bezirk_name).split()
+    if not toks:
+        return []
+    kand = {toks[0], "-".join(toks)}
+    kerne = [t for t in toks if len(t) >= 4 and t != "sankt"]
+    if kerne:
+        kand.add(kerne[0])
+        kand.add("-".join(kerne))
+    return [k for k in kand if k]
+
+
+def _seed_bezirk_slugs(namen: list[str], s: requests.Session, log=print) -> list[str]:
+    """Steuert die gewaehlten Bezirke DIREKT als Slug an (statt sich auf die
+    Verlinkung der BL-Startseite zu verlassen) und behaelt nur die, die als
+    echte Bezirksseite validieren. Behebt fehlende Bezirke (z.B. Kirchdorf)."""
+    kandidaten = set()
+    for name in namen:
+        kandidaten.update(_slug_kandidaten(name))
+    if not kandidaten:
+        return []
+
+    def pruefe(slug):
+        return slug if _ist_bezirksseite(_get(f"{BASIS}/{slug}", s), slug) else None
+
+    gueltig = []
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        for fut in as_completed([ex.submit(pruefe, k) for k in kandidaten]):
+            r = fut.result()
+            if r:
+                gueltig.append(r)
+    if gueltig:
+        log(f"     [meinbezirk] {len(set(gueltig))} Bezirke per Direkt-Slug validiert: {sorted(set(gueltig))}")
+    return gueltig
+
+
 def entdecke_gemeinden(bezirk_slug: str, html: str | None = None,
                        s: requests.Session | None = None) -> list[str]:
     """Entdeckt die Gemeinde-Adressen (/<Name>-XX) aus der Bezirks-Seite.
@@ -355,7 +395,7 @@ def ernte_meinbezirk(bundeslaender: list[str],
                      bezirke_filter: list[str] | None = None,
                      gemeinden_filter: list[str] | None = None,
                      zeit_ok=lambda: True,
-                     max_artikel: int = 1200,
+                     max_artikel: int = 4000,
                      max_workers: int = 16,
                      log=print) -> list[dict]:
     """
@@ -376,7 +416,11 @@ def ernte_meinbezirk(bundeslaender: list[str],
             break
         bezirke = entdecke_bezirke(bl, s, log)
         if bezirke_filter:
+            # (1) auf der BL-Startseite gefundene Bezirke, die zum Kundenfilter passen
             bezirke = [b for b in bezirke if _bezirk_passt(b, bezirke_filter)]
+            # (2) zusaetzlich JEDEN gewaehlten Bezirk direkt ansteuern + validieren –
+            #     unabhaengig davon, ob die Startseite ihn gerade verlinkt.
+            bezirke = sorted(set(bezirke) | set(_seed_bezirk_slugs(bezirke_filter, s, log)))
         for bez in bezirke:
             if not zeit_ok():
                 break
@@ -406,32 +450,57 @@ def ernte_meinbezirk(bundeslaender: list[str],
     log(f"     [meinbezirk] {len(artikel_pfade)} eindeutige Artikel-Links gesammelt "
         f"(aus {len(listen_urls)} Listen-/Gemeinde-Seiten)")
 
-    # 3) Artikel laden + filtern (Zeitfenster + Bundesland)
+    # 3) Artikel laden + filtern (Zeitfenster + Bundesland), NEUESTE ZUERST.
+    # Die Artikel-ID _a<n> steigt global monoton mit der Zeit. Wir laden in
+    # Bloecken von den neuesten abwaerts und HOEREN AUF, sobald ein ganzer Block
+    # vollstaendig vor dem cutoff liegt -> alle Artikel im Zeitfenster werden
+    # erfasst (unabhaengig vom Gesamtvolumen), ohne dass ein starres Limit die
+    # aelteren, aber noch gueltigen Beitraege abschneidet. max_artikel bleibt
+    # nur als harte Sicherheits-Obergrenze.
     erlaubte_bl = set(bundeslaender)
     treffer: list[dict] = []
     geprueft = 0
-    pfade = list(artikel_pfade)[:max_artikel]
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futs = {ex.submit(lade_artikel, p, s): p for p in pfade}
-        for fut in as_completed(futs):
-            if not zeit_ok():
-                log("     [meinbezirk] Zeitbudget erreicht – Artikel-Laden gestoppt.")
-                break
-            geprueft += 1
-            try:
-                art = fut.result()
-            except Exception:
-                art = None
-            if not art:
-                continue
-            # Bundesland-Filter (wenn pp:state vorhanden)
-            bl_art = _bl_aus_state(art["state"])
-            if bl_art and erlaubte_bl and bl_art not in erlaubte_bl:
-                continue
-            # Zeitfenster
-            if not _im_fenster(art["datum_dt"], cutoff_dt, heute_dt):
-                continue
-            treffer.append(art)
+
+    def _aid(p):
+        m = re.search(r"_a(\d+)", p)
+        return int(m.group(1)) if m else 0
+
+    pfade = sorted(artikel_pfade, key=_aid, reverse=True)
+    obergrenze = min(len(pfade), max_artikel)
+    BLOCK = 200
+    i = 0
+    stop = False
+    while i < obergrenze and not stop:
+        if not zeit_ok():
+            log("     [meinbezirk] Zeitbudget erreicht \u2013 Artikel-Laden gestoppt.")
+            break
+        block = pfade[i:i + BLOCK]
+        i += BLOCK
+        aelteste = None
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futs = {ex.submit(lade_artikel, p, s): p for p in block}
+            for fut in as_completed(futs):
+                if not zeit_ok():
+                    stop = True
+                    break
+                geprueft += 1
+                try:
+                    art = fut.result()
+                except Exception:
+                    art = None
+                if not art:
+                    continue
+                bl_art = _bl_aus_state(art["state"])
+                if bl_art and erlaubte_bl and bl_art not in erlaubte_bl:
+                    continue
+                d = art["datum_dt"]
+                if d is not None and (aelteste is None or d < aelteste):
+                    aelteste = d
+                if _im_fenster(art["datum_dt"], cutoff_dt, heute_dt):
+                    treffer.append(art)
+        # Ganzer Block aelter als cutoff -> alle weiteren (kleinere ID) sind aelter
+        if aelteste is not None and aelteste < cutoff_dt:
+            stop = True
 
     log(f"     [meinbezirk] {geprueft} Artikel geladen -> {len(treffer)} im Zeitfenster/Bundesland")
     return treffer
@@ -451,8 +520,8 @@ if __name__ == "__main__":
         bundeslaender=["OOE"],
         cutoff_dt=cutoff,
         heute_dt=heute,
-        bezirke_filter=["kirchdorf"],   # nur Bezirk Kirchdorf zum Test
-        max_artikel=400,
+        bezirke_filter=["Kirchdorf an der Krems"],  # echter Bezirksname -> testet auch Slug-Ableitung
+        max_artikel=800,
         max_workers=12,
         log=print,
     )
@@ -470,3 +539,5 @@ if __name__ == "__main__":
         print(f"  {label:18s} (docid {d}): {'GEFUNDEN ✓' if gefunden[d] else 'NICHT gefunden ✗'}")
 
     print("\n=== ENDE Selbsttest ===")
+    import sys
+    sys.exit(0 if all(gefunden.values()) else 1)
