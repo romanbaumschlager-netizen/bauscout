@@ -1435,61 +1435,55 @@ async function bezahlen() {
   const firma    = document.getElementById('firma').value.trim();
   const email    = document.getElementById('email').value.trim();
   const homepage = document.getElementById('homepage').value.trim();
-  if (!vorname || !nachname || !email) { alert('Bitte zurückgehen und alle Pflichtfelder ausfüllen.'); return; }
+  if (!vorname || !nachname || !email) { alert('Bitte zur\u00fcckgehen und alle Pflichtfelder ausf\u00fcllen.'); return; }
   const widerrufOk = document.getElementById('widerruf-check');
   if (!widerrufOk || !widerrufOk.checked) {
-    alert('Bitte bestätigen Sie die Zustimmung zum sofortigen Start (Kästchen oberhalb des Buttons), um fortzufahren.');
+    alert('Bitte best\u00e4tigen Sie die Zustimmung zum sofortigen Start (K\u00e4stchen oberhalb des Buttons), um fortzufahren.');
     return;
   }
   const btn = document.getElementById('bezahl-btn');
-  btn.disabled = true; btn.textContent = '⏳ Wird gespeichert...';
-  zeigeStatus('Daten werden gespeichert...', 'laden');
+  btn.disabled = true; btn.textContent = '\u23f3 Wird vorbereitet...';
+  zeigeStatus('Bestellung wird vorbereitet...', 'laden');
   try {
-    const db = await getSupabase();
-    let kundenId;
-    const { data: vorhandener } = await db.from('kunden').select('id').eq('email', email).maybeSingle();
-    if (vorhandener) {
-      kundenId = vorhandener.id;
-      await db.from('kunden').update({ vorname, nachname, firmenname: firma || null, homepage: homepage || null }).eq('id', kundenId);
-    } else {
-      const { data: neuer, error: kFehler } = await db.from('kunden').insert({ email, vorname, nachname, firmenname: firma || null, homepage: homepage || null }).select('id').single();
-      if (kFehler) throw new Error('Kunde: ' + kFehler.message);
-      kundenId = neuer.id;
-    }
-    const heute = new Date();
-    const von = new Date(heute);
-    von.setDate(heute.getDate() - gewaehlterZeitraum);
-    const bundeslaenderKuerzel = { "Burgenland":"BGR","Kärnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W" };
-    const bundeslaenderListe = ganzOe ? ['W','NOE','OOE','SBG','STK','KTN','TIR','VBG','BGR'] : [...ausgewaehlteBL].map(bl => bundeslaenderKuerzel[bl] || bl);
-    const { data: suchanfrage, error: sFehler } = await db.from('suchanfragen').insert({
-      kunden_id: kundenId, gewerke: [...ausgewaehlteGewerke], bundeslaender: bundeslaenderListe,
-      bezirke: [...ausgewaehlteBez].map(k => k.split('||')[1]), gemeinden: [...ausgewaehlteGem].map(k => k.split('||')[2]),
-      ganz_oesterreich: ganzOe, chat_verfeinerung: chatVerfeinerung || null, zeitraum_tage: gewaehlterZeitraum,
-      zeitraum_von: von.toISOString().split('T')[0], zeitraum_bis: heute.toISOString().split('T')[0],
-      kosten_geschaetzt: berechnePreis(), status: 'wartet_auf_zahlung'
-    }).select('id').single();
-    if (sFehler) throw new Error('Suchanfrage: ' + sFehler.message);
-    sessionStorage.setItem('bs_kunden_id', kundenId);
-    sessionStorage.setItem('bs_suchanfrage_id', suchanfrage.id);
-    sessionStorage.setItem('bs_email', email);
-    const preis = berechnePreis();
-    sessionStorage.setItem('bs_kundenpreis', preis.toString());
-    zeigeStatus('✅ Gespeichert! Weiterleitung zu Stripe...', 'erfolg');
-    btn.textContent = '⏳ Weiterleitung...';
-    await new Promise(r => setTimeout(r, 800));
-    const preisInCent = Math.round(preis * 100);
+    // Kundenanlage, Suchanfrage UND Preisberechnung laufen jetzt serverseitig
+    // in der create-checkout Edge Function. Der Browser schickt nur die Auswahl,
+    // KEINEN Preis (Manipulation ausgeschlossen).
+    const blKuerzel = { "Burgenland":"BGR","K\u00e4rnten":"KTN","Niederösterreich":"NOE","Oberösterreich":"OOE","Salzburg":"SBG","Steiermark":"STK","Tirol":"TIR","Vorarlberg":"VBG","Wien":"W" };
+    const bundeslaenderListe = ganzOe ? ['W','NOE','OOE','SBG','STK','KTN','TIR','VBG','BGR'] : [...ausgewaehlteBL].map(bl => blKuerzel[bl] || bl);
+    const bezirkeListe   = [...ausgewaehlteBez].map(k => k.split('||')[1]);
+    const gemeindenListe = [...ausgewaehlteGem].map(k => k.split('||')[2]);
     const checkoutRes = await fetch(CREATE_CHECKOUT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ suchanfrage_id: suchanfrage.id, kunden_id: kundenId, email: email, preis_cent: preisInCent })
+      body: JSON.stringify({
+        email, vorname, nachname,
+        firmenname: firma || null,
+        homepage: homepage || null,
+        gewerke: [...ausgewaehlteGewerke],
+        bundeslaender: bundeslaenderListe,
+        bezirke: bezirkeListe,
+        gemeinden: gemeindenListe,
+        ganz_oesterreich: ganzOe,
+        zeitraum_tage: gewaehlterZeitraum,
+        chat_verfeinerung: chatVerfeinerung || null
+      })
     });
-    if (!checkoutRes.ok) throw new Error('Checkout konnte nicht erstellt werden.');
-    const { url } = await checkoutRes.json();
+    if (!checkoutRes.ok) {
+      let msg = 'Checkout konnte nicht erstellt werden.';
+      try { const e = await checkoutRes.json(); if (e && e.fehler) msg = e.fehler; } catch(_) {}
+      throw new Error(msg);
+    }
+    const { url, kunden_id, suchanfrage_id } = await checkoutRes.json();
+    if (kunden_id) sessionStorage.setItem('bs_kunden_id', kunden_id);
+    if (suchanfrage_id) sessionStorage.setItem('bs_suchanfrage_id', suchanfrage_id);
+    sessionStorage.setItem('bs_email', email);
+    zeigeStatus('\u2705 Weiterleitung zu Stripe...', 'erfolg');
+    btn.textContent = '\u23f3 Weiterleitung...';
     window.location.href = url;
   } catch(fehler) {
     console.error('Fehler:', fehler.message);
-    zeigeStatus('❌ Fehler: ' + fehler.message, 'fehler');
-    btn.disabled = false; btn.textContent = '💳 Jetzt bezahlen & starten';
+    zeigeStatus('\u274c Fehler: ' + fehler.message, 'fehler');
+    btn.disabled = false; btn.textContent = '\ud83d\udcb3 Jetzt bezahlen & starten';
   }
 }
 
