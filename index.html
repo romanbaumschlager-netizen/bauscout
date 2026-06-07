@@ -848,7 +848,7 @@
         <input type="email" id="email" placeholder="ihre@email.at" autocomplete="email">
         <label>E-Mail-Adresse bestätigen *</label>
         <input type="email" id="email2" placeholder="E-Mail-Adresse nochmals eingeben"
-          autocomplete="off" onpaste="return false;" ondrop="return false;" oncontextmenu="return false;">
+          autocomplete="off">
         <div class="hinweis" style="margin-top:8px;">
           📬 <strong>Wichtig:</strong> An diese E-Mail-Adresse erhalten Sie den Link zu Ihrem persönlichen Dashboard. Bitte geben Sie die Adresse zweimal manuell ein – kein Kopieren möglich.
         </div>
@@ -1519,7 +1519,7 @@ function weiter(nr) {
     if (!email.includes('@')) { alert('Bitte gültige E-Mail-Adresse eingeben.'); return; }
     if (!email2)   { alert('Bitte E-Mail-Adresse im Bestätigungsfeld eingeben.'); return; }
     if (email.toLowerCase() !== email2.toLowerCase()) {
-      alert('Die E-Mail-Adressen stimmen nicht überein. Bitte beide Felder manuell ausfüllen.');
+      alert('Die E-Mail-Adressen stimmen nicht überein. Bitte überprüfen Sie beide Felder.');
       return;
     }
   }
