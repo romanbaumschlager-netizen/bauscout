@@ -452,6 +452,14 @@ GEWERK_KEYWORDS = {
     "Tankstellen / Waschanlagen":           ["Tankstelle", "Waschanlage", "Tankstellenbau", "Autopflegeanlage"],
     "Kälteanlagen / Kühlhäuser":            ["Kälteanlage", "Kühlhaus", "Tiefkühlanlage", "Kältetechnik"],
     "Fördertechnik / Förderanlagen":        ["Fördertechnik", "Förderanlage", "Förderband", "Materialfluss"],
+    "Transportbeton / Lieferbeton":         ["Transportbeton", "Lieferbeton", "Betonlieferung", "Fertigbeton", "Betonwerk"],
+    "Baustoffhandel / Baustofflieferanten": ["Baustoffhandel", "Baustoffe", "Baustofflieferant", "Baustoffhandlung", "Baumarkt"],
+    "Sporthallen / Bäder":                  ["Sporthalle", "Hallenbad", "Freibad", "Schwimmbad", "Sportzentrum", "Turnhalle"],
+    "Kommunalfahrzeuge":                    ["Kommunalfahrzeug", "Kehrmaschine", "Winterdienst", "Streufahrzeug", "Kommunalmaschine"],
+    "Spielplätze":                          ["Spielplatz", "Spielgeräte", "Kinderspielplatz", "Spielplatzgestaltung"],
+    "Gebäudereinigung / Baureinigung":      ["Gebäudereinigung", "Baureinigung", "Bauendreinigung", "Unterhaltsreinigung"],
+    "Facility Management / Hausverwaltung": ["Facility Management", "Hausverwaltung", "Gebäudemanagement", "Liegenschaftsverwaltung"],
+    "Sicherheitstechnik / Videoüberwachung / Zutritt": ["Sicherheitstechnik", "Videoüberwachung", "Zutrittskontrolle", "Alarmanlage"],
 }
 
 BASIS_KEYWORDS = ["Ausschreibung", "Vergabe", "Baubewilligung", "Projekt", "Vorhaben", "Planung", "Beschluss"]
