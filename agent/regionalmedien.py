@@ -248,18 +248,72 @@ def entdecke_gemeinden(bezirk_slug: str, html: str | None = None,
 # -----------------------------------------------------------------------------
 # Artikel sammeln + laden
 # -----------------------------------------------------------------------------
-def sammle_artikel_links(seiten_url: str, s: requests.Session) -> list[str]:
-    """Alle Artikel-Pfade aus einer Listen-/Bezirks-/Gemeinde-Seite."""
-    html = _get(seiten_url, s)
-    if not html:
-        return []
-    out, gesehen = [], set()
-    for m in RE_ARTIKEL.finditer(html):
-        p = m.group(1).split("?")[0].split("#")[0]
-        if p not in gesehen:
-            gesehen.add(p)
-            out.append(p)
-    return out
+# Artikel-Pfad (ohne Query/Fragment) fuer den Abgleich aus <a href="...">
+RE_ART_PFAD = re.compile(r'^(/[^?#"\s]+/c-[^/?#"]+/[^/?#"]+_a\d+)')
+
+# Bau-/Infrastruktur-/Energie-/Immobilien-Stichwoerter (Kleinschreibung, Teilstring).
+# Vorfilter schon beim Einsammeln: Beitraege mit eindeutig bau-fremdem Titel
+# (Sport, Todesanzeigen, Veranstaltungen) werden gar nicht erst geladen -> bei
+# vielen Bezirken massiv weniger HTTP-Last/Kosten. Bewusst breit; Artikel OHNE
+# erkennbaren Titel werden sicherheitshalber NICHT verworfen.
+_REGIO_BAU_KEYWORDS = (
+    "bau", "sanier", "errich", "neubau", "umbau", "zubau", "anbau", "ausbau",
+    "bebau", "projekt", "investit", "gemeinderat", "stadtrat", "beschluss",
+    "beschloss", "widmung", "bebauungsplan", "spatenstich", "eroeffn",
+    "er\u00f6ffn", "entsteh", "erweiter", "modernisier", "revitalisier",
+    "areal", "quartier", "siedlung", "wohnanlage", "wohnbau", "grundst\u00fcck",
+    "grundstueck", "immobil", "bautr\u00e4ger", "bautraeger", "planung",
+    "vergabe", "ausschreibung", "abriss", "abbruch", "neugestaltung",
+    "ansiedl", "nahversorg", "gewerbegebiet", "betriebsgebiet", "betriebsbau",
+    "stra\u00dfe", "strasse", "kanal", "wasserleitung", "leitung", "br\u00fccke",
+    "bruecke", "radweg", "gehsteig", "kreisverkehr", "tunnel", "bahnhof",
+    "photovolta", "pv-anlage", "windkraft", "windpark", "w\u00e4rmepump",
+    "waermepump", "nahw\u00e4rme", "nahwaerme", "fernw\u00e4rme", "fernwaerme",
+    "heizwerk", "kraftwerk", "umspannwerk", "stromnetz", "trafostation",
+    "hotel", "halle", "zentrum", "schule", "kindergarten", "feuerwehr",
+    "bauhof", "amtsgeb\u00e4ude", "amtsgebaeude", "rathaus", "klinik",
+    "pflegeheim", "supermarkt", "billa", "expandier", "standort",
+)
+
+
+def _titel_baurelevant(titel: str) -> bool:
+    t = (titel or "").lower()
+    return any(kw in t for kw in _REGIO_BAU_KEYWORDS)
+
+
+def sammle_artikel_links(seiten_url: str, s: requests.Session,
+                         max_seiten: int = 10) -> list:
+    """Sammelt (Pfad, Titel) aus einer Listen-/Bezirks-/Gemeinde-Seite ueber
+    mehrere Seiten. meinbezirk blaettert Listen ueber /2, /3, ... -> wir folgen
+    den Folgeseiten, bis eine Seite keine NEUEN Artikel mehr liefert (Listenende)
+    oder max_seiten erreicht ist. So werden auch aeltere Beitraege erfasst, die
+    auf Seite 1 schon weggescrollt sind."""
+    out: dict = {}
+    basis = seiten_url.rstrip("/")
+    for seite in range(1, max_seiten + 1):
+        url = basis if seite == 1 else f"{basis}/{seite}"
+        html = _get(url, s)
+        if not html:
+            break
+        soup = BeautifulSoup(html, "html.parser")
+        neu = 0
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if href.startswith(BASIS):
+                href = href[len(BASIS):]
+            m = RE_ART_PFAD.match(href)
+            if not m:
+                continue
+            pfad = m.group(1)
+            titel = a.get_text(" ", strip=True)
+            if pfad not in out:
+                out[pfad] = titel
+                neu += 1
+            elif titel and len(titel) > len(out[pfad]):
+                out[pfad] = titel
+        if neu == 0:
+            break
+    return list(out.items())
 
 
 def _text_aus_artikel(soup: BeautifulSoup) -> str:
@@ -435,19 +489,29 @@ def ernte_meinbezirk(bundeslaender: list[str],
             listen_urls.extend(_voll_url(g) for g in gemeinden)
             log(f"     [meinbezirk] {bez}: {len(gemeinden)} Gemeinde-Seiten + {len(RUBRIKEN)} Rubriken")
 
-    # 2) Artikel-Links aus allen Listen-/Gemeinde-Seiten parallel sammeln
-    artikel_pfade: set[str] = set()
+    # 2) Artikel-Links (+ Titel) aus allen Listen-/Gemeinde-Seiten parallel sammeln.
+    #    sammle_artikel_links folgt den Folgeseiten /2, /3, ... -> auch aeltere
+    #    Beitraege werden erfasst (nicht nur die erste Seite).
+    artikel_titel: dict = {}
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futs = {ex.submit(sammle_artikel_links, u, s): u for u in listen_urls}
         for fut in as_completed(futs):
             if not zeit_ok():
                 break
             try:
-                for p in fut.result():
-                    artikel_pfade.add(p)
+                for pfad, titel in fut.result():
+                    alt = artikel_titel.get(pfad)
+                    if alt is None or (titel and len(titel) > len(alt)):
+                        artikel_titel[pfad] = titel
             except Exception:
                 pass
-    log(f"     [meinbezirk] {len(artikel_pfade)} eindeutige Artikel-Links gesammelt "
+
+    # Titel-Vorfilter: eindeutig bau-fremde Ueberschriften erst gar nicht laden.
+    # Artikel ohne erkennbaren Titel werden behalten (kein falsches Negativ).
+    kandidaten = [p for p, t in artikel_titel.items()
+                  if (not t) or _titel_baurelevant(t)]
+    log(f"     [meinbezirk] {len(artikel_titel)} Artikel-Links gesammelt -> "
+        f"{len(kandidaten)} nach Titel-Vorfilter "
         f"(aus {len(listen_urls)} Listen-/Gemeinde-Seiten)")
 
     # 3) Artikel laden + filtern (Zeitfenster + Bundesland), NEUESTE ZUERST.
@@ -465,7 +529,7 @@ def ernte_meinbezirk(bundeslaender: list[str],
         m = re.search(r"_a(\d+)", p)
         return int(m.group(1)) if m else 0
 
-    pfade = sorted(artikel_pfade, key=_aid, reverse=True)
+    pfade = sorted(kandidaten, key=_aid, reverse=True)
     obergrenze = min(len(pfade), max_artikel)
     BLOCK = 200
     i = 0
@@ -521,7 +585,7 @@ if __name__ == "__main__":
         cutoff_dt=cutoff,
         heute_dt=heute,
         bezirke_filter=["Kirchdorf an der Krems"],  # echter Bezirksname -> testet auch Slug-Ableitung
-        max_artikel=800,
+        max_artikel=1500,
         max_workers=12,
         log=print,
     )
