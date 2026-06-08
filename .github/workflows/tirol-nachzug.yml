@@ -1,0 +1,135 @@
+name: Tirol-Nachzug (kostenlos, ohne KI)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tirol-nachzug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install requests curl_cffi
+
+      - name: Tirol-Nachzug ausfuehren
+        run: |
+          cat > nz.py << 'PYEOF'
+          import sys, re
+          from concurrent.futures import ThreadPoolExecutor
+
+          try:
+              import requests
+          except Exception as e:
+              print("FEHLER requests:", e); sys.exit(1)
+          try:
+              from curl_cffi import requests as cffi
+              HAS = True
+          except Exception as e:
+              cffi = None; HAS = False
+              print("HINWEIS: curl_cffi nicht da:", e)
+
+          NAMEN = [
+          "Arzl im Pitztal","Aurach bei Kitzbühel","Baumkirchen","Brixen im Thale","Brixlegg",
+          "Buch in Tirol","Eben am Achensee","Fließ","Gnadenwald","Gries am Brenner",
+          "Gries im Sellrain","Hopfgarten im Brixental","Iselsberg-Stronach","Kals am Großglockner",
+          "Kirchberg in Tirol","Kirchdorf in Tirol","Matrei in Osttirol","Mils bei Imst",
+          "Neustift im Stubaital","Oberhofen im Inntal","Obernberg am Brenner","Pettneu am Arlberg",
+          "Pfons","Reith bei Seefeld","Reith im Alpbachtal","Ried im Zillertal","Rohrberg",
+          "Schattwald","St. Leonhard im Pitztal","St. Sigmund im Sellrain","St. Ulrich am Pillersee",
+          "Stanz bei Landeck","Steinberg am Rofan","Strass im Zillertal","Uderns","Virgen",
+          "Weißenbach am Lech","Wörgl","Zöblen",
+          ]
+
+          sys.path.insert(0, "agent")
+          cur = {}
+          try:
+              from gemeinden_datenbank import GEMEINDEN
+              for g in GEMEINDEN.get("TIR", []):
+                  cur[g.get("name")] = (g.get("url") or "").strip()
+          except Exception as e:
+              print("DB-Import:", e)
+
+          CONN = {"im","am","an","bei","in","der","ob","vor","dem","zu","auf","und"}
+          def deacc(s):
+              s = s.lower()
+              for a,b in [("ä","ae"),("ö","oe"),("ü","ue"),("ß","ss")]:
+                  s = s.replace(a,b)
+              return s
+          def slugs(name):
+              toks = [t for t in re.split(r"[^a-z0-9]+", deacc(name)) if t]
+              content = [t for t in toks if t not in CONN]
+              out = []
+              def add(x):
+                  if x and x not in out: out.append(x)
+              add("".join(toks)); add("-".join(toks))
+              add("".join(content)); add("-".join(content))
+              if content:
+                  add(content[0])
+                  if len(content) > 1:
+                      add(content[0]+content[-1]); add(content[0]+"-"+content[-1]); add(content[-1])
+              return out
+          def candidates(name):
+              urls=[]; seen=set()
+              def push(u):
+                  if u and u not in seen: seen.add(u); urls.append(u)
+              if cur.get(name): push(cur[name])
+              for s in slugs(name):
+                  for host in (f"www.{s}.gv.at", f"www.{s}.at", f"{s}.gv.at"):
+                      push("https://"+host); push("http://"+host)
+              return urls[:30]
+          def keytok(name):
+              for t in re.split(r"[^a-z0-9]+", deacc(name)):
+                  if t not in CONN and len(t) >= 4:
+                      return t
+              return ""
+          def title_of(html):
+              m = re.search(r"<title[^>]*>(.*?)</title>", html or "", re.I|re.S)
+              return " ".join(m.group(1).split())[:110] if m else ""
+
+          UA = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36","Accept-Language":"de-AT,de;q=0.9,en;q=0.8"}
+          def fetch(u):
+              try:
+                  r = requests.get(u, headers=UA, timeout=6, allow_redirects=True)
+                  if r.status_code == 200:
+                      return str(r.url), r.text[:4000]
+              except Exception:
+                  pass
+              if HAS:
+                  try:
+                      r = cffi.get(u, impersonate="chrome", headers={"Accept-Language":"de-AT,de;q=0.9"}, timeout=6, allow_redirects=True)
+                      if r.status_code == 200:
+                          return str(r.url), r.text[:4000]
+                  except Exception:
+                      pass
+              return None
+          def best(name):
+              key = keytok(name)
+              for u in candidates(name):
+                  res = fetch(u)
+                  if res:
+                      final, body = res
+                      t = title_of(body)
+                      blob = (t + " " + body).lower()
+                      flag = "OK" if (key and key in blob) else "PRUEFEN"
+                      return (name, u, final, flag, t)
+              return (name, "-", "-", "KEINTREFFER", "")
+
+          with ThreadPoolExecutor(max_workers=16) as ex:
+              res = list(ex.map(best, NAMEN))
+
+          ok = sum(1 for r in res if r[1] != "-")
+          print("\n================ ERGEBNIS (Name || URL || final || Flag || Titel) ================")
+          for (name, u, final, flag, t) in res:
+              print(f"{name} || {u} || {final} || {flag} || {t}")
+          print(f"\nGEFUNDEN: {ok}/{len(NAMEN)}  (OK/PRUEFEN = erreichbar; KEINTREFFER = nichts gefunden)")
+          print("FERTIG.")
+
+          PYEOF
+          python nz.py
