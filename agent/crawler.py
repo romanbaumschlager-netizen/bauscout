@@ -1,7 +1,6 @@
 # =============================================================================
 # ProjectScout – Crawler-Modul (agent/crawler.py)
 #
-# Aufgabe: Echtes Crawling der Gemeinde-Websites (zweite Saeule neben web_search).
 # Pro Gemeinde werden MEHRERE relevante Bereiche gesucht und ausgelesen:
 #   - Protokolle   (Gemeinderats-/Sitzungsprotokolle)
 #   - Amtstafel    (Kundmachungen, Bauverhandlungen, Edikte)
@@ -10,11 +9,14 @@
 # Von jedem Bereich werden Inhaltstext UND verlinkte Dokumente (PDFs) geladen.
 # Die KI-Analyse (Haiku) passiert danach im agent.py – dieses Modul BESCHAFFT nur.
 #
-# Robustheit gegenueber dem haeufigsten AT-Gemeinde-CMS (RiS-Kommunal/gem2go):
-#   * gem2go rendert das KOMPLETTE Menue in jeder Seite -> Text/Links werden nur
-#     aus dem Inhalts-Container (#content/main) gelesen, nicht aus der Navigation.
-#   * Dokumente werden ueber Handler wie GetDocument.ashx?fileid=... ausgeliefert,
-#     also OHNE ".pdf" in der URL -> Erkennung per Content-Type / %PDF-Magic-Bytes.
+# Robust gegen das haeufigste AT-Gemeinde-CMS (RiS-Kommunal/gem2go, ASP.NET):
+#   * Dokumente laufen ueber Handler wie GetDocument.ashx?fileId=... (ohne ".pdf")
+#     -> Erkennung per URL-Muster + Content-Type/%PDF-Magic-Bytes.
+#   * Protokolle liegen oft eine Ebene tiefer auf Jahres-Seiten
+#     (sitzungsprotokoll.aspx?typid=2025) -> diese werden gezielt verfolgt.
+#   * Dokument-/Jahres-Links werden aus der GANZEN Seite gesucht (das Menue
+#     erzeugt keine GetDocument-/Jahres-Treffer), der Inhaltstext dagegen ohne
+#     das Mega-Navigationsmenue extrahiert.
 #
 # Defensiv: jeder Netzwerk-/Parsing-Fehler ueberspringt nur die betroffene
 # Gemeinde/Seite, niemals Abbruch des Gesamtlaufs.
@@ -48,30 +50,31 @@ HTTP_TIMEOUT               = 12          # Sekunden pro Einzelabruf
 MAX_PDF_BYTES              = 12_000_000  # PDFs groesser als ~12 MB ueberspringen
 MAX_PDF_SEITEN             = 25          # je PDF hoechstens so viele Seiten lesen
 MAX_TEXT_ZEICHEN           = 22_000      # so viel Text je Gemeinde max. an die KI
-MAX_BEREICHE               = 4           # je Gemeinde max. 4 Bereichsseiten (1 je Typ)
-MAX_DOK_PRO_BEREICH        = 4           # je Bereich max. 4 Dokumente laden
-MAX_DOK_GESAMT             = 8           # je Gemeinde max. 8 Dokumente gesamt
-MAX_KANDIDATEN_PRO_BEREICH = 7           # so viele Doc-Links je Bereich auf PDF pruefen
+MAX_TEXT_PRO_BEREICH       = 6_000       # Seitentext je Bereich begrenzen
+MAX_DOK_PRO_BEREICH        = 3           # je Bereich max. 3 Dokumente laden
+MAX_DOK_GESAMT             = 6           # je Gemeinde max. 6 Dokumente gesamt
+MAX_KANDIDATEN_PRO_SEITE   = 6           # so viele Dok-Links je Seite auf PDF pruefen
+MAX_JAHRESSEITEN           = 2           # so viele Jahres-/Archivseiten je Bereich folgen
 
-# Themen-Bereiche und ihre Erkennungs-Schluesselwoerter (Link-Text/URL, lowercase).
+# Themen-Bereiche, Schluesselwoerter STARK -> SCHWACH geordnet (fuer gewichtete Zuordnung).
 BEREICH_KEYWORDS = {
-    "protokoll": ("protokoll", "sitzung", "gemeinderat", "ratsprotokoll", "niederschrift",
-                  "gemeinderatssitzung", "stadtrat", "sitzungsbericht", "tagesordnung",
-                  "verhandlungsschrift"),
+    "protokoll": ("protokoll", "sitzungsprotokoll", "niederschrift", "verhandlungsschrift",
+                  "sitzungsbericht", "gemeinderatssitzung", "ratsprotokoll", "tagesordnung",
+                  "sitzung", "gemeinderat", "stadtrat"),
     "amtstafel": ("amtstafel", "kundmachung", "verlautbarung", "ediktal", "edikt",
-                  "anschlagtafel", "schwarzes brett"),
-    "bau":       ("bauamt", "bauabteilung", "bauen & wohnen", "bauen und wohnen",
-                  "flächenwidmung", "flachenwidmung", "bebauungsplan", "raumordnung",
-                  "raumplanung", "bauvorhaben", "bauverhandlung", "ortsbildplanung"),
+                  "anschlagtafel"),
+    "bau":       ("bauen & wohnen", "bauen und wohnen", "bauabteilung", "bauamt",
+                  "bauvorhaben", "bauverhandlung", "flächenwidmung", "flachenwidmung",
+                  "bebauungsplan", "raumordnung", "raumplanung", "ortsbildplanung"),
     "aktuelles": ("neuigkeit", "aktuelles", "verordnung", "mitteilung", "gemeindenews",
                   "news"),
 }
 
 # Hinweis-Woerter, die ein Dokument als relevant kennzeichnen (Text/URL).
-DOK_HINWEISE = ("protokoll", "sitzung", "niederschrift", "gemeinderat", "gr-", "gr_",
-                "sitzungsprotokoll", "kundmachung", "bescheid", "verordnung",
-                "bauverhandlung", "edikt", "tagesordnung", "dokument", "pdf", "datei",
-                "download", "anhang", "beilage", "widmung", "bebauungsplan")
+DOK_HINWEISE = ("protokoll", "sitzung", "niederschrift", "verhandlungsschrift", "gemeinderat",
+                "gr-", "gr_", "kundmachung", "bescheid", "verordnung", "bauverhandlung",
+                "edikt", "tagesordnung", "dokument", "pdf", "datei", "download", "anhang",
+                "beilage", "widmung", "bebauungsplan")
 
 # Handler-/Download-Muster: PDFs werden im CMS oft ueber solche URLs ausgeliefert.
 HANDLER_HINWEISE = ("getdocument", "getfile", "downloadfile", "showfile", "showdocument",
@@ -96,6 +99,8 @@ RE_MONATSNAME = re.compile(
     r"(\d{1,2})?\.?\s*(j[äae]nner|januar|februar|feber|m[äae]rz|april|mai|juni|juli|"
     r"august|september|oktober|november|dezember)\s*(20\d{2})", re.I)
 RE_JAHR       = re.compile(r"(20\d{2})")
+RE_NUR_JAHR   = re.compile(r"^20\d{2}$")
+RE_JAHR_PARAM = re.compile(r"(typid|jahr|year)=20\d{2}")
 
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
@@ -111,7 +116,7 @@ def _hole(url: str, erlaube_pdf: bool = False):
     return None
 
 
-# ── HTML-Parsing (nur Inhaltsbereich, ohne Navigation) ───────────────────────
+# ── HTML-Parsing ─────────────────────────────────────────────────────────────
 def _soup(html: str):
     if not html or BeautifulSoup is None:
         return None
@@ -122,29 +127,44 @@ def _soup(html: str):
 
 
 def _content_node(suppe):
-    """Liefert den Inhalts-Container (ohne Navigation/Menue), sonst body/Gesamt.
-    gem2go & viele CMS legen den Hauptinhalt in #content / <main> / [role=main]."""
+    """Best-effort Inhalts-Container (ohne leere Sprungmarken). Sonst body."""
     if suppe is None:
         return None
-    for attrs in ({"id": "content"}, {"id": "inhalt"}, {"id": "main"}, {"id": "maincontent"},
-                  {"role": "main"}, {"class": "content"}, {"class": "main-content"}):
-        node = suppe.find(attrs=attrs)
-        if node is not None:
-            return node
-    main = suppe.find("main")
-    if main is not None:
-        return main
+    kand = []
+    for attrs in ({"id": "content"}, {"id": "inhalt"}, {"id": "maincontent"},
+                  {"id": "main"}, {"role": "main"}):
+        kand += suppe.find_all(attrs=attrs)
+    try:
+        kand += suppe.find_all(id=re.compile(r"(content|inhalt|maincontent)$", re.I))
+        kand += suppe.find_all(class_=re.compile(r"(content|inhalt|maincontent|main-content)", re.I))
+    except Exception:
+        pass
+    m = suppe.find("main")
+    if m is not None:
+        kand.append(m)
+    for node in kand:
+        try:
+            if len(node.get_text(" ", strip=True)) > 120 or len(node.find_all("a", href=True)) >= 2:
+                return node
+        except Exception:
+            continue
     return suppe.body or suppe
 
 
 def _text_aus_html(html: str) -> str:
-    """Sichtbarer Text aus dem INHALTSBEREICH (Navigation/Skripte entfernt)."""
+    """Sichtbarer Text – Skripte, Navigation und das Mega-Menue werden entfernt.
+    WICHTIG: <form> wird NICHT entfernt (ASP.NET/gem2go verpackt alles in ein form)."""
     suppe = _soup(html)
     if suppe is not None:
         node = _content_node(suppe)
         try:
-            for tag in node.find_all(["script", "style", "nav", "header", "footer", "form"]):
+            for tag in node.find_all(["script", "style", "nav", "header", "footer"]):
                 tag.decompose()
+            for liste in node.find_all(["ul", "ol"]):
+                if len(liste.find_all("a")) > 25:   # Mega-Navigationsmenue
+                    liste.decompose()
+            for el in node.find_all(attrs={"role": "navigation"}):
+                el.decompose()
         except Exception:
             pass
         txt = node.get_text(" ", strip=True)
@@ -153,31 +173,24 @@ def _text_aus_html(html: str) -> str:
     return re.sub(r"\s+", " ", txt).strip()
 
 
-def _links_aus_node(basis_url: str, node):
-    out = []
-    if node is None:
-        return out
-    try:
-        for a in node.find_all("a", href=True):
-            text = (a.get_text(" ") or "").strip()
-            out.append((text, urljoin(basis_url, a["href"])))
-    except Exception:
-        pass
-    return out
-
-
 def _alle_links(basis_url: str, html: str):
-    """Alle Links der GANZEN Seite (fuer Bereichs-Discovery; gem2go-Vollmenue)."""
+    """Alle Links der GANZEN Seite (Text, absolute_url)."""
     suppe = _soup(html)
-    if suppe is not None:
-        return _links_aus_node(basis_url, suppe)
     out = []
+    if suppe is not None:
+        try:
+            for a in suppe.find_all("a", href=True):
+                text = (a.get_text(" ") or "").strip()
+                out.append((text, urljoin(basis_url, a["href"])))
+            return out
+        except Exception:
+            pass
     for m in re.finditer(r'href=["\']([^"\']+)["\']', html or "", re.I):
         out.append(("", urljoin(basis_url, m.group(1))))
     return out
 
 
-# ── Datum / Dokument-Erkennung ───────────────────────────────────────────────
+# ── Datum / Klassifizierung / Dokument-Erkennung ─────────────────────────────
 def _datum_score(text: str) -> int:
     """Sortierbare Datumszahl (jjjjmmtt) aus Text/Dateiname; 0 wenn kein Datum."""
     t = (text or "").lower()
@@ -197,18 +210,24 @@ def _datum_score(text: str) -> int:
     return 0
 
 
-def _bereich_typ(text: str, url: str):
-    """Welcher Themen-Bereich passt zu einem Link? (oder None)"""
+def _klassifiziere_link(text: str, url: str):
+    """Ordnet einen Link einem Bereich zu und gibt (typ, staerke) zurueck oder None.
+    staerke ist hoeher fuer spezifischere Schluesselwoerter (Protokolle > Gemeinderat)."""
     s = (text + " " + url).lower()
+    bester = None
     for typ, kws in BEREICH_KEYWORDS.items():
-        if any(kw in s for kw in kws):
-            return typ
-    return None
+        for i, kw in enumerate(kws):
+            if kw in s:
+                staerke = len(kws) - i
+                if bester is None or staerke > bester[1]:
+                    bester = (typ, staerke)
+                break
+    return bester
 
 
 def _ist_dokument_link(text: str, url: str) -> bool:
     """Vorfilter: koennte dieser Link ein Dokument (PDF) sein? (Bilder/Menue raus.)
-    Die endgueltige Pruefung macht _lade_pdf ueber den Content-Type."""
+    Endgueltige Pruefung macht _lade_pdf ueber den Content-Type."""
     u = (url or "").lower()
     if u.startswith(("mailto:", "tel:", "javascript:")) or u.strip() in ("", "#"):
         return False
@@ -226,10 +245,24 @@ def _ist_dokument_link(text: str, url: str) -> bool:
     return False
 
 
+def _ist_jahr_oder_archiv(text: str, url: str) -> bool:
+    """Erkennt Jahres-/Archiv-Unterseiten (z. B. sitzungsprotokoll.aspx?typid=2025)."""
+    t = (text or "").strip().lower()
+    u = (url or "").lower()
+    if RE_NUR_JAHR.match(t):
+        return True
+    if "archiv" in t or "archiv" in u:
+        return True
+    if RE_JAHR_PARAM.search(u):
+        return True
+    if "sitzungsprotokoll" in u:
+        return True
+    return False
+
+
 def _lade_pdf(url: str):
     """Laedt eine URL und gibt die Bytes zurueck, WENN es ein echtes PDF ist
-    (Content-Type application/pdf ODER %PDF-Magic-Bytes). Sonst None.
-    So werden auch Handler-URLs (GetDocument.ashx) ohne '.pdf' korrekt erkannt."""
+    (Content-Type application/pdf ODER %PDF-Magic-Bytes). Sonst None."""
     resp = _hole(url, erlaube_pdf=False)
     if resp is None:
         return None
@@ -266,16 +299,20 @@ def _pdf_text(pdf_bytes: bytes) -> str:
 
 # ── Bereichs-Discovery + Dokument-Sammlung ───────────────────────────────────
 def _finde_bereichsseiten(basis: str, start_html: str) -> dict:
-    """Findet pro Themen-Typ die beste Bereichsseite. gem2go rendert das ganze
-    Menue in jeder Seite -> meist reicht die Startseite. Sonst 1 Ebene tiefer
-    ueber 'Eltern'-Menuepunkte (Politik/Buergerservice/...)."""
-    gefunden = {}
+    """Findet pro Themen-Typ die beste (spezifischste) Bereichsseite.
+    gem2go rendert das ganze Menue in jeder Seite -> meist reicht die Startseite,
+    sonst 1 Ebene tiefer ueber 'Eltern'-Menuepunkte."""
+    gefunden = {}   # typ -> (url, staerke)
 
     def scanne(html, quelle_url):
         for text, url in _alle_links(quelle_url, html):
-            typ = _bereich_typ(text, url)
-            if typ and typ not in gefunden:
-                gefunden[typ] = url.split("#")[0]
+            kl = _klassifiziere_link(text, url)
+            if kl is None:
+                continue
+            typ, staerke = kl
+            u = url.split("#")[0]
+            if typ not in gefunden or staerke > gefunden[typ][1]:
+                gefunden[typ] = (u, staerke)
 
     scanne(start_html, basis)
     if len(gefunden) < 2:
@@ -289,20 +326,15 @@ def _finde_bereichsseiten(basis: str, start_html: str) -> dict:
                 resp = _hole(u)
                 if resp is not None:
                     scanne(resp.text, u)
-                if len(gefunden) >= MAX_BEREICHE or len(besucht) >= 6:
+                if len(gefunden) >= 4 or len(besucht) >= 6:
                     break
-    return gefunden
+    return {typ: u for typ, (u, _st) in gefunden.items()}
 
 
-def _dokumente_einer_seite(seiten_url: str, html: str) -> list:
-    """Findet Dokument-Links im INHALTSBEREICH, sortiert neueste zuerst, prueft sie
-    per Content-Type auf PDF und gibt [(url, pdf_bytes), ...] zurueck.
-    Folgt zusaetzlich EINER Archiv-/Jahres-Unterseite, falls direkt wenig da ist."""
-    suppe = _soup(html)
-    node = _content_node(suppe) if suppe is not None else None
-    links = _links_aus_node(seiten_url, node) if node is not None else _alle_links(seiten_url, html)
-
-    kandidaten = []
+def _direkte_dok_urls(seiten_url: str, html: str) -> list:
+    """Dokument-Links der Seite (neueste zuerst), als URL-Liste."""
+    links = _alle_links(seiten_url, html)
+    kand = []
     gesehen = set()
     for idx, (text, url) in enumerate(links):
         u = url.split("#")[0]
@@ -310,36 +342,55 @@ def _dokumente_einer_seite(seiten_url: str, html: str) -> list:
             continue
         if _ist_dokument_link(text, u):
             gesehen.add(u)
-            kandidaten.append((-_datum_score(text + " " + u), idx, u))
-    kandidaten.sort()
+            kand.append((-_datum_score(text + " " + u), idx, u))
+    kand.sort()
+    return [u for _, _, u in kand]
 
-    dokumente = []
-    for _, _, u in kandidaten[:MAX_KANDIDATEN_PRO_BEREICH]:
-        pdf = _lade_pdf(u)
-        if pdf:
-            dokumente.append((u, pdf))
-        if len(dokumente) >= MAX_DOK_PRO_BEREICH:
-            break
 
-    # Falls kaum Dokumente direkt: EINER Archiv-/Jahres-Unterseite folgen.
-    if len(dokumente) < 2 and node is not None:
-        for text, url in links:
-            t = (text or "").strip().lower()
-            u = url.split("#")[0]
-            if (re.fullmatch(r"20\d{2}", t) or "archiv" in t) and u != seiten_url.split("#")[0]:
-                resp = _hole(u)
-                if resp is not None:
-                    sub = _content_node(_soup(resp.text))
-                    for stext, surl in _links_aus_node(u, sub):
-                        su = surl.split("#")[0]
-                        if _ist_dokument_link(stext, su):
-                            pdf = _lade_pdf(su)
-                            if pdf:
-                                dokumente.append((su, pdf))
-                            if len(dokumente) >= MAX_DOK_PRO_BEREICH:
-                                break
-                break  # nur EINE Archiv-Seite, um die Last zu begrenzen
-    return dokumente[:MAX_DOK_PRO_BEREICH]
+def _jahr_urls(seiten_url: str, html: str) -> list:
+    """Jahres-/Archiv-Unterseiten der Seite (neuestes Jahr zuerst), als URL-Liste."""
+    links = _alle_links(seiten_url, html)
+    kand = []
+    gesehen = set()
+    selbst = seiten_url.split("#")[0]
+    for idx, (text, url) in enumerate(links):
+        u = url.split("#")[0]
+        if u in gesehen or u == selbst:
+            continue
+        if _ist_jahr_oder_archiv(text, url):
+            gesehen.add(u)
+            kand.append((-_datum_score(text + " " + url), idx, u))
+    kand.sort()
+    return [u for _, _, u in kand]
+
+
+def _dokumente_einer_seite(seiten_url: str, html: str, limit: int = MAX_DOK_PRO_BEREICH) -> list:
+    """Laedt Dokumente einer Bereichsseite. Findet direkte PDFs; falls zu wenige,
+    folgt den neuesten Jahres-/Archivseiten und laedt dort. -> [(url, pdf_bytes), ...]"""
+    dok = []
+    geladen = set()
+
+    def lade(urls):
+        for u in urls[:MAX_KANDIDATEN_PRO_SEITE]:
+            if len(dok) >= limit:
+                break
+            if u in geladen:
+                continue
+            geladen.add(u)
+            pdf = _lade_pdf(u)
+            if pdf:
+                dok.append((u, pdf))
+
+    lade(_direkte_dok_urls(seiten_url, html))
+    if len(dok) < limit:
+        for ju in _jahr_urls(seiten_url, html)[:MAX_JAHRESSEITEN]:
+            r = _hole(ju)
+            if r is None:
+                continue
+            lade(_direkte_dok_urls(ju, r.text))
+            if len(dok) >= limit:
+                break
+    return dok[:limit]
 
 
 # ── Eine Gemeinde komplett crawlen ───────────────────────────────────────────
@@ -358,8 +409,6 @@ def crawle_gemeinde(gemeinde: dict, protokoll_pfade: list):
     start_html = resp.text if resp is not None else ""
 
     bereiche = _finde_bereichsseiten(basis, start_html) if start_html else {}
-
-    # Direkter Protokoll-Pfad als schneller Zusatz-Hinweis (manche CMS).
     if "protokoll" not in bereiche:
         for pfad in (protokoll_pfade or [])[:10]:
             ziel = urljoin(basis, pfad)
@@ -368,24 +417,21 @@ def crawle_gemeinde(gemeinde: dict, protokoll_pfade: list):
                 bereiche["protokoll"] = ziel
                 break
 
-    def _leer_ergebnis(quelle, text):
-        if len(text) < 80:
-            return None
-        return {
-            "gemeinde": name,
-            "bezirk": (gemeinde.get("bezirk") or "").strip(),
-            "bundesland": (gemeinde.get("bundesland") or "").strip(),
-            "quelle_url": quelle,
-            "inhalt": text,
-            "pdf_bytes": None,
-            "pdf_url": "",
-            "inhalt_hash": hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()[:16],
-        }
+    bezirk = (gemeinde.get("bezirk") or "").strip()
+    bundesland = (gemeinde.get("bundesland") or "").strip()
 
     if not bereiche:
-        return _leer_ergebnis(basis, _text_aus_html(start_html)[:MAX_TEXT_ZEICHEN]) if start_html else None
+        if not start_html:
+            return None
+        text = _text_aus_html(start_html)[:MAX_TEXT_ZEICHEN]
+        if len(text) < 80:
+            return None
+        return {"gemeinde": name, "bezirk": bezirk, "bundesland": bundesland,
+                "quelle_url": basis, "inhalt": text, "pdf_bytes": None, "pdf_url": "",
+                "inhalt_hash": hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()[:16]}
 
     text_teile = []
+    pdf_text_teile = []
     dok_gesamt = 0
     erstes_pdf_bytes = None
     erstes_pdf_url = ""
@@ -401,29 +447,30 @@ def crawle_gemeinde(gemeinde: dict, protokoll_pfade: list):
         seiten_html = r.text
         if not quelle_primary:
             quelle_primary = seiten_url
-        seiten_text = _text_aus_html(seiten_html)
+        seiten_text = _text_aus_html(seiten_html)[:MAX_TEXT_PRO_BEREICH]
         if seiten_text:
             text_teile.append(f"[{typ.upper()}] {seiten_text}")
         if dok_gesamt < MAX_DOK_GESAMT:
-            for durl, pdf in _dokumente_einer_seite(seiten_url, seiten_html):
-                if dok_gesamt >= MAX_DOK_GESAMT:
-                    break
+            rest = MAX_DOK_GESAMT - dok_gesamt
+            for durl, pdf in _dokumente_einer_seite(seiten_url, seiten_html,
+                                                    limit=min(MAX_DOK_PRO_BEREICH, rest)):
                 ptext = _pdf_text(pdf)
                 if ptext:
-                    text_teile.append(ptext)
+                    pdf_text_teile.append(ptext)
                 if erstes_pdf_bytes is None:
                     erstes_pdf_bytes = pdf
                     erstes_pdf_url = durl
                 dok_gesamt += 1
 
-    inhalt = re.sub(r"\s+", " ", " ".join(text_teile)).strip()[:MAX_TEXT_ZEICHEN]
+    # PDF-Text zuerst (wertvoller), dann Seitentext – dann hart begrenzen.
+    inhalt = re.sub(r"\s+", " ", " ".join(pdf_text_teile + text_teile)).strip()[:MAX_TEXT_ZEICHEN]
     if len(inhalt) < 80 and erstes_pdf_bytes is None:
         return None
 
     return {
         "gemeinde": name,
-        "bezirk": (gemeinde.get("bezirk") or "").strip(),
-        "bundesland": (gemeinde.get("bundesland") or "").strip(),
+        "bezirk": bezirk,
+        "bundesland": bundesland,
         "quelle_url": quelle_primary or basis,
         "inhalt": inhalt,
         "pdf_bytes": erstes_pdf_bytes,
@@ -460,7 +507,7 @@ def crawle_gemeinden_parallel(gemeinden: list, protokoll_pfade: list,
     return ergebnisse
 
 
-# ── Kostenloser Selbsttest (read-only, ohne KI/Supabase/Stripe) ──────────────
+# ── Kostenloser Selbsttest mit Diagnose (read-only, ohne KI/Supabase/Stripe) ──
 # Aufruf:  python agent/crawler.py
 if __name__ == "__main__":
     import sys
@@ -471,14 +518,15 @@ if __name__ == "__main__":
         "/ratsprotokolle", "/sitzungsprotokolle", "/politik/gemeinderatsprotokolle",
         "/amtstafel/gemeinderatsprotokolle", "/gemeinderat/protokolle",
     ]
+    # Echte DB-URLs der Testgemeinden (Bezirk Kirchdorf, gem2go).
     TEST_GEMEINDEN = [
-        {"name": "Micheldorf in Oberösterreich", "bezirk": "Kirchdorf",
+        {"name": "Micheldorf in Oberösterreich", "bezirk": "Kirchdorf an der Krems",
          "bundesland": "OOE", "url": "https://www.micheldorf.at"},
-        {"name": "Kirchdorf an der Krems", "bezirk": "Kirchdorf",
-         "bundesland": "OOE", "url": "https://www.kirchdorf.gv.at"},
+        {"name": "Kirchdorf an der Krems", "bezirk": "Kirchdorf an der Krems",
+         "bundesland": "OOE", "url": "https://www.kirchdorf.at"},
     ]
 
-    print("ProjectScout – Crawler-SELBSTTEST (read-only)")
+    print("ProjectScout – Crawler-SELBSTTEST (read-only, mit Diagnose)")
     print("Zeitpunkt:", datetime.now().isoformat(), "\n")
 
     bestanden = True
@@ -487,27 +535,45 @@ if __name__ == "__main__":
         print(f"=== {g['name']}  ({g['url']}) ===")
         r = _hole(g["url"].rstrip("/"))
         html = r.text if r is not None else ""
+        print("   Startseite erreichbar:", bool(html), f"({len(html)} Zeichen)")
         bereiche = _finde_bereichsseiten(g["url"].rstrip("/"), html) if html else {}
-        print("   Startseite erreichbar:", bool(html), "| Bereiche:",
-              ", ".join(bereiche.keys()) or "KEINE")
-
-        res = crawle_gemeinde(g, TEST_PFADE)
-        if not res:
-            print("   ERGEBNIS: nichts Brauchbares gefunden  ✗\n")
+        if not bereiche:
+            print("   Bereiche: KEINE\n   ERGEBNIS: nichts gefunden ✗\n")
             bestanden = False
             continue
-        txt = res["inhalt"]
-        hat_pdf = res["pdf_bytes"] is not None
-        if hat_pdf:
-            pdfs_total += 1
-        bau_woerter = sum(w in txt.lower() for w in
-                          ("bau", "sanier", "projekt", "neubau", "beschluss", "gemeinderat",
-                           "widmung", "kundmachung", "vergabe", "spatenstich"))
-        print(f"   Quelle: {res['quelle_url']}")
-        print(f"   Inhalt: {len(txt)} Zeichen | PDF geladen: {hat_pdf} ({res['pdf_url'][:70]})")
-        print(f"   Bau-/Verwaltungs-Begriffe im Text: {bau_woerter}")
-        print(f"   Auszug: …{txt[200:360]}…")
-        ok = bool(bereiche) and len(txt) > 300
+
+        # Diagnose je Bereich
+        for typ in ("protokoll", "amtstafel", "bau", "aktuelles"):
+            if typ not in bereiche:
+                continue
+            su = bereiche[typ]
+            rr = _hole(su)
+            if rr is None:
+                print(f"   [{typ}] {su}  -> nicht erreichbar")
+                continue
+            shtml = rr.text
+            tlen = len(_text_aus_html(shtml))
+            direkt = _direkte_dok_urls(su, shtml)
+            jahre = _jahr_urls(su, shtml)
+            docs = _dokumente_einer_seite(su, shtml)
+            pdfs_total += len(docs)
+            print(f"   [{typ}] {su}")
+            print(f"        Text {tlen} Z. | direkte Dok {len(direkt)} | Jahres-Seiten {len(jahre)} | PDFs geladen {len(docs)}")
+            if docs:
+                print(f"        Beispiel-PDF: {docs[0][0][:90]} ({len(docs[0][1])} Bytes)")
+
+        res = crawle_gemeinde(g, TEST_PFADE)
+        if res:
+            txt = res["inhalt"]
+            bau_woerter = sum(w in txt.lower() for w in
+                              ("bau", "sanier", "projekt", "neubau", "beschluss", "gemeinderat",
+                               "widmung", "kundmachung", "vergabe", "spatenstich"))
+            print(f"   GESAMT: Inhalt {len(txt)} Z. | erstes PDF: {res['pdf_bytes'] is not None} "
+                  f"| Bau-/Verw.-Begriffe {bau_woerter}")
+            print(f"   Auszug: …{txt[:240]}…")
+        else:
+            print("   GESAMT: crawle_gemeinde lieferte None")
+        ok = bool(bereiche) and bool(res)
         print("   ERGEBNIS:", "OK ✓" if ok else "schwach ✗", "\n")
         bestanden = bestanden and ok
 
@@ -515,5 +581,6 @@ if __name__ == "__main__":
         print("   [!] Kein einziges PDF über den Handler geladen – Dokument-Erkennung prüfen.")
         bestanden = False
 
-    print("=== ENDE Crawler-Selbsttest:", "BESTANDEN ✓" if bestanden else "PROBLEM ✗", "===")
+    print("=== ENDE Crawler-Selbsttest:", "BESTANDEN ✓" if bestanden else "PROBLEM ✗",
+          f"(PDFs gesamt: {pdfs_total}) ===")
     sys.exit(0 if bestanden else 1)
