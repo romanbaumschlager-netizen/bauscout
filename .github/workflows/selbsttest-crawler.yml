@@ -2,6 +2,11 @@ name: Crawler-Selbsttest (kostenlos, ohne KI)
 
 on:
   workflow_dispatch:
+    inputs:
+      breite_pro_bl:
+        description: "Gemeinden je Bundesland (Stichprobe, read-only, ohne KI)"
+        required: false
+        default: "30"
 
 jobs:
   crawler-test:
@@ -18,5 +23,7 @@ jobs:
       - name: Abhaengigkeiten installieren
         run: pip install requests beautifulsoup4 pdfplumber
 
-      - name: Crawler-Selbsttest ausfuehren
+      - name: Crawler-Breitentest ausfuehren
+        env:
+          BREITE_PRO_BL: ${{ inputs.breite_pro_bl }}
         run: python agent/crawler.py
