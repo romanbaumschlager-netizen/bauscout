@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import re
 import time
+import random
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -126,8 +127,12 @@ def _fetch_requests(url: str, s: requests.Session, versuche: int = 2) -> str | N
     return None
 
 
-def _fetch_cffi(url: str, versuche: int = 2) -> str | None:
-    """Abruf mit Chrome-TLS-Impersonation (umgeht TLS-Fingerprint-/Bot-Sperren)."""
+def _fetch_cffi(url: str, versuche: int = 4) -> str | None:
+    """Abruf mit Chrome-TLS-Impersonation (umgeht TLS-Fingerprint-/Bot-Sperren).
+
+    Geduldig bei Drosselung: mehrere Versuche mit ansteigendem, leicht zufaelligem
+    Backoff (Jitter), damit kurz gedrosselte Abrufe nach Warten doch durchkommen.
+    """
     if not _HAS_CFFI:
         return None
     for i in range(versuche):
@@ -140,9 +145,11 @@ def _fetch_cffi(url: str, versuche: int = 2) -> str | None:
             if r.status_code == 200 and r.text:
                 return r.text
             if r.status_code in (429, 503):
-                time.sleep(2 + i * 2)
+                time.sleep(1.5 * (i + 1) + random.uniform(0, 1.0))
+                continue
+            time.sleep(0.5 + random.uniform(0, 0.5))
         except Exception:
-            time.sleep(1 + i)
+            time.sleep(1.0 * (i + 1) + random.uniform(0, 0.8))
     return None
 
 
@@ -386,8 +393,16 @@ def _text_aus_artikel(soup: BeautifulSoup) -> str:
 
 
 def lade_artikel(pfad: str, s: requests.Session) -> dict | None:
-    """Laedt einen Artikel und liest Metadaten + Volltext aus."""
-    html = _get(_voll_url(pfad), s)
+    """Laedt einen Artikel und liest Metadaten + Volltext aus.
+
+    Artikel-Detailseiten blocken den Standard-Client (TLS-Fingerprint) -> hier
+    direkt Chrome-Impersonation zuerst (kein verschwendeter requests-Versuch, der
+    nur Last erzeugt und die Drossel ausloest). Ein kleiner Zufalls-Versatz
+    verteilt die Abrufe zeitlich. Nur falls curl_cffi fehlt, dient requests als Notnagel.
+    """
+    time.sleep(random.uniform(0, 0.4))
+    url = _voll_url(pfad)
+    html = _fetch_cffi(url) if _HAS_CFFI else _fetch_requests(url, s)
     if not html:
         return None
     soup = BeautifulSoup(html, "html.parser")
@@ -590,6 +605,10 @@ def ernte_meinbezirk(bundeslaender: list[str],
     n_out_window = 0    # Datum ausserhalb des Zeitfensters
     n_no_date = 0       # ohne Datum -> behalten
     n_in_window = 0     # Datum im Fenster -> behalten
+    # Artikel-Detailseiten werden bei zu vielen parallelen Abrufen gedrosselt ->
+    # bewusst WENIGE gleichzeitig (statt max_workers), damit moeglichst alle
+    # durchkommen, statt dass die Drossel die Haelfte als HTTP-Fehler wegwirft.
+    lade_workers = max(2, min(max_workers, 4))
 
     def _aid(p):
         m = re.search(r"_a(\d+)", p)
@@ -622,6 +641,8 @@ def ernte_meinbezirk(bundeslaender: list[str],
     BLOCK = 200
     i = 0
     stop = False
+    log(f"     [meinbezirk] lade bis zu {obergrenze} Artikel mit {lade_workers} "
+        f"parallelen Abrufen (sanft gegen Drosselung) ...")
     while i < obergrenze and not stop:
         if not zeit_ok():
             log("     [meinbezirk] Zeitbudget erreicht \u2013 Artikel-Laden gestoppt.")
@@ -629,7 +650,7 @@ def ernte_meinbezirk(bundeslaender: list[str],
         block = pfade[i:i + BLOCK]
         i += BLOCK
         aelteste = None
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        with ThreadPoolExecutor(max_workers=lade_workers) as ex:
             futs = {ex.submit(lade_artikel, p, s): p for p in block}
             for fut in as_completed(futs):
                 if not zeit_ok():
