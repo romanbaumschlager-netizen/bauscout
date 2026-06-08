@@ -507,80 +507,141 @@ def crawle_gemeinden_parallel(gemeinden: list, protokoll_pfade: list,
     return ergebnisse
 
 
-# ── Kostenloser Selbsttest mit Diagnose (read-only, ohne KI/Supabase/Stripe) ──
+# ── CMS-Erkennung (für Breitentest) ──────────────────────────────────────────
+def _cms_signatur(html: str) -> str:
+    """Grobe CMS-Erkennung: 'gem2go' (RiS-Kommunal) vs. 'andere'."""
+    h = (html or "").lower()
+    if not h:
+        return "-"
+    marker = ("getimage.ashx", "getdocument.ashx", "menuonr=", "riskommunal",
+              "gem2go", "ris-kommunal", "/system/web/")
+    return "gem2go" if any(m in h for m in marker) else "andere"
+
+
+# ── Breitentest über ganz Österreich (read-only, ohne KI/Supabase/Stripe) ────
 # Aufruf:  python agent/crawler.py
+# Nimmt eine ueber ALLE 9 Bundeslaender gleichmaessig gestreute Stichprobe aus der
+# echten Gemeinde-Datenbank, erkennt je Gemeinde das CMS, sucht die Bereiche und
+# prueft, ob mindestens ein PDF ladbar ist -> zeigt, ob die generische Logik
+# bundesweit/CMS-uebergreifend traegt. Stichprobengroesse je Bundesland via
+# Umgebungsvariable BREITE_PRO_BL (Default 4).
 if __name__ == "__main__":
+    import os
     import sys
     from datetime import datetime
+    from collections import defaultdict
 
-    TEST_PFADE = [
-        "/Gemeinde/Politik/Gemeinderatsprotokolle", "/gemeinderatsprotokolle",
-        "/ratsprotokolle", "/sitzungsprotokolle", "/politik/gemeinderatsprotokolle",
-        "/amtstafel/gemeinderatsprotokolle", "/gemeinderat/protokolle",
-    ]
-    # Echte DB-URLs der Testgemeinden (Bezirk Kirchdorf, gem2go).
-    TEST_GEMEINDEN = [
-        {"name": "Micheldorf in Oberösterreich", "bezirk": "Kirchdorf an der Krems",
-         "bundesland": "OOE", "url": "https://www.micheldorf.at"},
-        {"name": "Kirchdorf an der Krems", "bezirk": "Kirchdorf an der Krems",
-         "bundesland": "OOE", "url": "https://www.kirchdorf.at"},
-    ]
+    try:
+        from gemeinden_datenbank import GEMEINDEN
+    except Exception as ex:
+        print("FEHLER: gemeinden_datenbank nicht importierbar:", ex)
+        sys.exit(1)
 
-    print("ProjectScout – Crawler-SELBSTTEST (read-only, mit Diagnose)")
-    print("Zeitpunkt:", datetime.now().isoformat(), "\n")
-
-    bestanden = True
-    pdfs_total = 0
-    for g in TEST_GEMEINDEN:
-        print(f"=== {g['name']}  ({g['url']}) ===")
-        r = _hole(g["url"].rstrip("/"))
-        html = r.text if r is not None else ""
-        print("   Startseite erreichbar:", bool(html), f"({len(html)} Zeichen)")
-        bereiche = _finde_bereichsseiten(g["url"].rstrip("/"), html) if html else {}
-        if not bereiche:
-            print("   Bereiche: KEINE\n   ERGEBNIS: nichts gefunden ✗\n")
-            bestanden = False
-            continue
-
-        # Diagnose je Bereich
-        for typ in ("protokoll", "amtstafel", "bau", "aktuelles"):
-            if typ not in bereiche:
+    def _probe_gemeinde(gemeinde):
+        url = (gemeinde.get("url") or "").strip()
+        res = {"name": gemeinde.get("name", ""), "bl": gemeinde.get("bundesland", ""),
+               "url": url, "erreichbar": False, "cms": "-", "bereiche": 0, "pdf": False}
+        if (not url) or (not url.lower().startswith("http")) or (" " in url) or ("none" in url.lower()):
+            res["cms"] = "URL kaputt"
+            return res
+        p = urlparse(url)
+        basis = f"{p.scheme}://{p.netloc}"
+        r = _hole(basis)
+        if r is None:
+            return res
+        res["erreichbar"] = True
+        html = r.text
+        res["cms"] = _cms_signatur(html)
+        ber = _finde_bereichsseiten(basis, html)
+        res["bereiche"] = len(ber)
+        versuche = 0
+        for typ in ("amtstafel", "bau", "protokoll"):   # schnelle (direkte) zuerst
+            if typ not in ber:
                 continue
-            su = bereiche[typ]
-            rr = _hole(su)
+            rr = _hole(ber[typ])
             if rr is None:
-                print(f"   [{typ}] {su}  -> nicht erreichbar")
                 continue
-            shtml = rr.text
-            tlen = len(_text_aus_html(shtml))
-            direkt = _direkte_dok_urls(su, shtml)
-            jahre = _jahr_urls(su, shtml)
-            docs = _dokumente_einer_seite(su, shtml)
-            pdfs_total += len(docs)
-            print(f"   [{typ}] {su}")
-            print(f"        Text {tlen} Z. | direkte Dok {len(direkt)} | Jahres-Seiten {len(jahre)} | PDFs geladen {len(docs)}")
-            if docs:
-                print(f"        Beispiel-PDF: {docs[0][0][:90]} ({len(docs[0][1])} Bytes)")
+            if _dokumente_einer_seite(ber[typ], rr.text, limit=1):
+                res["pdf"] = True
+                break
+            versuche += 1
+            if versuche >= 2:
+                break
+        return res
 
-        res = crawle_gemeinde(g, TEST_PFADE)
-        if res:
-            txt = res["inhalt"]
-            bau_woerter = sum(w in txt.lower() for w in
-                              ("bau", "sanier", "projekt", "neubau", "beschluss", "gemeinderat",
-                               "widmung", "kundmachung", "vergabe", "spatenstich"))
-            print(f"   GESAMT: Inhalt {len(txt)} Z. | erstes PDF: {res['pdf_bytes'] is not None} "
-                  f"| Bau-/Verw.-Begriffe {bau_woerter}")
-            print(f"   Auszug: …{txt[:240]}…")
-        else:
-            print("   GESAMT: crawle_gemeinde lieferte None")
-        ok = bool(bereiche) and bool(res)
-        print("   ERGEBNIS:", "OK ✓" if ok else "schwach ✗", "\n")
-        bestanden = bestanden and ok
+    K = int(os.environ.get("BREITE_PRO_BL", "4"))
+    print("ProjectScout – CRAWLER-BREITENTEST ueber ganz Oesterreich (read-only)")
+    print(f"Zeitpunkt: {datetime.now().isoformat()} | {K} Gemeinden je Bundesland\n")
 
-    if pdfs_total < 1:
-        print("   [!] Kein einziges PDF über den Handler geladen – Dokument-Erkennung prüfen.")
-        bestanden = False
+    stichprobe = []
+    for bl, liste in GEMEINDEN.items():
+        if not liste:
+            continue
+        L = len(liste)
+        idxs = sorted(set((i * L) // K for i in range(K)))
+        for i in idxs:
+            gm = dict(liste[i])
+            gm["bundesland"] = bl
+            stichprobe.append(gm)
 
-    print("=== ENDE Crawler-Selbsttest:", "BESTANDEN ✓" if bestanden else "PROBLEM ✗",
-          f"(PDFs gesamt: {pdfs_total}) ===")
-    sys.exit(0 if bestanden else 1)
+    ergebnisse = []
+    for gm in stichprobe:
+        r = _probe_gemeinde(gm)
+        ergebnisse.append(r)
+        flag = "OK" if (r["erreichbar"] and r["bereiche"] >= 1) else "  "
+        pdf = "PDF" if r["pdf"] else "   "
+        print(f"  [{flag} {pdf}] {r['bl']:4s} {r['name'][:32]:32s} | "
+              f"err={int(r['erreichbar'])} cms={r['cms']:10s} "
+              f"bereiche={r['bereiche']} pdf={int(r['pdf'])}")
+
+    per_bl = defaultdict(lambda: {"n": 0, "err": 0, "ber": 0, "pdf": 0})
+    cms_z = defaultdict(int)
+    andere = {"n": 0, "err": 0, "ber": 0, "pdf": 0}
+    probleme = []
+    for r in ergebnisse:
+        b = per_bl[r["bl"]]
+        b["n"] += 1
+        b["err"] += int(r["erreichbar"])
+        b["ber"] += int(r["bereiche"] >= 1)
+        b["pdf"] += int(r["pdf"])
+        cms_z[r["cms"]] += 1
+        if r["cms"] == "andere":
+            andere["n"] += 1
+            andere["err"] += int(r["erreichbar"])
+            andere["ber"] += int(r["bereiche"] >= 1)
+            andere["pdf"] += int(r["pdf"])
+        if r["erreichbar"] and r["bereiche"] == 0:
+            probleme.append(r)
+
+    print("\n=== MATRIX je Bundesland (erreichbar / mit Bereichen / mit PDF von n) ===")
+    for bl in ("W", "NOE", "OOE", "SBG", "STK", "KTN", "TIR", "VBG", "BGR"):
+        if bl in per_bl:
+            b = per_bl[bl]
+            print(f"  {bl:4s}: erreichbar {b['err']}/{b['n']} | Bereiche {b['ber']}/{b['n']} | PDF {b['pdf']}/{b['n']}")
+
+    n = len(ergebnisse)
+    err = sum(int(r["erreichbar"]) for r in ergebnisse)
+    ber = sum(int(r["bereiche"] >= 1) for r in ergebnisse)
+    pdf = sum(int(r["pdf"]) for r in ergebnisse)
+    print(f"\n=== GESAMT ({n} Gemeinden) ===")
+    print(f"  erreichbar:     {err}/{n} ({100*err//max(n,1)} %)")
+    print(f"  mit Bereichen:  {ber}/{n} ({100*ber//max(n,1)} %)")
+    print(f"  mit PDF:        {pdf}/{n} ({100*pdf//max(n,1)} %)")
+    print("  CMS-Verteilung: " + ", ".join(f"{k}={v}" for k, v in sorted(cms_z.items(), key=lambda x: -x[1])))
+    if andere["n"]:
+        print(f"\n  >>> NICHT-gem2go ({andere['n']} Gemeinden) – die eigentliche Generalisierungsfrage:")
+        print(f"      erreichbar {andere['err']}/{andere['n']} | Bereiche {andere['ber']}/{andere['n']} | PDF {andere['pdf']}/{andere['n']}")
+
+    if probleme:
+        print(f"\n  Erreichbar, aber KEINE Bereiche erkannt ({len(probleme)}):")
+        for r in probleme[:25]:
+            print(f"     - {r['bl']} {r['name'][:30]} ({r['cms']}) {r['url'][:55]}")
+
+    erreichbare = max(err, 1)
+    print("\n=== VERDIKT ===")
+    if err >= 0.6 * n and (ber / erreichbare) >= 0.5:
+        print(f"  Generische Logik traegt breit: {ber}/{err} erreichbarer Seiten liefern Bereiche.")
+        sys.exit(0)
+    else:
+        print(f"  Auffaellig: nur {ber}/{err} erreichbarer Seiten mit Bereichen – bitte Stichprobe pruefen.")
+        sys.exit(1)
