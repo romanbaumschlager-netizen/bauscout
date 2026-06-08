@@ -43,8 +43,11 @@ except Exception:
 
 # ── Konfiguration ────────────────────────────────────────────────────────────
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; ProjectScout/1.0; +https://project-scout.at)",
-    "Accept-Language": "de-AT,de;q=0.9",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,"
+              "image/webp,*/*;q=0.8",
+    "Accept-Language": "de-AT,de;q=0.9,en;q=0.8",
 }
 HTTP_TIMEOUT               = 12          # Sekunden pro Einzelabruf
 MAX_PDF_BYTES              = 12_000_000  # PDFs groesser als ~12 MB ueberspringen
@@ -105,14 +108,26 @@ RE_JAHR_PARAM = re.compile(r"(typid|jahr|year)=20\d{2}")
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
 def _hole(url: str, erlaube_pdf: bool = False):
-    """Robuster GET. Gibt das requests.Response-Objekt zurueck oder None."""
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=HTTP_TIMEOUT,
-                            allow_redirects=True, stream=erlaube_pdf)
-        if resp.status_code == 200:
-            return resp
-    except Exception:
-        pass
+    """Robuster GET. Gibt das requests.Response-Objekt zurueck oder None.
+    Faellt bei Fehlschlag auf das andere Schema (http<->https) zurueck –
+    manche Gemeinden liefern nur ueber genau eines."""
+    def _versuch(u):
+        try:
+            resp = requests.get(u, headers=HEADERS, timeout=HTTP_TIMEOUT,
+                                allow_redirects=True, stream=erlaube_pdf)
+            if resp.status_code == 200:
+                return resp
+        except Exception:
+            pass
+        return None
+
+    resp = _versuch(url)
+    if resp is not None:
+        return resp
+    if url.startswith("http://"):
+        return _versuch("https://" + url[len("http://"):])
+    if url.startswith("https://"):
+        return _versuch("http://" + url[len("https://"):])
     return None
 
 
