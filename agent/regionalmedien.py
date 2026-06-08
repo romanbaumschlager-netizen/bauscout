@@ -40,6 +40,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from bs4 import BeautifulSoup
 
+# curl_cffi (Chrome-TLS-Impersonation) als Fallback: manche Portale - z.B. die
+# meinbezirk-Artikeldetailseiten - blocken serverseitige Standard-Clients von
+# Rechenzentrums-IPs (TLS-Fingerprint/Bot-Erkennung). curl_cffi ahmt einen echten
+# Chrome-TLS-Fingerprint nach. Optional: ist das Paket nicht installiert, faellt
+# alles sauber auf requests zurueck (keine erzwungene Abhaengigkeit).
+try:
+    from curl_cffi import requests as cffi_requests
+    _HAS_CFFI = True
+except Exception:
+    cffi_requests = None
+    _HAS_CFFI = False
+
+# Sobald Impersonation EINMAL dort erfolgreich war, wo requests scheiterte, wird
+# sie fuer die folgenden Abrufe bevorzugt (spart die requests-Fehlversuche).
+_prefer_impersonation = False
+
 # -----------------------------------------------------------------------------
 # Konfiguration
 # -----------------------------------------------------------------------------
@@ -97,7 +113,7 @@ def _session() -> requests.Session:
     return s
 
 
-def _get(url: str, s: requests.Session, versuche: int = 2) -> str | None:
+def _fetch_requests(url: str, s: requests.Session, versuche: int = 2) -> str | None:
     for i in range(versuche):
         try:
             r = s.get(url, timeout=TIMEOUT)
@@ -108,6 +124,49 @@ def _get(url: str, s: requests.Session, versuche: int = 2) -> str | None:
         except Exception:
             time.sleep(1 + i)
     return None
+
+
+def _fetch_cffi(url: str, versuche: int = 2) -> str | None:
+    """Abruf mit Chrome-TLS-Impersonation (umgeht TLS-Fingerprint-/Bot-Sperren)."""
+    if not _HAS_CFFI:
+        return None
+    for i in range(versuche):
+        try:
+            r = cffi_requests.get(
+                url, impersonate="chrome",
+                headers={"Accept-Language": "de-AT,de;q=0.9,en;q=0.6"},
+                timeout=TIMEOUT, allow_redirects=True,
+            )
+            if r.status_code == 200 and r.text:
+                return r.text
+            if r.status_code in (429, 503):
+                time.sleep(2 + i * 2)
+        except Exception:
+            time.sleep(1 + i)
+    return None
+
+
+def _get(url: str, s: requests.Session, versuche: int = 2) -> str | None:
+    """Holt eine Seite robust: erst Standard-Client, bei Sperre Chrome-Impersonation.
+
+    Listen-/Bezirksseiten laufen weiter ueber requests (keine Regression). Greift
+    dort eine Sperre (typisch bei Artikeldetailseiten von Rechenzentrums-IPs),
+    wird automatisch curl_cffi nachgezogen - und danach bevorzugt genutzt.
+    """
+    global _prefer_impersonation
+    if _prefer_impersonation and _HAS_CFFI:
+        html = _fetch_cffi(url, versuche)
+        if html:
+            return html
+        return _fetch_requests(url, s, versuche)
+
+    html = _fetch_requests(url, s, versuche)
+    if html:
+        return html
+    html = _fetch_cffi(url, versuche)
+    if html:
+        _prefer_impersonation = True
+    return html
 
 
 def _meta(soup: BeautifulSoup, key: str) -> str:
@@ -525,6 +584,12 @@ def ernte_meinbezirk(bundeslaender: list[str],
     erlaubte_bl = set(bundeslaender)
     treffer: list[dict] = []
     geprueft = 0
+    # Diagnose-Zaehler: zeigen im Log GENAU, wo Artikel ausscheiden.
+    n_http_fail = 0     # Seite nicht ladbar (None) -> z.B. Sperre/Timeout
+    n_wrong_bl = 0      # eindeutig anderes Bundesland
+    n_out_window = 0    # Datum ausserhalb des Zeitfensters
+    n_no_date = 0       # ohne Datum -> behalten
+    n_in_window = 0     # Datum im Fenster -> behalten
 
     def _aid(p):
         m = re.search(r"_a(\d+)", p)
@@ -576,20 +641,37 @@ def ernte_meinbezirk(bundeslaender: list[str],
                 except Exception:
                     art = None
                 if not art:
+                    n_http_fail += 1
                     continue
                 bl_art = _bl_aus_state(art["state"])
                 if bl_art and erlaubte_bl and bl_art not in erlaubte_bl:
+                    n_wrong_bl += 1
                     continue
                 d = art["datum_dt"]
                 if d is not None and (aelteste is None or d < aelteste):
                     aelteste = d
                 if _im_fenster(art["datum_dt"], cutoff_dt, heute_dt):
                     treffer.append(art)
+                    if d is None:
+                        n_no_date += 1
+                    else:
+                        n_in_window += 1
+                else:
+                    n_out_window += 1
         # Ganzer Block aelter als cutoff -> alle weiteren (kleinere ID) sind aelter
         if aelteste is not None and aelteste < cutoff_dt:
             stop = True
 
-    log(f"     [meinbezirk] {geprueft} Artikel geladen -> {len(treffer)} im Zeitfenster/Bundesland")
+    # Diagnose-Aufschluesselung: macht eine '0 Treffer'-Situation sofort erklaerbar.
+    log(f"     [meinbezirk] {geprueft} versucht -> {len(treffer)} uebernommen "
+        f"({n_no_date} ohne Datum + {n_in_window} im Fenster) | "
+        f"verworfen: {n_http_fail} HTTP-Fehler, {n_wrong_bl} anderes BL, "
+        f"{n_out_window} ausserhalb Zeitfenster")
+    if n_http_fail and not treffer:
+        _mode = "aktiv" if _prefer_impersonation else ("verfuegbar" if _HAS_CFFI else "NICHT installiert")
+        log(f"     [meinbezirk] HINWEIS: alle Artikel HTTP-Fehler -> Portal blockt den "
+            f"Abruf. Chrome-Impersonation: {_mode}. Bleibt es bei 0, ist die IP "
+            f"gesperrt (dann Proxy noetig).")
     return treffer
 
 
