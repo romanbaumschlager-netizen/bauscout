@@ -623,7 +623,7 @@ AUSGABE: AUSSCHLIESSLICH ein JSON-Array. Kein Text davor/danach, kein Markdown, 
     "volumen": "z.B. '12 Mio. Euro' oder '3.500 m²' oder leer",
     "phase": "Planung/Ausschreibung/Vergabe/Bau/Fertigstellung",
     "relevanz": 7,
-    "datum": "YYYY-MM-DD des Berichts/Beschlusses wenn bekannt, sonst leer",
+    "datum": "YYYY-MM-DD des VERÖFFENTLICHUNGS-/Berichtsdatums (NICHT die Angebotsfrist!), sonst leer",
     "artikel_url": "vollständige https-URL der Quelle",
     "quelle_name": "z.B. meinbezirk.at, OÖN, ankoe.at"
   }
@@ -788,26 +788,21 @@ def suche_vergaben(bundesland: str, suchbegriffe: list,
 
 ZEITRAUM: Ausschreibungen aktiv oder veröffentlicht vom {cutoff} bis {heute}.
 
-DURCHSUCHE GEZIELT DIESE VERGABEPORTALE (mehrere Suchen!):
-- vergabeportal.at (ANKÖ – führende österreichische Ausschreibungsdatenbank)
-- evi.gv.at (offizielles digitales Amtsblatt der Republik, seit 1.7.2023 Nachfolger des Amtsblatts zur Wiener Zeitung)
-- usp.gv.at Ausschreibungssuche (Unternehmensserviceportal des Bundes)
-- ausschreibung.at (Fachportal für Bauausschreibungen: Hochbau, Tiefbau, Haustechnik)
-- architekturwettbewerb.at (Bauplanungs-/Architekturverfahren)
-- ted.europa.eu (EU-weite Ausschreibungen, Land = Österreich)
-- bbg.gv.at (Bundesbeschaffung), auftrag.at, lieferanzeiger.at, offenevergaben.at
+DURCHSUCHE GEZIELT DIESE VERGABEPORTALE (mehrere Suchen!) – die ersten liefern auch ohne Login öffentlich auffindbare Treffer:
+- ausschreibung.at (Fachportal Bau: Hochbau, Tiefbau, Haustechnik – Titel/Ort/Frist meist frei sichtbar)
+- usp.gv.at Ausschreibungssuche (zentrale Bekanntmachungen aller öffentlichen Auftraggeber Österreichs)
+- auftrag.at (öffentliche Aufträge je Bundesland)
+- ted.europa.eu (EU-weite Ausschreibungen über der Schwelle, Land = Österreich)
+- vergabeportal.at (ANKÖ), evi.gv.at (digitales Amtsblatt der Republik), bbg.gv.at, lieferanzeiger.at, offenevergaben.at, architekturwettbewerb.at
 - Vergabe-/Beschaffungsplattformen der Länder und größeren Städte
 
-TIPP: Öffentliche Ausschreibungen sind über CPV-Codes klassifiziert. Nutze fuer
-Bauleistungen u.a. die CPV-Hauptgruppen 45 (Bau-/Tiefbauarbeiten), 71 (Architektur-/
-Ingenieurleistungen) und 09 (Energie) als zusaetzliche Suchbegriffe, z.B.
-"CPV 45 Bauauftrag {bl_name}".
+TIPP: Achte besonders auf SUB-Schwellen-Aufträge (unter ~5,4 Mio. €) – die sind für KMU/Handwerk am relevantesten und stehen oft nur als Titel auf den Portalen oder auf der Gemeinde-Amtstafel. Auch CPV-Bauklassen (45 Bau/Tiefbau, 71 Planung, 09 Energie) können als zusätzlicher Suchbegriff helfen, z.B. "CPV 45 Bauauftrag {bl_name}".
 
 SUCHE u.a. NACH: "Bauausschreibung {bl_name}", "Vergabe Bauleistung {bl_name}",
 "Generalunternehmer Ausschreibung {bl_name}", "Hochbau/Tiefbau Ausschreibung {bl_name}",
 sowie {signale} jeweils + "{bl_name}".
 
-Für jeden Treffer: Auftraggeber, Gewerk, geschätzte Auftragssumme, Frist.
+Für jeden Treffer: Auftraggeber, Gewerk, geschätzte Auftragssumme und Angebotsfrist. Die Frist gehört in die "beschreibung" (z.B. "Angebotsfrist 05.06.2026"); ins Feld "datum" kommt das Veröffentlichungsdatum, NICHT die Frist.
 Diese Treffer sind besonders wertvoll → phase="Ausschreibung" oder "Vergabe",
 relevanz typischerweise 8-10. Antworte als JSON-Array."""
     return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
