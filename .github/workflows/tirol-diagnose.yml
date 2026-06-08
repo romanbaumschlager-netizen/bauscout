@@ -1,0 +1,117 @@
+name: Tirol-Diagnose (kostenlos, ohne KI)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tirol-diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install requests curl_cffi
+
+      - name: Tirol-Diagnose ausfuehren
+        run: |
+          cat > diag.py << 'PYEOF'
+          import sys
+          from urllib.parse import urlparse
+
+          try:
+              import requests
+          except Exception as e:
+              print("FEHLER requests:", e); sys.exit(1)
+
+          try:
+              from curl_cffi import requests as cffi
+              HAS_CFFI = True
+          except Exception as e:
+              cffi = None
+              HAS_CFFI = False
+              print("HINWEIS: curl_cffi nicht importierbar:", e)
+
+          sys.path.insert(0, "agent")
+          try:
+              from gemeinden_datenbank import GEMEINDEN
+              TIR = GEMEINDEN.get("TIR", [])
+          except Exception as e:
+              print("FEHLER gemeinden_datenbank:", e)
+              TIR = []
+
+          def basis(u):
+              try:
+                  p = urlparse((u or "").strip())
+                  if not p.scheme:
+                      return ""
+                  return p.scheme + "://" + p.netloc
+              except Exception:
+                  return ""
+
+          tir_urls = [(g.get("name", "?"), (g.get("url") or "").strip()) for g in TIR]
+          portal = [(n, u) for (n, u) in tir_urls if "tirol.gv.at" in u]
+          eigen = [(n, u) for (n, u) in tir_urls if u and "tirol.gv.at" not in u and u.lower().startswith("http")]
+
+          print("TIR-Gemeinden gesamt:", len(tir_urls))
+          print("davon URL enthaelt 'tirol.gv.at':", len(portal))
+          print("davon eigene Domain (als Kontrolle):", len(eigen))
+
+          proben = [("PORTAL-ROOT", "https://www.tirol.gv.at")]
+          for (n, u) in portal[:6]:
+              b = basis(u)
+              if b:
+                  proben.append((n, b))
+          if eigen:
+              cn, cu = eigen[0]
+              cb = basis(cu)
+              if cb:
+                  proben.append(("KONTROLLE/" + cn, cb))
+
+          UA = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+              "Accept-Language": "de-AT,de;q=0.9,en;q=0.8",
+          }
+          WAF_KEYS = ["Server", "CF-RAY", "X-Iinfo", "X-CDN", "X-Cache", "X-Sucuri-ID", "X-Akamai-Transformed", "Set-Cookie"]
+
+          def snippet(t, n=200):
+              return " ".join((t or "").split())[:n]
+
+          def show_headers(h):
+              out = []
+              for k in WAF_KEYS:
+                  v = h.get(k)
+                  if v:
+                      out.append(k + "=" + str(v)[:80])
+              return "; ".join(out) if out else "(keine markanten)"
+
+          for (name, url) in proben:
+              print("\n" + "=" * 72)
+              print(name + "  ->  " + url)
+              try:
+                  r = requests.get(url, headers=UA, timeout=15, allow_redirects=True)
+                  print("  [requests ] HTTP " + str(r.status_code) + " | final=" + str(r.url))
+                  print("              headers: " + show_headers(r.headers))
+                  print("              body[:200]: " + snippet(r.text))
+              except Exception as e:
+                  print("  [requests ] FEHLER " + type(e).__name__ + ": " + str(e)[:160])
+              if HAS_CFFI:
+                  try:
+                      r = cffi.get(url, impersonate="chrome",
+                                   headers={"Accept-Language": "de-AT,de;q=0.9,en;q=0.8"},
+                                   timeout=15, allow_redirects=True)
+                      print("  [curl_cffi] HTTP " + str(r.status_code) + " | final=" + str(r.url))
+                      print("              headers: " + show_headers(r.headers))
+                      print("              body[:200]: " + snippet(r.text))
+                  except Exception as e:
+                      print("  [curl_cffi] FEHLER " + type(e).__name__ + ": " + str(e)[:160])
+
+          print("\nFERTIG.")
+
+          PYEOF
+          python diag.py
