@@ -24,6 +24,8 @@
 
 import re
 import io
+import time
+import random
 import hashlib
 from urllib.parse import urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -39,6 +41,29 @@ try:
     import pdfplumber
 except Exception:
     pdfplumber = None
+
+# curl_cffi (Chrome-TLS-Impersonation) als Fallback: einzelne Landesportale
+# (z.B. *.tirol.gv.at) blocken serverseitige Standard-Clients per TLS-Fingerprint/
+# WAF. curl_cffi ahmt einen echten Chrome-Fingerprint nach. Optional - fehlt das
+# Paket, laeuft alles wie bisher ueber requests (keine erzwungene Abhaengigkeit).
+try:
+    from curl_cffi import requests as cffi_requests
+    _HAS_CFFI = True
+except Exception:
+    cffi_requests = None
+    _HAS_CFFI = False
+
+# Domains, bei denen der Standard-Client blockiert wird -> dort direkt
+# Impersonation. Wird zur Laufzeit gelernt (sobald curl_cffi dort klappt, wo
+# requests scheiterte), damit nicht jede Unterseite erst den requests-Fehlversuch macht.
+_impersonate_domains: set = set()
+
+
+def _domain(u: str) -> str:
+    try:
+        return urlparse(u).netloc.lower()
+    except Exception:
+        return ""
 
 
 # ── Konfiguration ────────────────────────────────────────────────────────────
@@ -111,7 +136,10 @@ def _hole(url: str, erlaube_pdf: bool = False):
     """Robuster GET. Gibt das requests.Response-Objekt zurueck oder None.
     Faellt bei Fehlschlag auf das andere Schema (http<->https) zurueck –
     manche Gemeinden liefern nur ueber genau eines."""
-    def _versuch(u):
+    dom = _domain(url)
+    bevorzugt_cffi = _HAS_CFFI and dom in _impersonate_domains
+
+    def _versuch_requests(u):
         try:
             resp = requests.get(u, headers=HEADERS, timeout=HTTP_TIMEOUT,
                                 allow_redirects=True, stream=erlaube_pdf)
@@ -120,6 +148,36 @@ def _hole(url: str, erlaube_pdf: bool = False):
         except Exception:
             pass
         return None
+
+    def _versuch_cffi(u):
+        if not _HAS_CFFI:
+            return None
+        for i in range(2):
+            try:
+                resp = cffi_requests.get(
+                    u, impersonate="chrome",
+                    headers={"Accept-Language": "de-AT,de;q=0.9,en;q=0.8"},
+                    timeout=HTTP_TIMEOUT, allow_redirects=True,
+                )
+                if resp.status_code == 200:
+                    return resp
+                if resp.status_code in (429, 503):
+                    time.sleep(1.0 * (i + 1) + random.uniform(0, 0.8))
+            except Exception:
+                time.sleep(0.5 + random.uniform(0, 0.6))
+        return None
+
+    def _versuch(u):
+        # Reihenfolge je nach gelernter Domain-Erfahrung; lernt dazu.
+        if bevorzugt_cffi:
+            return _versuch_cffi(u) or _versuch_requests(u)
+        resp = _versuch_requests(u)
+        if resp is not None:
+            return resp
+        resp = _versuch_cffi(u)
+        if resp is not None and dom:
+            _impersonate_domains.add(dom)
+        return resp
 
     resp = _versuch(url)
     if resp is not None:
