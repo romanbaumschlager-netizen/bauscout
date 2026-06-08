@@ -1,0 +1,27 @@
+name: Regio-Selbsttest (kostenlos, ohne KI)
+
+# Manuell ausloesbar: Actions-Tab -> "Regio-Selbsttest" -> "Run workflow".
+# Prueft NUR die meinbezirk-Ernte (HTTP) und ob die zwei bekannten
+# Kirchdorf-Bauprojekte gefunden werden. Es werden KEINE Secrets, keine
+# Anthropic-API, kein Supabase und kein Stripe benoetigt -> 0 EUR Kosten.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  selbsttest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code holen
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Abhaengigkeiten installieren
+        run: pip install requests beautifulsoup4
+
+      - name: meinbezirk-Ernte testen (Bezirk Kirchdorf, ohne KI/Kosten)
+        run: python agent/regionalmedien.py
