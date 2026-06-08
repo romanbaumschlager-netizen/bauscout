@@ -1,0 +1,22 @@
+name: Crawler-Selbsttest (kostenlos, ohne KI)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  crawler-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install requests beautifulsoup4 pdfplumber
+
+      - name: Crawler-Selbsttest ausfuehren
+        run: python agent/crawler.py
