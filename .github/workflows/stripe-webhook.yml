@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Abhängigkeiten installieren
-        run: pip install requests anthropic beautifulsoup4 pdfplumber
+        run: pip install requests anthropic beautifulsoup4 pdfplumber curl_cffi
       - name: ProjectScout Agent starten
         env:
           SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
