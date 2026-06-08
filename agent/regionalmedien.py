@@ -450,6 +450,7 @@ def ernte_meinbezirk(bundeslaender: list[str],
                      gemeinden_filter: list[str] | None = None,
                      zeit_ok=lambda: True,
                      max_artikel: int = 4000,
+                     max_pro_tag_bezirk: int = 3,
                      max_workers: int = 16,
                      log=print) -> list[dict]:
     """
@@ -529,7 +530,29 @@ def ernte_meinbezirk(bundeslaender: list[str],
         m = re.search(r"_a(\d+)", p)
         return int(m.group(1)) if m else 0
 
-    pfade = sorted(kandidaten, key=_aid, reverse=True)
+    # Bezirks-Budget (skaliert mit den Tagen des Kunden): pro Bezirk hoechstens
+    # (Tage x max_pro_tag_bezirk) Artikel zur Analyse, NEUESTE zuerst. Ruhige
+    # Bezirke bleiben voll abgedeckt; nur sehr aktive werden gedeckelt -> die
+    # Kosten skalieren fair mit dem, was der Kunde gewaehlt und bezahlt hat.
+    _tage = max(1, (heute_dt - cutoff_dt).days)
+    _budget = _tage * max(1, max_pro_tag_bezirk)
+
+    def _bezirk(pf: str) -> str:
+        teile = pf.split("/")
+        return teile[1].lower() if len(teile) > 1 else ""
+
+    _pro_bezirk: dict = {}
+    for pf in sorted(kandidaten, key=_aid, reverse=True):   # neueste zuerst
+        lst = _pro_bezirk.setdefault(_bezirk(pf), [])
+        if len(lst) < _budget:
+            lst.append(pf)
+    kandidaten_capped = [pf for lst in _pro_bezirk.values() for pf in lst]
+    if len(kandidaten_capped) < len(kandidaten):
+        log(f"     [meinbezirk] Bezirks-Budget {_budget}/Bezirk "
+            f"({_tage} Tage x {max_pro_tag_bezirk}) -> "
+            f"{len(kandidaten_capped)} von {len(kandidaten)} Artikeln zur Analyse")
+
+    pfade = sorted(kandidaten_capped, key=_aid, reverse=True)
     obergrenze = min(len(pfade), max_artikel)
     BLOCK = 200
     i = 0
