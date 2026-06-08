@@ -21,7 +21,7 @@ jobs:
           python-version: "3.11"
 
       - name: Abhaengigkeiten installieren
-        run: pip install requests beautifulsoup4 pdfplumber
+        run: pip install requests beautifulsoup4 pdfplumber curl_cffi
 
       - name: Crawler-Breitentest ausfuehren
         env:
