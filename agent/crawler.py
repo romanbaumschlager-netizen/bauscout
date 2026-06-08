@@ -584,10 +584,17 @@ if __name__ == "__main__":
             gm["bundesland"] = bl
             stichprobe.append(gm)
 
+    from concurrent.futures import ThreadPoolExecutor
+    print(f"Pruefe {len(stichprobe)} Gemeinden parallel (12 Worker) ...\n")
     ergebnisse = []
-    for gm in stichprobe:
-        r = _probe_gemeinde(gm)
-        ergebnisse.append(r)
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        for r in pool.map(_probe_gemeinde, stichprobe):
+            ergebnisse.append(r)
+
+    # Ausgabe nach Bundesland sortiert (parallele Reihenfolge ist sonst zufaellig)
+    _bl_ord = {b: i for i, b in enumerate(("W", "NOE", "OOE", "SBG", "STK", "KTN", "TIR", "VBG", "BGR"))}
+    ergebnisse.sort(key=lambda r: (_bl_ord.get(r["bl"], 99), r["name"]))
+    for r in ergebnisse:
         flag = "OK" if (r["erreichbar"] and r["bereiche"] >= 1) else "  "
         pdf = "PDF" if r["pdf"] else "   "
         print(f"  [{flag} {pdf}] {r['bl']:4s} {r['name'][:32]:32s} | "
