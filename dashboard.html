@@ -89,6 +89,12 @@ body{background:var(--hell);color:var(--text);font-family:'Inter',sans-serif;min
 .tag-vol{background:var(--orange-hell);color:var(--orange);}
 .tag-gemerkt{background:var(--gold-hell);color:var(--gold);border:1px solid var(--gold-rand);}
 .tag-neu{background:var(--blau-hell);color:var(--blau-dunkel);font-size:10px;}
+.tag-glocke{background:var(--orange-hell);color:var(--orange);border:1px solid var(--orange);font-size:10px;cursor:pointer;}
+.tag-glocke:hover{filter:brightness(0.95);}
+.projekt-quellen{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.quellen-label{font-size:11px;color:var(--text-mid);font-weight:600;}
+.btn-quelle{font-size:11px;padding:4px 9px;}
+.quellen-mehr{font-size:11px;color:var(--text-mid);}
 .projekt-beschreibung{font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:8px;}
 .projekt-ort{font-size:12px;color:var(--text-dim);}
 .projekt-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
@@ -444,6 +450,7 @@ function projektKarteHTML(p, inMerkliste) {
       <div class="projekt-titel">${escHtml(p.titel||'–')}
         ${gemerkt ? '<span class="tag tag-gemerkt">⭐ Vorgemerkt</span>' : ''}
         ${istNeu  ? '<span class="tag tag-neu">NEU</span>' : ''}
+        ${(p.neue_quellen_anzahl||0) > 0 ? `<span class="tag tag-glocke" data-id="${p.id}" title="Neue Quelle(n) seit Ihrem letzten Suchlauf – zum Ausblenden anklicken">🔔 ${p.neue_quellen_anzahl} neue Quelle${p.neue_quellen_anzahl>1?'n':''}</span>` : ''}
       </div>
       <div class="projekt-meta">
         ${p.kategorie  ? `<span class="tag tag-kat">${escHtml(p.kategorie)}</span>` : ''}
@@ -453,9 +460,9 @@ function projektKarteHTML(p, inMerkliste) {
       </div>
       <div class="projekt-beschreibung">${escHtml(p.beschreibung||'')}</div>
       <div class="projekt-ort">📍 ${escHtml(p.ort||'')}${p.bezirk?' · '+escHtml(p.bezirk):''}</div>
+      ${renderQuellen(p)}
     </div>
     <div class="projekt-actions">
-      ${p.artikel_url ? `<a href="${escHtml(p.artikel_url)}" target="_blank" class="btn-link">→ Artikel</a>` : ''}
       <button class="btn-merken ${gemerkt?'aktiv':''}" data-id="${p.id}">${gemerkt?'⭐ Vorgemerkt':'☆ Merken'}</button>
       ${!inMerkliste ? `<button class="btn-ignorieren ${ignoriert?'aktiv':''}" data-id="${p.id}">${ignoriert?'✓ Ignoriert':'Ignorieren'}</button>` : ''}
     </div>
@@ -467,6 +474,8 @@ function bindEvents(container) {
     btn.addEventListener('click', async e => { e.stopPropagation(); await toggleMerken(btn.dataset.id); }));
   container.querySelectorAll('.btn-ignorieren').forEach(btn =>
     btn.addEventListener('click', async e => { e.stopPropagation(); await toggleIgnorieren(btn.dataset.id); }));
+  container.querySelectorAll('.tag-glocke').forEach(el =>
+    el.addEventListener('click', async e => { e.stopPropagation(); await quittiereQuellen(el.dataset.id); }));
 }
 
 async function toggleMerken(id) {
@@ -484,6 +493,13 @@ async function toggleIgnorieren(id) {
     if (gemerkteIds.has(id)) { gemerkteIds.delete(id); await sb.from('projekte').update({ gemerkt: false }).eq('id', id); }
   } else { ignoriertIds.delete(id); }
   aktualisiereStats(); rendereListe(); rendereMerkliste();
+}
+
+async function quittiereQuellen(id) {
+  try { await sb.from('projekte').update({ neue_quellen_anzahl: 0 }).eq('id', id); } catch (e) {}
+  const p = alleProjekte.find(x => String(x.id) === String(id));
+  if (p) p.neue_quellen_anzahl = 0;
+  rendereListe(); rendereMerkliste();
 }
 
 // ── KARTE ──
@@ -553,12 +569,7 @@ function aktualisiereKarte() {
           <div style="font-size:12px;color:#555;margin-bottom:8px;">
             ${escHtml(p.phase||'')}${p.volumen ? ' · ' + escHtml(p.volumen) : ''}
           </div>
-          ${p.artikel_url
-            ? `<a href="${escHtml(p.artikel_url)}" target="_blank"
-                 style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">
-                 → Zum Artikel
-               </a>`
-            : ''}
+          ${quellenMapHtml(p)}
         </div>`;
       infoWindow.setContent(inhalt);
       infoWindow.open(karteInstanz, marker);
@@ -620,6 +631,7 @@ window.exportiereExcel = function() {
     'Bundesland': p.bundesland||'', 'Kategorie': p.kategorie||'',
     'Phase': p.phase||'', 'Volumen': p.volumen||'', 'Relevanz': p.relevanz||'',
     'Quelle': p.quelle||'', 'Artikel URL': p.artikel_url||'',
+    'Quellen (alle)': (Array.isArray(p.quellen) && p.quellen.length ? p.quellen.map(q => q.url).join('; ') : (p.artikel_url||'')),
     'Beschreibung': p.beschreibung||'',
     'Gefunden am': p.erstmals_gefunden ? new Date(p.erstmals_gefunden).toLocaleDateString('de-AT') : '',
     'Ignoriert': p.ignorieren ? 'Ja' : 'Nein',
@@ -628,9 +640,36 @@ window.exportiereExcel = function() {
   const ws = XLSX.utils.json_to_sheet(zeilen);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ProjectScout Projekte');
-  ws['!cols'] = [{wch:40},{wch:20},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:10},{wch:20},{wch:50},{wch:60},{wch:15},{wch:10},{wch:12}];
+  ws['!cols'] = [{wch:40},{wch:20},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:10},{wch:20},{wch:50},{wch:60},{wch:60},{wch:15},{wch:10},{wch:12}];
   XLSX.writeFile(wb, `ProjectScout_${new Date().toISOString().slice(0,10)}.xlsx`);
 };
+
+function renderQuellen(p, opts) {
+  opts = opts || {};
+  let liste = Array.isArray(p.quellen) ? p.quellen.filter(q => q && q.url) : [];
+  if (!liste.length && p.artikel_url) liste = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
+  if (!liste.length) return '';
+  const amtlich = u => /gv\.at|ausschreibung|ankoe|vergabe/i.test(u || '');
+  liste = liste.slice().sort((a, b) => (amtlich(a.url) ? 0 : 1) - (amtlich(b.url) ? 0 : 1));
+  const max = opts.max || liste.length;
+  let links = liste.slice(0, max).map(q =>
+    `<a href="${escHtml(q.url)}" target="_blank" class="btn-link btn-quelle">→ ${escHtml(q.quelle_name || 'Quelle')}</a>`
+  ).join(' ');
+  if (liste.length > max) links += ` <span class="quellen-mehr">+${liste.length - max} weitere</span>`;
+  if (opts.inline) return links;
+  const label = liste.length > 1 ? 'Quellen' : 'Quelle';
+  return `<div class="projekt-quellen"><span class="quellen-label">${label}:</span> ${links}</div>`;
+}
+
+function quellenMapHtml(p) {
+  let q = Array.isArray(p.quellen) ? p.quellen.filter(x => x && x.url) : [];
+  if (!q.length && p.artikel_url) q = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
+  if (!q.length) return '';
+  const erste = q[0];
+  const link = `<a href="${escHtml(erste.url)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">→ ${escHtml(erste.quelle_name || 'Quelle')}</a>`;
+  const rest = q.length > 1 ? ` <span style="color:#777;font-size:11px;">+${q.length - 1} weitere</span>` : '';
+  return link + rest;
+}
 
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
