@@ -14,7 +14,7 @@
 # Umgebungsvariablen (GitHub Secrets):
 #   SUPABASE_URL, SUPABASE_SECRET_KEY
 #   ANTHROPIC_API_KEY
-#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+#   BREVO_API_KEY
 # =============================================================================
 
 import os
@@ -22,13 +22,10 @@ import sys
 import json
 import time
 import hashlib
-import smtplib
 import requests
 import re
 import anthropic
 from datetime import datetime, timezone, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 sys.path.insert(0, os.path.dirname(__file__))
 from medien_datenbank import get_alle_bundeslaender_kuerzel
@@ -43,10 +40,11 @@ import regionalmedien  # Säule C: Regionalmedien (meinbezirk) direkt auslesen
 SUPABASE_URL      = os.environ["SUPABASE_URL"]
 SUPABASE_KEY      = os.environ["SUPABASE_SECRET_KEY"]
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-SMTP_HOST         = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT         = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER         = os.environ.get("SMTP_USER", "")
-SMTP_PASS         = os.environ.get("SMTP_PASS", "")
+# E-Mail-Versand laeuft ueber Brevo (wie die Bestaetigungs-/Rechnungsmail des
+# Webhooks). Der API-Key muss als GitHub-Actions-Secret BREVO_API_KEY gesetzt sein.
+BREVO_API_KEY     = os.environ.get("BREVO_API_KEY", "")
+ABSENDER_EMAIL    = "office@project-scout.at"
+ABSENDER_NAME     = "ProjectScout"
 
 DASHBOARD_BASE_URL = "https://project-scout.at/dashboard.html"
 ADMIN_EMAIL        = "office@project-scout.at"
@@ -89,8 +87,11 @@ CRAWL_ZEITBUDGET_ANTEIL = float(os.environ.get("CRAWL_ZEITBUDGET_ANTEIL", "0.78"
 CRAWL_WORKERS           = int(os.environ.get("CRAWL_WORKERS", "12"))
 
 # -- Saeule C: Regionalmedien-Ernte (meinbezirk direkt auslesen) --
-# Das Rueckgrat der Suche. Laeuft ZUERST mit dem groessten Zeitbudget-Anteil.
-REGIO_AKTIV             = os.environ.get("REGIO_AKTIV", "1") != "0"
+# DEAKTIVIERT: meinbezirk blockt die Server-IP vollstaendig (alle Abrufe HTTP-Fehler).
+# Solange das so ist, wuerde Saeule C nur Laufzeit verbrauchen, die dann der
+# Websuche fehlt. Die freigewordene Zeit geht jetzt komplett an Crawling + Websuche.
+# Wieder aktivierbar durch REGIO_AKTIV = True (z.B. wenn ein Proxy verfuegbar ist).
+REGIO_AKTIV             = False
 # Anteil des Gesamt-Zeitbudgets, das (zuerst) fuer die Regionalmedien-Ernte gilt.
 REGIO_ZEITBUDGET_ANTEIL = float(os.environ.get("REGIO_ZEITBUDGET_ANTEIL", "0.55"))
 # Obergrenze geladener Artikel pro Lauf (Schutz bei Grossauftraegen).
@@ -1259,6 +1260,43 @@ def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
 # WICHTIG: Fixer Dashboard-Link – nur kunden_id, keine suchanfrage_id!
 # =============================================================================
 
+def _brevo_sende(empfaenger_email: str, empfaenger_name: str,
+                 betreff: str, html: str, text: str) -> bool:
+    """
+    Zentraler E-Mail-Versand ueber die Brevo-API (identisch zur Bestaetigungs-/
+    Rechnungsmail des Webhooks). Gibt True bei Erfolg zurueck. Jeder Fehler wird
+    abgefangen und als False zurueckgegeben, damit der Lauf nie daran abbricht.
+    """
+    if not BREVO_API_KEY:
+        print("  ⚠️  BREVO_API_KEY nicht gesetzt – E-Mail übersprungen")
+        return False
+    payload = {
+        "sender":      {"name": ABSENDER_NAME, "email": ABSENDER_EMAIL},
+        "to":          [{"email": empfaenger_email, "name": empfaenger_name or empfaenger_email}],
+        "subject":     betreff,
+        "htmlContent": html,
+        "textContent": text,
+    }
+    try:
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key":      BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "accept":       "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+        if resp.ok:
+            return True
+        print(f"  ❌ Brevo-Fehler {resp.status_code}: {resp.text[:200]}")
+        return False
+    except Exception as e:
+        print(f"  ❌ Brevo-Exception: {str(e)[:150]}")
+        return False
+
+
 def erstelle_email_html(kunde: dict, auftrag: dict, projekte_liste: list[dict]) -> str:
     anzahl = len(projekte_liste)
 
@@ -1398,18 +1436,13 @@ def erstelle_email_html(kunde: dict, auftrag: dict, projekte_liste: list[dict]) 
 </html>"""
 
 def sende_email(kunde: dict, auftrag: dict, projekte_liste: list[dict]) -> bool:
-    if not SMTP_USER or not SMTP_PASS:
-        print("  ⚠️  SMTP nicht konfiguriert – E-Mail übersprungen")
-        return False
     empfaenger = kunde.get("email")
     if not empfaenger:
         print("  ⚠️  Keine Kunden-E-Mail-Adresse vorhanden")
         return False
-    anzahl = len(projekte_liste)
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"ProjectScout: {anzahl} neue Projekte – {kunde.get('firmenname','')}"
-    msg["From"]    = f"ProjectScout <{SMTP_USER}>"
-    msg["To"]      = empfaenger
+    anzahl  = len(projekte_liste)
+    firma   = kunde.get("firmenname") or ""
+    betreff = f"ProjectScout: {anzahl} neue Projekte – {firma}"
 
     dashboard_url = f"{DASHBOARD_BASE_URL}?kunden_id={auftrag['kunden_id']}"
     text_body = f"""ProjectScout – Ihre Ergebnisse sind da!
@@ -1422,20 +1455,11 @@ Ihr persönliches Dashboard (als Favorit speichern!):
 ProjectScout – KI-gestützter Projekt-Scout für Österreich"""
 
     html_body = erstelle_email_html(kunde, auftrag, projekte_liste)
-    msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    msg.attach(MIMEText(html_body, "html",  "utf-8"))
 
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, empfaenger, msg.as_string())
+    ok = _brevo_sende(empfaenger, firma, betreff, html_body, text_body)
+    if ok:
         print(f"  ✉️  E-Mail gesendet an {empfaenger}")
-        return True
-    except Exception as e:
-        print(f"  ❌ E-Mail-Fehler: {e}")
-        return False
+    return ok
 
 
 # =============================================================================
@@ -1448,8 +1472,8 @@ def sende_admin_benachrichtigung(
     dauer_sek: float, gesamt_artikel: int
 ) -> bool:
     """Sendet Benachrichtigung an office@project-scout.at nach jedem Scout-Lauf."""
-    if not SMTP_USER or not SMTP_PASS:
-        print("  ⚠️  Admin-Mail: SMTP nicht konfiguriert")
+    if not BREVO_API_KEY:
+        print("  ⚠️  Admin-Mail: BREVO_API_KEY nicht gesetzt")
         return False
 
     jetzt     = datetime.now().strftime("%d.%m.%Y um %H:%M:%S Uhr")
@@ -1524,22 +1548,10 @@ def sende_admin_benachrichtigung(
 
     text_body = f"Scout-Lauf abgeschlossen\n{jetzt}\nKunde: {vorname} {nachname} ({email})\nFirma: {firma}\nGebiet: {gebiet_str}\nZeitraum: {zeitraum_tage} Tage\nNeue Projekte: {anzahl_neue}\nGesamt: {anzahl_gesamt}\nDauer: {dauer_str}\nDashboard: {dashboard_url}"
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = betreff
-    msg["From"]    = f"ProjectScout <{SMTP_USER}>"
-    msg["To"]      = ADMIN_EMAIL
-    msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    msg.attach(MIMEText(html_body, "html",  "utf-8"))
-
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo(); server.starttls(); server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, ADMIN_EMAIL, msg.as_string())
+    ok = _brevo_sende(ADMIN_EMAIL, "ProjectScout Admin", betreff, html_body, text_body)
+    if ok:
         print(f"  📧 Admin-Benachrichtigung gesendet an {ADMIN_EMAIL}")
-        return True
-    except Exception as e:
-        print(f"  ⚠️  Admin-Mail Fehler: {e}")
-        return False
+    return ok
 
 
 # =============================================================================
