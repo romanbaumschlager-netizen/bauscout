@@ -518,6 +518,170 @@ def berechne_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MEHRQUELLEN: gleiches Bauvorhaben unter verschiedenen Quellen erkennen
+# ─────────────────────────────────────────────────────────────────────────────
+_TITEL_STOPWORTS = {
+    "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer", "eines",
+    "einem", "einen", "und", "oder", "mit", "ohne", "fuer", "für", "von", "vom",
+    "zur", "zum", "neue", "neuer", "neues", "geplant", "geplante", "plant",
+    "kommt", "baut", "neubau", "sanierung", "saniert", "projekt", "projekte",
+    "bauprojekt", "bauvorhaben", "vorhaben", "spatenstich", "eroeffnung",
+    "eröffnung", "startet", "investiert", "investition", "millionen", "euro",
+    "mio", "gemeinde", "stadt", "stadtgemeinde", "marktgemeinde", "bezirk",
+    "tirol", "wien", "oberoesterreich", "niederoesterreich", "steiermark",
+    "kaernten", "salzburg", "vorarlberg", "burgenland",
+    "wird", "wurde", "werden", "gebaut", "errichtet", "entsteht", "entstehen",
+    "soll", "sollen", "fertig", "fertiggestellt", "modernisiert", "erweitert",
+    "laeuft", "läuft", "kosten", "bauarbeiten", "baustart", "fertigstellung",
+}
+
+
+def _titel_tokens(text: str, ort: str = "") -> set:
+    """Unterscheidende Wort-Tokens eines Titels (ohne Füllwörter, Ortsname, kurze Tokens)."""
+    roh = re.sub(r"[^0-9a-zäöüß ]", " ", (text or "").lower())
+    ort_tokens = set(re.sub(r"[^0-9a-zäöüß ]", " ", (ort or "").lower()).split())
+    out = set()
+    for t in roh.split():
+        if len(t) < 4 or t in _TITEL_STOPWORTS or t in ort_tokens:
+            continue
+        out.add(t)
+    return out
+
+
+def _titel_stark_aehnlich(titel1: str, titel2: str, ort: str = "") -> bool:
+    """True, wenn zwei Titel praktisch dasselbe sagen – erspart einen KI-Aufruf."""
+    a, b = _titel_tokens(titel1, ort), _titel_tokens(titel2, ort)
+    if not a or not b:
+        return False
+    gemeinsam = len(a & b)
+    union = len(a | b)
+    if union == 0:
+        return False
+    return (gemeinsam / union) >= 0.7 and gemeinsam >= 1
+
+
+def _parse_match_nummer(text: str, anzahl: int) -> int:
+    """Erste Zahl 1..anzahl aus der KI-Antwort, sonst 0."""
+    m = re.search(r"\d+", text or "")
+    if not m:
+        return 0
+    n = int(m.group(0))
+    return n if 1 <= n <= anzahl else 0
+
+
+def _ki_gleiches_projekt(analyse: dict, kandidaten: list):
+    """
+    Fragt Haiku, ob das neue Projekt dasselbe reale Bauvorhaben ist wie eines der
+    bestehenden Kandidaten (alle im SELBEN Ort). Gibt den Treffer-Datensatz oder None.
+    Bei jedem Fehler: None (der Lauf läuft normal weiter).
+    """
+    if not kandidaten:
+        return None
+    zeilen = []
+    for i, k in enumerate(kandidaten, 1):
+        besch = (k.get("beschreibung") or "")[:160]
+        zeilen.append(f"[{i}] {k.get('titel', '')} — {besch}")
+    neu_besch = (analyse.get("beschreibung") or "")[:160]
+    prompt = (
+        "Du prüfst, ob ein NEU gefundenes Bauprojekt dasselbe reale Vorhaben ist "
+        "wie ein bereits bekanntes. Alle liegen im selben Ort.\n\n"
+        f"NEU:\nTitel: {analyse.get('titel', '')}\nBeschreibung: {neu_besch}\n\n"
+        "BEKANNTE PROJEKTE:\n" + "\n".join(zeilen) + "\n\n"
+        "Welche Nummer bezeichnet DASSELBE reale Bauvorhaben wie das NEUE? "
+        "Antworte NUR mit der Nummer. Wenn keines exakt dasselbe Projekt ist, antworte 0."
+    )
+    try:
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=MODELL_HAIKU,
+            max_tokens=8,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        try:
+            _TOKEN_STATS["input"] += response.usage.input_tokens
+            _TOKEN_STATS["output"] += response.usage.output_tokens
+            _TOKEN_STATS["calls"] += 1
+        except Exception:
+            pass
+        text = " ".join(
+            b.text for b in response.content
+            if getattr(b, "type", None) == "text" and getattr(b, "text", "")
+        ).strip()
+    except Exception as e:
+        print(f"    ⚠️  Quellen-Abgleich (KI) übersprungen: {str(e)[:120]}")
+        return None
+    nr = _parse_match_nummer(text, len(kandidaten))
+    return kandidaten[nr - 1] if nr >= 1 else None
+
+
+def _finde_gleiches_projekt(analyse: dict, kandidaten: list):
+    """
+    Sucht unter bestehenden Projekten IM SELBEN ORT dasselbe Bauvorhaben.
+    Erst günstig per Titel-Ähnlichkeit, sonst per KI. Niemals über Ortsgrenzen
+    hinweg (kandidaten enthalten ausschließlich denselben Ort).
+    """
+    if not kandidaten:
+        return None
+    ort = analyse.get("ort", "")
+    neu_titel = analyse.get("titel", "")
+    for k in kandidaten:
+        if _titel_stark_aehnlich(k.get("titel", ""), neu_titel, ort):
+            return k
+    kand = kandidaten
+    if len(kand) > 10:
+        neu_tok = _titel_tokens(neu_titel, ort)
+        kand = sorted(
+            kand,
+            key=lambda k: len(_titel_tokens(k.get("titel", ""), ort) & neu_tok),
+            reverse=True,
+        )[:10]
+    return _ki_gleiches_projekt(analyse, kand)
+
+
+def _quelle_anhaengen(treffer: dict, artikel: dict, auftrag: dict, jetzt: str) -> None:
+    """
+    Hängt eine neue Quelle an ein bestehendes Projekt an (ohne Duplikat).
+    Kam die Quelle in einem SPÄTEREN Lauf hinzu, wird der Neu-Zähler erhöht
+    (Glocke im Dashboard).
+    """
+    quellen = treffer.get("quellen") or []
+    if isinstance(quellen, str):
+        try:
+            quellen = json.loads(quellen)
+        except Exception:
+            quellen = []
+    if not isinstance(quellen, list):
+        quellen = []
+    # Aeltere Zeile ohne Quellenliste: bisherige Einzelquelle (artikel_url) uebernehmen,
+    # damit sie beim Anhaengen einer neuen Quelle nicht verloren geht.
+    if not quellen and treffer.get("artikel_url"):
+        quellen.append({"url": treffer["artikel_url"],
+                        "quelle_name": treffer.get("quelle") or "Quelle",
+                        "gefunden_am": treffer.get("erstmals_gefunden") or jetzt})
+    neue_url = artikel["url"]
+    if any(isinstance(q, dict) and q.get("url") == neue_url for q in quellen):
+        sb_patch("projekte",
+                 {"id": f"eq.{treffer['id']}", "kunden_id": f"eq.{auftrag['kunden_id']}"},
+                 {"zuletzt_gecrawlt": jetzt})
+        return
+    quellen.append({"url": neue_url, "quelle_name": artikel["quelle_name"], "gefunden_am": jetzt})
+    update = {
+        "quellen":           quellen,
+        "zuletzt_geaendert": jetzt,
+        "zuletzt_gecrawlt":  jetzt,
+    }
+    lauf_start = auftrag.get("_lauf_start_iso") or ""
+    erstmals = treffer.get("erstmals_gefunden") or ""
+    if lauf_start and erstmals and erstmals < lauf_start:
+        update["neue_quellen_anzahl"] = int(treffer.get("neue_quellen_anzahl") or 0) + 1
+        print(f"    🔔 Neue Quelle fuer bestehendes Projekt: {artikel['quelle_name']} -> {str(treffer.get('titel',''))[:50]}")
+    else:
+        print(f"    ➕ Zusatzquelle: {artikel['quelle_name']} -> {str(treffer.get('titel',''))[:50]}")
+    sb_patch("projekte",
+             {"id": f"eq.{treffer['id']}", "kunden_id": f"eq.{auftrag['kunden_id']}"},
+             update)
+
+
 def waehle_quellen(auftrag: dict) -> list:
     """Alt-Funktion (Crawling) – nicht mehr verwendet, nur Abwärtskompatibilität."""
     return []
@@ -1023,54 +1187,68 @@ def _verarbeite_treffer(raw_liste: list, bundesland: str, min_relevanz: int,
 
 def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
     """
-    Speichert ein gefundenes Projekt in Supabase.
-    Duplikat-Check via URL-Hash über ALLE bisherigen Läufe des Kunden.
-    So wächst das persönliche Dashboard des Kunden – ohne Duplikate.
+    Speichert ein gefundenes Projekt in Supabase – mit Mehrquellen-Logik:
+      1) Exakt gleiche URL  -> nur Zeitstempel (kein Duplikat).
+      2) Gleiches Bauvorhaben im selben Ort (andere URL) -> neue Quelle anhaengen
+         (kein Duplikat). Kommt sie in einem spaeteren Lauf dazu -> Glocke.
+      3) Sonst -> neues Projekt mit erster Quelle anlegen.
+    Duplikat-/Quellen-Logik laeuft kundenweit ueber ALLE bisherigen Laeufe.
     """
     url_hash = berechne_hash(artikel["url"])
+    jetzt    = datetime.now(timezone.utc).isoformat()
 
-    # Prüfen ob dieses Projekt für diesen Kunden BEREITS EXISTIERT (egal aus welchem Lauf)
+    # ── Stufe 1: exakt gleiche URL bereits vorhanden ─────────────────────────
     vorhandene = sb_get("projekte", {
         "rohdaten_hash": f"eq.{url_hash}",
         "kunden_id":     f"eq.{auftrag['kunden_id']}",
-        # KEIN suchanfrage_id Filter → laufübergreifende Duplikaterkennung
     })
-
     if vorhandene:
-        # Bereits bekannt – nur Timestamp aktualisieren
         sb_patch("projekte",
                  {"rohdaten_hash": f"eq.{url_hash}", "kunden_id": f"eq.{auftrag['kunden_id']}"},
-                 {"zuletzt_gecrawlt": datetime.now(timezone.utc).isoformat()})
+                 {"zuletzt_gecrawlt": jetzt})
         return False
 
-    # Neu → speichern
-    jetzt = datetime.now(timezone.utc).isoformat()
-    # Koordinaten für die Kartenansicht einmalig beim Speichern bestimmen.
+    # ── Stufe 2: gleiches Projekt im selben Ort (andere URL) -> Quelle anhaengen
+    ort = (analyse.get("ort") or "").strip()
+    if ort:
+        kandidaten = sb_get("projekte", {
+            "kunden_id": f"eq.{auftrag['kunden_id']}",
+            "ort":       f"eq.{ort}",
+        })
+        treffer = _finde_gleiches_projekt(analyse, kandidaten)
+        if treffer:
+            _quelle_anhaengen(treffer, artikel, auftrag, jetzt)
+            return False
+
+    # ── Stufe 3: neues Projekt anlegen ───────────────────────────────────────
     lat, lng = geocode_ort(analyse.get("ort", ""), analyse.get("bundesland", ""))
+    quellen_initial = [{"url": artikel["url"], "quelle_name": artikel["quelle_name"], "gefunden_am": jetzt}]
     projekt = {
-        "kunden_id":         auftrag["kunden_id"],
-        "suchanfrage_id":    auftrag["id"],
-        "titel":             analyse.get("titel") or artikel["titel"][:200],
-        "ort":               analyse.get("ort", ""),
-        "bezirk":            analyse.get("bezirk", ""),
-        "bundesland":        analyse.get("bundesland", ""),
-        "lat":               lat,
-        "lng":               lng,
-        "kategorie":         analyse.get("kategorie", "Sonstiges"),
-        "volumen":           analyse.get("volumen", ""),
-        "phase":             analyse.get("phase", ""),
-        "quelle":            artikel["quelle_name"],
-        "artikel_url":       artikel["url"],
-        "beschreibung":      analyse.get("beschreibung", ""),
-        "relevanz":          analyse.get("relevanz", 5),
-        "ignorieren":        False,
-        "gemerkt":           False,
-        "ist_oeffentlich":   False,
-        "erstmals_gefunden": jetzt,
-        "zuletzt_geaendert": jetzt,
-        "zuletzt_gecrawlt":  jetzt,
-        "rohdaten_hash":     url_hash,
-        "cache_gueltig_bis": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "kunden_id":          auftrag["kunden_id"],
+        "suchanfrage_id":     auftrag["id"],
+        "titel":              analyse.get("titel") or artikel["titel"][:200],
+        "ort":                analyse.get("ort", ""),
+        "bezirk":             analyse.get("bezirk", ""),
+        "bundesland":         analyse.get("bundesland", ""),
+        "lat":                lat,
+        "lng":                lng,
+        "kategorie":          analyse.get("kategorie", "Sonstiges"),
+        "volumen":            analyse.get("volumen", ""),
+        "phase":              analyse.get("phase", ""),
+        "quelle":             artikel["quelle_name"],
+        "artikel_url":        artikel["url"],
+        "beschreibung":       analyse.get("beschreibung", ""),
+        "relevanz":           analyse.get("relevanz", 5),
+        "ignorieren":         False,
+        "gemerkt":            False,
+        "ist_oeffentlich":    False,
+        "erstmals_gefunden":  jetzt,
+        "zuletzt_geaendert":  jetzt,
+        "zuletzt_gecrawlt":   jetzt,
+        "rohdaten_hash":      url_hash,
+        "cache_gueltig_bis":  (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "quellen":            quellen_initial,
+        "neue_quellen_anzahl": 0,
     }
 
     result = sb_insert("projekte", projekt)
@@ -1661,6 +1839,10 @@ def verarbeite_auftrag(auftrag: dict) -> None:
 
     sb_patch("suchanfragen", {"id": f"eq.{sid}"}, {"status": "agent_laeuft"})
     start_zeit = time.time()
+    # Startzeitpunkt des Laufs (ISO): damit speichere_projekt unterscheiden kann,
+    # ob eine Zusatzquelle im selben Lauf (Erstfund) oder in einem spaeteren Lauf
+    # (echte Neuigkeit -> Glocke) hinzukommt.
+    auftrag["_lauf_start_iso"] = datetime.now(timezone.utc).isoformat()
 
     def zeit_aufgebraucht() -> bool:
         """True wenn das Zeitbudget für neue Suchen erschöpft ist."""
