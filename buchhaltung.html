@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Buchhaltung – ProjectScout</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --weiss:#ffffff; --hell:#f8f9fb; --hell2:#f0f2f5; --rand:#e4e7ec; --rand2:#cdd2db;
+    --text:#0f1724; --text-mid:#3d4a5c; --text-dim:#8494a7;
+    --blau:#2563eb; --blau-hell:#eef3fd; --blau-mid:#dbeafe; --blau-dunkel:#1d4ed8;
+    --gruen:#16a34a; --gruen-hell:#f0fdf4; --rot:#dc2626; --rot-hell:#fef2f2; --gold:#d97706;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif; background:var(--hell); color:var(--text); line-height:1.5; -webkit-font-smoothing:antialiased;}
+  .mono{font-family:'DM Mono',monospace;}
+  button{font-family:inherit; cursor:pointer; border:none;}
+  input,select,textarea{font-family:inherit; font-size:14px;}
+
+  .logo{font-size:22px; font-weight:800; letter-spacing:-0.5px; color:#111111;}
+  .logo span{color:var(--blau);}
+
+  /* Login */
+  #login{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .login-box{background:var(--weiss); border:1px solid var(--rand); border-radius:16px; padding:36px 32px; width:100%; max-width:380px; box-shadow:0 4px 24px rgba(15,23,36,0.06); text-align:center;}
+  .login-box .logo{margin-bottom:4px;}
+  .login-box .sub{color:var(--text-dim); font-size:14px; margin-bottom:24px;}
+  .feld{width:100%; padding:11px 14px; border:1px solid var(--rand2); border-radius:10px; background:var(--weiss); color:var(--text); outline:none; transition:border-color .15s, box-shadow .15s;}
+  .feld:focus{border-color:var(--blau); box-shadow:0 0 0 3px var(--blau-hell);}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:11px 18px; border-radius:10px; font-weight:600; font-size:14px; transition:background .15s, opacity .15s;}
+  .btn-primary{background:var(--blau); color:#fff;}
+  .btn-primary:hover{background:var(--blau-dunkel);}
+  .btn-primary:disabled{opacity:.6; cursor:default;}
+  .btn-ghost{background:var(--hell2); color:var(--text-mid);}
+  .btn-ghost:hover{background:var(--rand);}
+  .btn-block{width:100%; margin-top:16px;}
+  .fehler{color:var(--rot); font-size:13.5px; margin-top:12px; min-height:18px;}
+
+  /* App */
+  #app{display:none; max-width:1080px; margin:0 auto; padding:24px 20px 80px;}
+  .kopf{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px;}
+  .kopf .titel-zeile{display:flex; align-items:baseline; gap:12px;}
+  .kopf h1{font-size:17px; font-weight:600; color:var(--text-mid);}
+  .abmelden{font-size:13px; color:var(--text-dim); background:none;}
+  .abmelden:hover{color:var(--rot);}
+
+  .karten{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px;}
+  .karte{background:var(--weiss); border:1px solid var(--rand); border-radius:14px; padding:18px 20px;}
+  .karte .label{font-size:12px; color:var(--text-dim); font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px;}
+  .karte .wert{font-size:26px; font-weight:700; letter-spacing:-0.5px;}
+  .karte.ein .wert{color:var(--gruen);}
+  .karte.aus .wert{color:var(--rot);}
+  .karte.gew .wert{color:var(--text);}
+
+  .leiste{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+  .leiste .links{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .leiste .rechts{display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap;}
+  select.feld{width:auto; padding:8px 12px; border-radius:9px;}
+  .check{display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-mid); cursor:pointer;}
+
+  .tab-wrap{background:var(--weiss); border:1px solid var(--rand); border-radius:14px; overflow:hidden;}
+  .tab-scroll{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:14px; min-width:760px;}
+  thead th{text-align:left; padding:12px 14px; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-dim); font-weight:600; background:var(--hell); border-bottom:1px solid var(--rand);}
+  tbody td{padding:12px 14px; border-bottom:1px solid var(--hell2); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--hell);}
+  td.betrag{text-align:right; white-space:nowrap; font-weight:600;}
+  .ein-txt{color:var(--gruen);} .aus-txt{color:var(--rot);}
+  .badge{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11.5px; font-weight:600; white-space:nowrap;}
+  .badge.ein{background:var(--gruen-hell); color:var(--gruen);}
+  .badge.aus{background:var(--rot-hell); color:var(--rot);}
+  .tag-auto{font-size:11.5px; color:var(--text-dim); white-space:nowrap;}
+  .zeilen-akt{display:flex; gap:6px; justify-content:flex-end;}
+  .mini{padding:5px 10px; border-radius:8px; font-size:12.5px; font-weight:500; background:var(--hell2); color:var(--text-mid);}
+  .mini:hover{background:var(--rand);}
+  .mini.del:hover{background:var(--rot-hell); color:var(--rot);}
+  tr.storno td{opacity:.5; text-decoration:line-through;}
+  .leer{padding:48px 20px; text-align:center; color:var(--text-dim);}
+
+  /* Modal */
+  .overlay{display:none; position:fixed; inset:0; background:rgba(15,23,36,.45); z-index:50; align-items:flex-start; justify-content:center; padding:32px 16px; overflow-y:auto;}
+  .overlay.auf{display:flex;}
+  .modal{background:var(--weiss); border-radius:16px; width:100%; max-width:480px; padding:26px; box-shadow:0 12px 40px rgba(15,23,36,.2);}
+  .modal h2{font-size:18px; font-weight:700; margin-bottom:18px;}
+  .form-zeile{margin-bottom:14px;}
+  .form-zeile label{display:block; font-size:12.5px; font-weight:600; color:var(--text-mid); margin-bottom:5px;}
+  .form-zwei{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .typ-wahl{display:flex; gap:8px;}
+  .typ-wahl button{flex:1; padding:10px; border-radius:10px; border:1px solid var(--rand2); background:var(--weiss); font-weight:600; font-size:13.5px; color:var(--text-mid);}
+  .typ-wahl button.aktiv-ein{background:var(--gruen-hell); border-color:var(--gruen); color:var(--gruen);}
+  .typ-wahl button.aktiv-aus{background:var(--rot-hell); border-color:var(--rot); color:var(--rot);}
+  textarea.feld{resize:vertical; min-height:58px;}
+  input[type=file].feld{padding:8px 10px; font-size:12.5px;}
+  .datei-info{font-size:12.5px; color:var(--text-dim); margin-top:5px; word-break:break-all;}
+  .modal-akt{display:flex; gap:10px; margin-top:22px;}
+  .modal-akt .btn{flex:1;}
+
+  @media (max-width:640px){
+    .karten{grid-template-columns:1fr;}
+    .karte .wert{font-size:23px;}
+    .form-zwei{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <div class="logo">Project<span>Scout</span></div>
+    <div class="sub">Buchhaltung</div>
+    <input id="pw" class="feld" type="password" placeholder="Passwort" autocomplete="current-password">
+    <button class="btn btn-primary btn-block" onclick="login()">Anmelden</button>
+    <div id="login-fehler" class="fehler"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="kopf">
+    <div class="titel-zeile">
+      <div class="logo">Project<span>Scout</span></div>
+      <h1>Buchhaltung</h1>
+    </div>
+    <button class="abmelden" onclick="abmelden()">Abmelden</button>
+  </div>
+
+  <div class="karten">
+    <div class="karte ein"><div class="label">Einnahmen</div><div class="wert" id="sum-ein">–</div></div>
+    <div class="karte aus"><div class="label">Ausgaben</div><div class="wert" id="sum-aus">–</div></div>
+    <div class="karte gew"><div class="label">Gewinn</div><div class="wert" id="sum-gew">–</div></div>
+  </div>
+
+  <div class="leiste">
+    <div class="links">
+      <select id="jahr" class="feld" onchange="rendere()"></select>
+      <label class="check"><input type="checkbox" id="zeige-storno" onchange="rendere()"> Stornierte anzeigen</label>
+    </div>
+    <div class="rechts">
+      <button class="btn btn-ghost" onclick="exportCSV()">CSV</button>
+      <button class="btn btn-ghost" onclick="exportExcel()">Excel</button>
+      <button class="btn btn-primary" onclick="oeffneNeu()">+ Neue Buchung</button>
+    </div>
+  </div>
+
+  <div class="tab-wrap">
+    <div class="tab-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th><th>Art</th><th>Kategorie</th><th>Beschreibung</th>
+            <th>Beleg</th><th style="text-align:right">Betrag</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="leer" class="leer" style="display:none">Noch keine Buchungen in diesem Zeitraum.</div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modal-titel">Neue Buchung</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-zeile">
+      <label>Art</label>
+      <div class="typ-wahl">
+        <button type="button" id="typ-aus" onclick="setzeTyp('ausgabe')">Ausgabe</button>
+        <button type="button" id="typ-ein" onclick="setzeTyp('einnahme')">Einnahme</button>
+      </div>
+    </div>
+    <div class="form-zwei">
+      <div class="form-zeile">
+        <label>Datum</label>
+        <input id="f-datum" class="feld" type="date">
+      </div>
+      <div class="form-zeile">
+        <label>Betrag (€)</label>
+        <input id="f-betrag" class="feld" type="text" inputmode="decimal" placeholder="z. B. 12,50">
+      </div>
+    </div>
+    <div class="form-zeile">
+      <label>Kategorie</label>
+      <input id="f-kategorie" class="feld" type="text" list="kat-liste" placeholder="z. B. Werbung/Agentur">
+      <datalist id="kat-liste"></datalist>
+    </div>
+    <div class="form-zeile">
+      <label>Beschreibung (optional)</label>
+      <textarea id="f-beschreibung" class="feld" placeholder="Wofür war das?"></textarea>
+    </div>
+    <div class="form-zwei">
+      <div class="form-zeile">
+        <label>Beleg-Nr. (optional)</label>
+        <input id="f-belegnr" class="feld" type="text" placeholder="z. B. RE-2026-014">
+      </div>
+      <div class="form-zeile" id="datei-zeile">
+        <label>Beleg-Datei (optional)</label>
+        <input id="f-datei" class="feld" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="zeigeDateiInfo()">
+        <div id="datei-info" class="datei-info"></div>
+      </div>
+    </div>
+    <div id="modal-fehler" class="fehler"></div>
+    <div class="modal-akt">
+      <button class="btn btn-ghost" onclick="schliesseModal()">Abbrechen</button>
+      <button class="btn btn-primary" id="speichern-btn" onclick="speichere()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FUNKTION_URL = 'https://bkhjekpwyngoixnlizxo.supabase.co/functions/v1/buchhaltung-api';
+const KATEGORIEN = ['Stripe-Gebühr','Anthropic API','Werbung/Agentur','Software/Tools','Bankspesen','Büromaterial','Sonstige Einnahme','Sonstige Ausgabe'];
+
+let passwort = '';
+let alleBuchungen = [];
+let aktuellerTyp = 'ausgabe';
+
+// ---- API ----
+async function api(aktion, extra){
+  const res = await fetch(FUNKTION_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(Object.assign({passwort:passwort, aktion:aktion}, extra || {}))
+  });
+  let data = {};
+  try { data = await res.json(); } catch(e){}
+  if(!res.ok || data.fehler){ throw new Error(data.fehler || ('Serverfehler ' + res.status)); }
+  return data;
+}
+
+// ---- Login ----
+async function login(){
+  const fehler = document.getElementById('login-fehler');
+  fehler.textContent = '';
+  passwort = document.getElementById('pw').value;
+  if(!passwort){ fehler.textContent = 'Bitte Passwort eingeben.'; return; }
+  try{
+    const data = await api('liste');
+    alleBuchungen = data.buchungen || [];
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    fuelleKategorien();
+    fuelleJahre();
+    rendere();
+  }catch(e){
+    fehler.textContent = (e.message === 'Falsches Passwort') ? 'Falsches Passwort.' : ('Anmeldung fehlgeschlagen: ' + e.message);
+    passwort = '';
+  }
+}
+function abmelden(){
+  passwort=''; alleBuchungen=[];
+  document.getElementById('pw').value='';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login').style.display='flex';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && document.getElementById('login').style.display !== 'none'){ login(); }
+});
+
+// ---- Hilfen ----
+function formatEur(cent){ return (cent/100).toFixed(2).replace('.', ',') + ' €'; }
+function formatDatum(iso){ if(!iso) return ''; const t = String(iso).slice(0,10).split('-'); return t.length===3 ? (t[2]+'.'+t[1]+'.'+t[0]) : iso; }
+function jahrVon(iso){ return String(iso || '').slice(0,4); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function fuelleKategorien(){
+  document.getElementById('kat-liste').innerHTML = KATEGORIEN.map(function(k){ return '<option value="'+escapeHtml(k)+'">'; }).join('');
+}
+function fuelleJahre(){
+  const sel = document.getElementById('jahr');
+  const jahre = {};
+  alleBuchungen.forEach(function(b){ const j = jahrVon(b.datum); if(j) jahre[j]=true; });
+  const jetzt = String(new Date().getFullYear());
+  jahre[jetzt] = true;
+  const liste = Object.keys(jahre).sort().reverse();
+  let html = '';
+  liste.forEach(function(j){ html += '<option value="'+j+'">'+j+'</option>'; });
+  html += '<option value="ALLE">Alle Jahre</option>';
+  const vorher = sel.value;
+  sel.innerHTML = html;
+  sel.value = (vorher && (liste.indexOf(vorher)>=0 || vorher==='ALLE')) ? vorher : jetzt;
+}
+
+function gefilterte(){
+  const j = document.getElementById('jahr').value;
+  return alleBuchungen.filter(function(b){ return j==='ALLE' ? true : jahrVon(b.datum)===j; });
+}
+
+// ---- Render ----
+function rendere(){
+  const zeigeStorno = document.getElementById('zeige-storno').checked;
+  const rows = gefilterte();
+  const aktiv = rows.filter(function(b){ return !b.storniert; });
+
+  let se=0, sa=0;
+  aktiv.forEach(function(b){ if(b.typ==='einnahme') se+=b.betrag_cent; else sa+=b.betrag_cent; });
+  document.getElementById('sum-ein').textContent = formatEur(se);
+  document.getElementById('sum-aus').textContent = formatEur(sa);
+  document.getElementById('sum-gew').textContent = formatEur(se-sa);
+
+  const sichtbar = rows.filter(function(b){ return zeigeStorno ? true : !b.storniert; })
+    .sort(function(a,b){ return (b.datum||'').localeCompare(a.datum||'') || (b.erstellt_am||'').localeCompare(a.erstellt_am||''); });
+
+  const tbody = document.getElementById('tbody');
+  const leer = document.getElementById('leer');
+  if(sichtbar.length===0){ tbody.innerHTML=''; leer.style.display='block'; return; }
+  leer.style.display='none';
+
+  tbody.innerHTML = sichtbar.map(function(b){
+    const ein = b.typ==='einnahme';
+    const betragCls = ein ? 'ein-txt' : 'aus-txt';
+    const vz = ein ? '+' : '\u2212';
+    const beleg = b.beleg_pfad
+      ? '<button class="mini" onclick="zeigeBeleg(\''+b.id+'\')">ansehen</button>'
+      : '<span style="color:var(--text-dim)">–</span>';
+    let akt;
+    if(b.quelle==='auto'){
+      akt = '<span class="tag-auto" title="Automatisch aus einer Kundenrechnung – nicht änderbar">automatisch</span>';
+    } else if(b.storniert){
+      akt = '<span style="color:var(--text-dim);font-size:12px">storniert</span>';
+    } else {
+      akt = '<div class="zeilen-akt">'
+          + '<button class="mini" onclick="oeffneBearbeiten(\''+b.id+'\')">Bearbeiten</button>'
+          + '<button class="mini del" onclick="loesche(\''+b.id+'\')">Löschen</button></div>';
+    }
+    return '<tr class="'+(b.storniert?'storno':'')+'">'
+      + '<td class="mono">'+formatDatum(b.datum)+'</td>'
+      + '<td><span class="badge '+(ein?'ein':'aus')+'">'+(ein?'Einnahme':'Ausgabe')+'</span></td>'
+      + '<td>'+escapeHtml(b.kategorie)+'</td>'
+      + '<td>'+escapeHtml(b.beschreibung||'')+'</td>'
+      + '<td>'+beleg+'</td>'
+      + '<td class="betrag '+betragCls+'">'+vz+'\u00A0'+formatEur(b.betrag_cent)+'</td>'
+      + '<td>'+akt+'</td></tr>';
+  }).join('');
+}
+
+// ---- Beleg ansehen ----
+async function zeigeBeleg(id){
+  const w = window.open('', '_blank');
+  try{
+    const data = await api('beleg_url', {id:id});
+    if(w){ w.location = data.url; } else { window.location = data.url; }
+  }catch(e){
+    if(w){ w.close(); }
+    alert('Beleg konnte nicht geöffnet werden: ' + e.message);
+  }
+}
+
+// ---- Modal ----
+function setzeTyp(t){
+  aktuellerTyp = t;
+  document.getElementById('typ-ein').className = (t==='einnahme') ? 'aktiv-ein' : '';
+  document.getElementById('typ-aus').className = (t==='ausgabe') ? 'aktiv-aus' : '';
+}
+function oeffneNeu(){
+  document.getElementById('modal-titel').textContent = 'Neue Buchung';
+  document.getElementById('edit-id').value = '';
+  document.getElementById('f-datum').value = new Date().toISOString().slice(0,10);
+  document.getElementById('f-betrag').value = '';
+  document.getElementById('f-kategorie').value = '';
+  document.getElementById('f-beschreibung').value = '';
+  document.getElementById('f-belegnr').value = '';
+  document.getElementById('f-datei').value = '';
+  document.getElementById('datei-info').textContent = '';
+  document.getElementById('datei-zeile').style.display = '';
+  document.getElementById('modal-fehler').textContent = '';
+  setzeTyp('ausgabe');
+  document.getElementById('overlay').classList.add('auf');
+}
+function oeffneBearbeiten(id){
+  const b = alleBuchungen.find(function(x){ return x.id===id; });
+  if(!b) return;
+  document.getElementById('modal-titel').textContent = 'Buchung bearbeiten';
+  document.getElementById('edit-id').value = b.id;
+  document.getElementById('f-datum').value = String(b.datum).slice(0,10);
+  document.getElementById('f-betrag').value = (b.betrag_cent/100).toFixed(2).replace('.', ',');
+  document.getElementById('f-kategorie').value = b.kategorie || '';
+  document.getElementById('f-beschreibung').value = b.beschreibung || '';
+  document.getElementById('f-belegnr').value = b.beleg_nr || '';
+  document.getElementById('f-datei').value = '';
+  document.getElementById('datei-zeile').style.display = 'none';
+  document.getElementById('datei-info').textContent = '';
+  document.getElementById('modal-fehler').textContent = '';
+  setzeTyp(b.typ);
+  document.getElementById('overlay').classList.add('auf');
+}
+function schliesseModal(){ document.getElementById('overlay').classList.remove('auf'); }
+function zeigeDateiInfo(){
+  const f = document.getElementById('f-datei').files[0];
+  const info = document.getElementById('datei-info');
+  if(!f){ info.textContent=''; return; }
+  const mb = f.size/1024/1024;
+  info.textContent = f.name + ' (' + mb.toFixed(1) + ' MB)';
+  info.style.color = (mb > 25) ? 'var(--rot)' : 'var(--text-dim)';
+}
+function dateiAlsBase64(file){
+  return new Promise(function(resolve, reject){
+    const r = new FileReader();
+    r.onload = function(){ resolve(String(r.result).split(',')[1]); };
+    r.onerror = function(){ reject(new Error('Datei konnte nicht gelesen werden')); };
+    r.readAsDataURL(file);
+  });
+}
+
+async function speichere(){
+  const fehler = document.getElementById('modal-fehler');
+  fehler.textContent = '';
+  const btn = document.getElementById('speichern-btn');
+  const id = document.getElementById('edit-id').value;
+
+  const eintrag = {
+    typ: aktuellerTyp,
+    datum: document.getElementById('f-datum').value,
+    betrag: document.getElementById('f-betrag').value,
+    kategorie: document.getElementById('f-kategorie').value,
+    beschreibung: document.getElementById('f-beschreibung').value,
+    beleg_nr: document.getElementById('f-belegnr').value
+  };
+
+  if(!eintrag.kategorie.trim()){ fehler.textContent='Bitte eine Kategorie angeben.'; return; }
+  if(!eintrag.betrag.trim()){ fehler.textContent='Bitte einen Betrag angeben.'; return; }
+  if(!eintrag.datum){ fehler.textContent='Bitte ein Datum angeben.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Speichert…';
+  try{
+    if(id){
+      await api('bearbeiten', {id:id, eintrag:eintrag});
+    } else {
+      let datei = null;
+      const f = document.getElementById('f-datei').files[0];
+      if(f){
+        if(f.size/1024/1024 > 25){ throw new Error('Datei ist zu groß (max. 25 MB).'); }
+        const base64 = await dateiAlsBase64(f);
+        datei = { name:f.name, typ:f.type, base64:base64 };
+      }
+      await api('hinzufuegen', {eintrag:eintrag, datei:datei});
+    }
+    const data = await api('liste');
+    alleBuchungen = data.buchungen || [];
+    fuelleJahre();
+    rendere();
+    schliesseModal();
+  }catch(e){
+    fehler.textContent = 'Fehler: ' + e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Speichern';
+  }
+}
+
+async function loesche(id){
+  if(!confirm('Diese Buchung löschen? Sie verschwindet aus deiner Übersicht und den Summen (bleibt für die Nachvollziehbarkeit als storniert gespeichert).')) return;
+  try{
+    await api('stornieren', {id:id});
+    const data = await api('liste');
+    alleBuchungen = data.buchungen || [];
+    rendere();
+  }catch(e){ alert('Löschen fehlgeschlagen: ' + e.message); }
+}
+
+// ---- Export ----
+function exportZeilen(){
+  return gefilterte().filter(function(b){ return !b.storniert; })
+    .sort(function(a,b){ return (a.datum||'').localeCompare(b.datum||''); });
+}
+function dateiName(endung){
+  const j = document.getElementById('jahr').value;
+  return 'buchhaltung_' + (j==='ALLE'?'alle':j) + '.' + endung;
+}
+function exportCSV(){
+  const rows = exportZeilen();
+  const sep = ';';
+  const q = function(s){ s=String(s==null?'':s); return /[";\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const eur = function(c){ return (c/100).toFixed(2).replace('.', ','); };
+  let se=0, sa=0;
+  const lines = ['Datum;Art;Kategorie;Beschreibung;Beleg-Nr;Einnahme (EUR);Ausgabe (EUR);Quelle'];
+  rows.forEach(function(b){
+    const ein = b.typ==='einnahme';
+    if(ein) se+=b.betrag_cent; else sa+=b.betrag_cent;
+    lines.push([formatDatum(b.datum), ein?'Einnahme':'Ausgabe', q(b.kategorie), q(b.beschreibung||''), q(b.beleg_nr||''), ein?eur(b.betrag_cent):'', ein?'':eur(b.betrag_cent), b.quelle==='auto'?'automatisch':'manuell'].join(sep));
+  });
+  lines.push('');
+  lines.push(['','','','','Summe Einnahmen', eur(se), '', ''].join(sep));
+  lines.push(['','','','','Summe Ausgaben', '', eur(sa), ''].join(sep));
+  lines.push(['','','','','Gewinn', eur(se-sa), '', ''].join(sep));
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  ladeRunter(blob, dateiName('csv'));
+}
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){ alert('Die Excel-Funktion konnte nicht geladen werden. Bitte nutze den CSV-Export (öffnet sich auch in Excel).'); return; }
+  const rows = exportZeilen();
+  let se=0, sa=0;
+  const aoa = [['Datum','Art','Kategorie','Beschreibung','Beleg-Nr','Einnahme (EUR)','Ausgabe (EUR)','Quelle']];
+  rows.forEach(function(b){
+    const ein = b.typ==='einnahme';
+    if(ein) se+=b.betrag_cent; else sa+=b.betrag_cent;
+    aoa.push([formatDatum(b.datum), ein?'Einnahme':'Ausgabe', b.kategorie||'', b.beschreibung||'', b.beleg_nr||'', ein?(b.betrag_cent/100):'', ein?'':(b.betrag_cent/100), b.quelle==='auto'?'automatisch':'manuell']);
+  });
+  aoa.push([]);
+  aoa.push(['','','','','Summe Einnahmen', se/100, '', '']);
+  aoa.push(['','','','','Summe Ausgaben', '', sa/100, '']);
+  aoa.push(['','','','','Gewinn', (se-sa)/100, '', '']);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:12},{wch:10},{wch:18},{wch:34},{wch:14},{wch:14},{wch:14},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Buchhaltung');
+  XLSX.writeFile(wb, dateiName('xlsx'));
+}
+function ladeRunter(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
