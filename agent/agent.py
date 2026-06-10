@@ -273,7 +273,10 @@ def geocode_ort(ort: str, bundesland: str) -> tuple:
     return lat, lng
 
 # Token-Zähler für Kosten-Logging
-_TOKEN_STATS = {"input": 0, "output": 0, "calls": 0}
+# "searches" = TATSÄCHLICH durchgeführte Web-Suchen (von der Anthropic-API exakt
+# abgerechnet, $10/1000). Ersetzt die frühere Pauschalannahme "5 Suchen je Call",
+# die die Kosten im Log um ca. das 3-Fache zu hoch ausgewiesen hat.
+_TOKEN_STATS = {"input": 0, "output": 0, "calls": 0, "searches": 0}
 
 SUPABASE_HEADERS = {
     "apikey":        SUPABASE_KEY,
@@ -655,11 +658,20 @@ def _quelle_anhaengen(treffer: dict, artikel: dict, auftrag: dict, jetzt: str) -
         quellen = []
     # Aeltere Zeile ohne Quellenliste: bisherige Einzelquelle (artikel_url) uebernehmen,
     # damit sie beim Anhaengen einer neuen Quelle nicht verloren geht.
-    if not quellen and treffer.get("artikel_url"):
-        quellen.append({"url": treffer["artikel_url"],
+    # (Nur echte http-URLs – kein alter "search://"-Platzhalter.)
+    alte_url = str(treffer.get("artikel_url") or "")
+    if not quellen and alte_url.startswith("http"):
+        quellen.append({"url": alte_url,
                         "quelle_name": treffer.get("quelle") or "Quelle",
                         "gefunden_am": treffer.get("erstmals_gefunden") or jetzt})
-    neue_url = artikel["url"]
+    neue_url = str(artikel["url"])
+    # Ist die neue Quelle kein echter Link (z.B. "search://"-Platzhalter), nichts
+    # anhängen – nur den Zeitstempel aktualisieren.
+    if not neue_url.startswith("http"):
+        sb_patch("projekte",
+                 {"id": f"eq.{treffer['id']}", "kunden_id": f"eq.{auftrag['kunden_id']}"},
+                 {"zuletzt_gecrawlt": jetzt})
+        return
     if any(isinstance(q, dict) and q.get("url") == neue_url for q in quellen):
         sb_patch("projekte",
                  {"id": f"eq.{treffer['id']}", "kunden_id": f"eq.{auftrag['kunden_id']}"},
@@ -864,6 +876,12 @@ def _websearch_aufruf(prompt: str, modell: str,
         try:
             _TOKEN_STATS["input"]  += response.usage.input_tokens
             _TOKEN_STATS["output"] += response.usage.output_tokens
+            # Tatsächliche Anzahl der von Claude durchgeführten Web-Suchen.
+            # Die API meldet das exakt in usage.server_tool_use – dadurch wird die
+            # Suchkosten-Berechnung präzise statt geschätzt.
+            _stu = getattr(response.usage, "server_tool_use", None)
+            if _stu is not None:
+                _TOKEN_STATS["searches"] += int(getattr(_stu, "web_search_requests", 0) or 0)
         except Exception:
             pass
         _TOKEN_STATS["calls"] += 1
@@ -1195,7 +1213,13 @@ def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
       3) Sonst -> neues Projekt mit erster Quelle anlegen.
     Duplikat-/Quellen-Logik laeuft kundenweit ueber ALLE bisherigen Laeufe.
     """
+    # Der Dedup-Anker (artikel["url"]) kann ein interner "search://"-Platzhalter
+    # sein – der ist für die laufübergreifende Duplikaterkennung nötig, darf aber
+    # NIEMALS als sichtbarer Link beim Kunden landen. Daher hier strikt trennen:
+    #   url_hash      -> Dubletten-Erkennung (auch mit Platzhalter eindeutig)
+    #   sichtbare_url -> nur eine echte http-URL, sonst leer (kein toter Link)
     url_hash = berechne_hash(artikel["url"])
+    sichtbare_url = artikel["url"] if str(artikel["url"]).startswith("http") else ""
     jetzt    = datetime.now(timezone.utc).isoformat()
 
     # ── Stufe 1: exakt gleiche URL bereits vorhanden ─────────────────────────
@@ -1223,7 +1247,7 @@ def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
 
     # ── Stufe 3: neues Projekt anlegen ───────────────────────────────────────
     lat, lng = geocode_ort(analyse.get("ort", ""), analyse.get("bundesland", ""))
-    quellen_initial = [{"url": artikel["url"], "quelle_name": artikel["quelle_name"], "gefunden_am": jetzt}]
+    quellen_initial = [{"url": sichtbare_url, "quelle_name": artikel["quelle_name"], "gefunden_am": jetzt}] if sichtbare_url else []
     projekt = {
         "kunden_id":          auftrag["kunden_id"],
         "suchanfrage_id":     auftrag["id"],
@@ -1237,7 +1261,7 @@ def speichere_projekt(analyse: dict, artikel: dict, auftrag: dict) -> bool:
         "volumen":            analyse.get("volumen", ""),
         "phase":              analyse.get("phase", ""),
         "quelle":             artikel["quelle_name"],
-        "artikel_url":        artikel["url"],
+        "artikel_url":        sichtbare_url,
         "beschreibung":       analyse.get("beschreibung", ""),
         "relevanz":           analyse.get("relevanz", 5),
         "ignorieren":         False,
@@ -1660,6 +1684,23 @@ def analysiere_gecrawlten_inhalt(inhalt_obj: dict, gewerke_txt: str,
     bl_name  = BL_NAMEN.get(bl, bl)
     text     = inhalt_obj.get("inhalt", "") or ""
 
+    # Echte Quell-URLs aus dem Crawl-Objekt: Die KI kennt nur den Text, nicht die
+    # genaue Adresse. Damit die Treffer einen ECHTEN, möglichst konkreten Link
+    # bekommen (statt eines toten "search://"-Platzhalters), reichen wir hier die
+    # vom Crawler ermittelte URL durch:
+    #   - bei Text-Analyse:  quelle_url  (die konkrete Bereichsseite, z.B. Amtstafel)
+    #   - bei PDF-Analyse:   pdf_url     (das konkrete Protokoll-PDF) – am genauesten
+    quelle_url_text = (inhalt_obj.get("quelle_url") or "").strip()
+    quelle_url_pdf  = (inhalt_obj.get("pdf_url") or inhalt_obj.get("quelle_url") or "").strip()
+
+    def _mit_quelle(treffer_liste, url):
+        """Setzt die echte URL in jeden Treffer, der noch keine (http-)URL hat."""
+        if url and url.startswith("http") and isinstance(treffer_liste, list):
+            for t in treffer_liste:
+                if isinstance(t, dict) and not str(t.get("artikel_url") or "").strip():
+                    t["artikel_url"] = url
+        return treffer_liste
+
     prompt = f"""Analysiere den folgenden Inhalt von der offiziellen Website der Gemeinde {gemeinde} ({bl_name}, Österreich). Es handelt sich um Gemeinderatsprotokolle, Sitzungsberichte oder Gemeinde-Nachrichten.
 
 AUFGABE: Extrahiere ALLE konkreten Bau-, Infrastruktur-, Energie- und Immobilienvorhaben, die für folgende Gewerke des Kunden relevant sind:
@@ -1682,7 +1723,7 @@ INHALT DER GEMEINDE-WEBSITE:
     if len(text) >= 200:
         treffer = _analyse_aufruf(prompt, MODELL_HAIKU)
         if treffer:
-            return treffer
+            return _mit_quelle(treffer, quelle_url_text)
 
     # Kaum Text -> PDF vorhanden? ZUERST den Text aus dem PDF ziehen (pdfplumber):
     # zuverlaessig + guenstig + behebt den bisherigen 400er beim Roh-PDF-Versand.
@@ -1700,13 +1741,13 @@ INHALT DER GEMEINDE-WEBSITE:
                 "quelle_name='" + gemeinde + " (Gemeinde-Website)'. Nichts gefunden: []\n\n"
                 "INHALT:\n" + pdf_txt[:12000]
             )
-            return _analyse_aufruf(prompt_pdf, MODELL_HAIKU)
+            return _mit_quelle(_analyse_aufruf(prompt_pdf, MODELL_HAIKU), quelle_url_pdf)
         # echtes Scan-PDF ohne Textebene -> Vision-Notloesung (bestehender Weg):
         pdf_prompt = (f"Dies ist ein Gemeinderatsprotokoll der Gemeinde {gemeinde} ({bl_name}). "
                       f"Extrahiere relevante Bauvorhaben für die Gewerke: {gewerke_txt}. "
                       f"Zeitraum {cutoff} bis {heute}. bundesland=\"{bl}\", ort=\"{gemeinde}\", "
                       f"quelle_name=\"{gemeinde} (Gemeinde-Website)\". Nichts gefunden: []")
-        return _analyse_pdf_aufruf(inhalt_obj["pdf_bytes"], pdf_prompt, MODELL_HAIKU)
+        return _mit_quelle(_analyse_pdf_aufruf(inhalt_obj["pdf_bytes"], pdf_prompt, MODELL_HAIKU), quelle_url_pdf)
 
     return []
 
@@ -2101,16 +2142,20 @@ def verarbeite_auftrag(auftrag: dict) -> None:
             preis_input, preis_output = 3.00, 15.00
         kosten_input  = (_TOKEN_STATS["input"]  / 1_000_000) * preis_input
         kosten_output = (_TOKEN_STATS["output"] / 1_000_000) * preis_output
-        kosten_search = (_TOKEN_STATS["calls"] * 5 / 1000) * 10.00
+        # Web-Suche: $10 pro 1000 tatsächlich durchgeführte Suchen.
+        # Jetzt mit der ECHTEN Anzahl (server_tool_use) statt der früheren
+        # Pauschale "5 Suchen je API-Call" (die ~3× zu hoch lag).
+        kosten_search = (_TOKEN_STATS["searches"] / 1000) * 10.00
         kosten_gesamt = kosten_input + kosten_output + kosten_search
 
         print(f"\n{'='*60}")
         print(f"  📊 ZUSAMMENFASSUNG")
         print(f"{'='*60}")
         print(f"     API-Calls (web_search):  {_TOKEN_STATS['calls']}")
+        print(f"     Web-Suchen (abgerechnet):{_TOKEN_STATS['searches']}")
         print(f"     Treffer roh gesamt:      {gesamt_gefunden}")
         print(f"     NEU gespeichert:         {len(neue_projekte)}")
-        print(f"     Kosten ca.:              ${kosten_gesamt:.3f}")
+        print(f"     Kosten (gemessen):       ${kosten_gesamt:.3f}")
         if abgebrochen:
             print(f"     ⚠️  Lauf wegen Zeitbudget vorzeitig beendet (sauber finalisiert)")
 
@@ -2123,7 +2168,9 @@ def verarbeite_auftrag(auftrag: dict) -> None:
 
         sb_patch("suchanfragen", {"id": f"eq.{sid}"}, {
             "status":              "abgeschlossen",
-            "kosten_tatsaechlich": round(kosten_gesamt * 0.92, 4),
+            # Gemessene Kosten (kein Schätz-Faktor mehr nötig, da die Suchanzahl
+            # jetzt exakt aus der API kommt).
+            "kosten_tatsaechlich": round(kosten_gesamt, 4),
         })
 
         # E-Mail: bevorzugt die NEUEN Treffer dieses Laufs; sonst Top-Projekte
