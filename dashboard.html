@@ -625,8 +625,8 @@ window.exportiereExcel = function() {
     'Titel': p.titel||'', 'Ort': p.ort||'', 'Bezirk': p.bezirk||'',
     'Bundesland': p.bundesland||'', 'Kategorie': p.kategorie||'',
     'Phase': p.phase||'', 'Volumen': p.volumen||'', 'Relevanz': p.relevanz||'',
-    'Quelle': p.quelle||'', 'Artikel URL': p.artikel_url||'',
-    'Quellen (alle)': (Array.isArray(p.quellen) && p.quellen.length ? p.quellen.map(q => q.url).join('; ') : (p.artikel_url||'')),
+    'Quelle': p.quelle||'', 'Artikel URL': istEchteUrl(p.artikel_url) ? p.artikel_url : '',
+    'Quellen (alle)': (Array.isArray(p.quellen) ? p.quellen.map(q => q && q.url).filter(istEchteUrl).join('; ') : '') || (istEchteUrl(p.artikel_url) ? p.artikel_url : ''),
     'Beschreibung': p.beschreibung||'',
     'Gefunden am': p.erstmals_gefunden ? new Date(p.erstmals_gefunden).toLocaleDateString('de-AT') : '',
     'Ignoriert': p.ignorieren ? 'Ja' : 'Nein',
@@ -639,10 +639,17 @@ window.exportiereExcel = function() {
   XLSX.writeFile(wb, `ProjectScout_${new Date().toISOString().slice(0,10)}.xlsx`);
 };
 
+// Nur echte Web-Links (http/https) gelten als anzeigbare Quelle. Interne
+// Platzhalter wie "search://..." (Treffer ohne echte Quell-URL) werden dadurch
+// weder als Button angezeigt noch exportiert – der Kunde sieht keinen toten Link.
+function istEchteUrl(u) {
+  return typeof u === 'string' && /^https?:\/\//i.test(u.trim());
+}
+
 function renderQuellen(p, opts) {
   opts = opts || {};
-  let liste = Array.isArray(p.quellen) ? p.quellen.filter(q => q && q.url) : [];
-  if (!liste.length && p.artikel_url) liste = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
+  let liste = Array.isArray(p.quellen) ? p.quellen.filter(q => q && istEchteUrl(q.url)) : [];
+  if (!liste.length && istEchteUrl(p.artikel_url)) liste = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
   if (!liste.length) return '';
   const amtlich = u => /gv\.at|ausschreibung|ankoe|vergabe/i.test(u || '');
   liste = liste.slice().sort((a, b) => (amtlich(a.url) ? 0 : 1) - (amtlich(b.url) ? 0 : 1));
@@ -657,8 +664,8 @@ function renderQuellen(p, opts) {
 }
 
 function quellenMapHtml(p) {
-  let q = Array.isArray(p.quellen) ? p.quellen.filter(x => x && x.url) : [];
-  if (!q.length && p.artikel_url) q = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
+  let q = Array.isArray(p.quellen) ? p.quellen.filter(x => x && istEchteUrl(x.url)) : [];
+  if (!q.length && istEchteUrl(p.artikel_url)) q = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
   if (!q.length) return '';
   const erste = q[0];
   const link = `<a href="${escHtml(erste.url)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">→ ${escHtml(erste.quelle_name || 'Quelle')}</a>`;
