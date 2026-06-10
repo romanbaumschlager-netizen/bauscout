@@ -134,10 +134,8 @@
     const pruefe = async () => {
       versuche++;
       try {
-        const { data } = await db
-          .from('suchanfragen').select('status')
-          .eq('id', suchanfrageId).single();
-        if (data && ['bezahlt', 'agent_laeuft', 'abgeschlossen'].includes(data.status)) {
+        const { data } = await db.rpc('get_auftrag_status', { p_suchanfrage_id: suchanfrageId });
+        if (data && ['bezahlt', 'agent_laeuft', 'abgeschlossen'].includes(data)) {
           statusEl.textContent = 'Zahlung bestätigt – Agent wird gestartet';
           stopLoading();
           return;
