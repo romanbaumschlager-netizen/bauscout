@@ -601,10 +601,10 @@
   @keyframes typing{0%,60%,100%{opacity:0.3;transform:scale(1);}30%{opacity:1;transform:scale(1.3);}}
 
   /* ── ZEITRAUM ── */
-  .zeitraum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:8px;}
+  .zeitraum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:14px;}
   .zeitraum-karte{
     background:var(--hell);border:1.5px solid var(--rand);
-    border-radius:10px;padding:12px 8px;cursor:pointer;
+    border-radius:10px;padding:12px 8px;cursor:pointer;position:relative;
     transition:all 0.15s;text-align:center;
   }
   .zeitraum-karte:hover,.zeitraum-karte.ausgewaehlt{border-color:var(--blau);background:var(--blau-hell);}
@@ -616,6 +616,7 @@
   .zeitraum-karte.ausgewaehlt .zt-tage{color:var(--blau);}
   .zt-label{font-size:10px;font-weight:700;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;}
   .zeitraum-karte.ausgewaehlt .zt-label{color:var(--blau);}
+  .zt-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--blau);color:#fff;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;padding:3px 9px;border-radius:99px;white-space:nowrap;}
 
   /* ── KOSTEN/PREIS ── */
   .kosten-box{
@@ -868,7 +869,7 @@
         <input type="email" id="email2" placeholder="E-Mail-Adresse nochmals eingeben"
           autocomplete="off">
         <div class="hinweis" style="margin-top:8px;">
-          📬 <strong>Wichtig:</strong> An diese E-Mail-Adresse erhalten Sie den Link zu Ihrem persönlichen Dashboard. Bitte geben Sie die Adresse zweimal manuell ein! Kontrollieren Sie sorgfältig!
+          📬 <strong>Wichtig:</strong> An diese E-Mail-Adresse erhalten Sie den Link zu Ihrem persönlichen Dashboard. Bitte geben Sie die Adresse zweimal manuell ein und kontrollieren Sie sie sorgfältig – ein Tippfehler ist der häufigste Grund, warum Ergebnisse nicht ankommen.
         </div>
         <label>Homepage <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);">– optional</span></label>
         <input type="url" id="homepage" placeholder="https://www.ihre-firma.at" autocomplete="url">
@@ -935,7 +936,7 @@
         <div class="schritt-status" id="s4-status">optional</div>
       </div>
       <div class="schritt-inhalt">
-        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;margin-bottom:16px;">Beschreiben Sie dem KI-Assistenten in eigenen Worten was Sie suchen – er passt die Suche entsprechend an.</p>
+        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;margin-bottom:16px;">Beschreiben Sie dem KI-Assistenten in eigenen Worten, was Sie suchen – er passt die Suche entsprechend an.</p>
         <div class="chat-box" id="chat-box">
           <div class="chat-nachricht">
             <div class="chat-avatar ki">KI</div>
@@ -969,7 +970,7 @@
           <div class="zeitraum-karte" onclick="zeitraumWaehlen(20,this)"><div class="zt-tage">20</div><div class="zt-label">Tage</div></div>
           <div class="zeitraum-karte ausgewaehlt" onclick="zeitraumWaehlen(30,this)"><div class="zt-tage">30</div><div class="zt-label">Tage</div></div>
           <div class="zeitraum-karte" onclick="zeitraumWaehlen(60,this)"><div class="zt-tage">60</div><div class="zt-label">Tage</div></div>
-          <div class="zeitraum-karte" onclick="zeitraumWaehlen(90,this)"><div class="zt-tage">90</div><div class="zt-label">Tage</div></div>
+          <div class="zeitraum-karte" onclick="zeitraumWaehlen(90,this)"><div class="zt-badge">Empfohlen</div><div class="zt-tage">90</div><div class="zt-label">Tage</div></div>
         </div>
         <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
           <span style="font-size:13px;color:var(--text-mid);font-weight:600;">Eigene Anzahl Tage:</span>
