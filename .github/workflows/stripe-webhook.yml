@@ -21,7 +21,10 @@ on:
 jobs:
   neue-auftraege-pruefen:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    # Muss immer ~15 Min UEBER dem ZEITBUDGET_MINUTEN-Wert unten liegen, damit
+    # der Agent sauber finalisieren kann (E-Mail + Status), bevor GitHub den
+    # Job hart abbricht.
+    timeout-minutes: 175
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v6
@@ -36,10 +39,18 @@ jobs:
           SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
-          SMTP_HOST:           ${{ secrets.SMTP_HOST }}
-          SMTP_PORT:           ${{ secrets.SMTP_PORT }}
-          SMTP_USER:           ${{ secrets.SMTP_USER }}
-          SMTP_PASS:           ${{ secrets.SMTP_PASS }}
+          # WICHTIG: Ohne diese Zeile sieht agent.py den Brevo-Schlüssel nicht
+          # und überspringt Kunden-Ergebnismail + Admin-Benachrichtigung.
+          BREVO_API_KEY:       ${{ secrets.BREVO_API_KEY }}
+          # Obergrenze für die Suchphase in Minuten. Kleine Aufträge (1-2
+          # Bundesländer) enden von selbst viel früher – das Budget greift nur
+          # bei Großaufträgen (z.B. ganz Österreich), die bisher bei 45 Min
+          # abgeschnitten wurden.
+          ZEITBUDGET_MINUTEN:  "160"
+          # Säule C (meinbezirk direkt auslesen) testweise aktivieren:
+          # nächste Zeile einkommentieren, einen Lauf mit der Test-Suchanfrage
+          # starten und im Log die [meinbezirk]-Diagnose prüfen.
+          # REGIO_AKTIV:         "1"
           SUCHANFRAGE_ID:      ${{ github.event.inputs.suchanfrage_id }}
         run: python agent/agent.py
       - name: Zusammenfassung
