@@ -290,21 +290,23 @@ async function init() {
 
 async function ladeDaten() {
   try {
-    const { data: kunde } = await sb.from('kunden').select('firmenname').eq('id', kundenId).single();
+    // Alle Daten dieses Kunden kommen jetzt aus EINER abgesicherten Server-
+    // Funktion (get_dashboard_daten). Diese liefert ausschliesslich Daten zur
+    // exakt uebergebenen kunden_id zurueck – der oeffentliche Schluessel kann
+    // die Tabellen nicht mehr direkt (und damit auch nicht fremde Kunden) lesen.
+    const { data, error } = await sb.rpc('get_dashboard_daten', { p_kunden_id: kundenId });
+    if (error) throw new Error(error.message);
+
+    const kunde = (data && data.kunde) ? data.kunde : null;
     if (kunde) {
       document.getElementById('header-firma').textContent = kunde.firmenname || 'Dashboard';
     }
 
-    // Alle abgeschlossenen Aufträge des Kunden
-    const { data: auftraege } = await sb
-      .from('suchanfragen').select('*')
-      .eq('kunden_id', kundenId).eq('status', 'abgeschlossen')
-      .order('erstellt_am', { ascending: false });
-    alleAuftraege = auftraege || [];
+    alleAuftraege = (data && Array.isArray(data.auftraege)) ? data.auftraege : [];
     rendereAuftraege();
 
-    // ALLE Projekte des Kunden laden (nicht laufspezifisch)
-    await ladeProjekte();
+    alleProjekte = (data && Array.isArray(data.projekte)) ? data.projekte : [];
+    verarbeiteProjekte();
 
   } catch(e) {
     console.error('Ladefehler:', e);
@@ -312,15 +314,8 @@ async function ladeDaten() {
   }
 }
 
-// ── ALLE PROJEKTE DES KUNDEN LADEN ──
-async function ladeProjekte() {
-  const { data: projekte, error } = await sb
-    .from('projekte').select('*')
-    .eq('kunden_id', kundenId)
-    .order('erstmals_gefunden', { ascending: false });
-  if (error) throw new Error('Projekte konnten nicht geladen werden: ' + error.message);
-
-  alleProjekte = projekte || [];
+// ── GELADENE PROJEKTE AUFBEREITEN UND ANZEIGEN ──
+function verarbeiteProjekte() {
   ignoriertIds = new Set(alleProjekte.filter(p => p.ignorieren).map(p => p.id));
   gemerkteIds  = new Set(alleProjekte.filter(p => p.gemerkt).map(p => p.id));
 
@@ -480,23 +475,23 @@ function bindEvents(container) {
 
 async function toggleMerken(id) {
   const neu = !gemerkteIds.has(id);
-  await sb.from('projekte').update({ gemerkt: neu }).eq('id', id);
+  await sb.rpc('setze_projekt_flag', { p_kunden_id: kundenId, p_projekt_id: id, p_feld: 'gemerkt', p_wert: neu });
   neu ? gemerkteIds.add(id) : gemerkteIds.delete(id);
   rendereListe(); rendereMerkliste();
 }
 
 async function toggleIgnorieren(id) {
   const neu = !ignoriertIds.has(id);
-  await sb.from('projekte').update({ ignorieren: neu }).eq('id', id);
+  await sb.rpc('setze_projekt_flag', { p_kunden_id: kundenId, p_projekt_id: id, p_feld: 'ignorieren', p_wert: neu });
   if (neu) {
     ignoriertIds.add(id);
-    if (gemerkteIds.has(id)) { gemerkteIds.delete(id); await sb.from('projekte').update({ gemerkt: false }).eq('id', id); }
+    if (gemerkteIds.has(id)) { gemerkteIds.delete(id); await sb.rpc('setze_projekt_flag', { p_kunden_id: kundenId, p_projekt_id: id, p_feld: 'gemerkt', p_wert: false }); }
   } else { ignoriertIds.delete(id); }
   aktualisiereStats(); rendereListe(); rendereMerkliste();
 }
 
 async function quittiereQuellen(id) {
-  try { await sb.from('projekte').update({ neue_quellen_anzahl: 0 }).eq('id', id); } catch (e) {}
+  try { await sb.rpc('quittiere_quellen', { p_kunden_id: kundenId, p_projekt_id: id }); } catch (e) {}
   const p = alleProjekte.find(x => String(x.id) === String(id));
   if (p) p.neue_quellen_anzahl = 0;
   rendereListe(); rendereMerkliste();
