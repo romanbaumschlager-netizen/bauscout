@@ -67,20 +67,21 @@ def _modell_fuer_scope(anzahl_bundeslaender: int) -> str:
 
 # web_search-Tool: wie viele Einzelsuchen Claude pro API-Call durchführen darf.
 # Höher = gründlicher = mehr Treffer (aber etwas langsamer/teurer).
-WEB_SEARCH_MAX_USES = 9
-MAX_TOKENS_SUCHE    = 4500
+WEB_SEARCH_MAX_USES = 12
+MAX_TOKENS_SUCHE    = 8000
 
 # Zeitbudget: nach dieser Zeit werden KEINE neuen Suchen mehr gestartet, damit
-# der Agent IMMER sauber finalisiert (E-Mail + Status) bevor GitHub bei 55 Min
-# hart abbricht. Verhindert "agent_laeuft"-Hänger wie in früheren Läufen.
-ZEITBUDGET_SEKUNDEN = 45 * 60
+# der Agent IMMER sauber finalisiert (E-Mail + Status), bevor der Workflow hart
+# abbricht. Steuerbar per Env ZEITBUDGET_MINUTEN (Default 45). WICHTIG: das
+# timeout-minutes im GitHub-Workflow muss immer ~15 Min UEBER diesem Wert liegen.
+ZEITBUDGET_SEKUNDEN = int(os.environ.get("ZEITBUDGET_MINUTEN", "45")) * 60
 
 # ── Echtes Crawling der Gemeinde-Websites (zweite Säule neben web_search) ──
 # Standardmäßig aktiv. Per GitHub-Secret CRAWLING_AKTIV=0 abschaltbar.
 CRAWLING_AKTIV          = os.environ.get("CRAWLING_AKTIV", "1") != "0"
 # Höchstzahl Gemeinden, die PRO LAUF gecrawlt werden (Rotation über mehrere Läufe
 # via Cache-Tabelle 'gemeinde_crawl'). Bei regionaler Auswahl meist alle abgedeckt.
-CRAWL_MAX_GEMEINDEN     = int(os.environ.get("CRAWL_MAX_GEMEINDEN", "80"))
+CRAWL_MAX_GEMEINDEN     = int(os.environ.get("CRAWL_MAX_GEMEINDEN", "160"))
 # Anteil des Gesamt-Zeitbudgets, der maximal fürs Crawling verwendet wird.
 CRAWL_ZEITBUDGET_ANTEIL = float(os.environ.get("CRAWL_ZEITBUDGET_ANTEIL", "0.78"))
 # Gleichzeitige Downloads beim Crawling (I/O-gebunden).
@@ -90,8 +91,9 @@ CRAWL_WORKERS           = int(os.environ.get("CRAWL_WORKERS", "12"))
 # DEAKTIVIERT: meinbezirk blockt die Server-IP vollstaendig (alle Abrufe HTTP-Fehler).
 # Solange das so ist, wuerde Saeule C nur Laufzeit verbrauchen, die dann der
 # Websuche fehlt. Die freigewordene Zeit geht jetzt komplett an Crawling + Websuche.
-# Wieder aktivierbar durch REGIO_AKTIV = True (z.B. wenn ein Proxy verfuegbar ist).
-REGIO_AKTIV             = False
+# Wieder aktivierbar per GitHub-Env REGIO_AKTIV=1 (curl_cffi ist im Workflow
+# installiert; vor Dauerbetrieb einen Testlauf mit der Test-Suchanfrage machen).
+REGIO_AKTIV             = os.environ.get("REGIO_AKTIV", "0") == "1"
 # Anteil des Gesamt-Zeitbudgets, das (zuerst) fuer die Regionalmedien-Ernte gilt.
 REGIO_ZEITBUDGET_ANTEIL = float(os.environ.get("REGIO_ZEITBUDGET_ANTEIL", "0.55"))
 # Obergrenze geladener Artikel pro Lauf (Schutz bei Grossauftraegen).
@@ -732,8 +734,8 @@ def _gruppiere_gewerke_fuer_suche(gewerke: list) -> dict:
     return gruppen
 
 
-def _bezirke_mit_orten(bundesland: str, max_bezirke: int = 14,
-                       orte_pro_bezirk: int = 5) -> dict:
+def _bezirke_mit_orten(bundesland: str, max_bezirke: int = 20,
+                       orte_pro_bezirk: int = 6) -> dict:
     """
     Baut {Bezirk: [Ortsnamen]} aus der Gemeinden-Datenbank für ein Bundesland.
     Liefert echte Ortsnamen, mit denen die Kommunalsuche gezielt arbeiten kann.
@@ -766,7 +768,7 @@ ARBEITSWEISE (WICHTIG):
 - Nutze das web_search-Tool INTENSIV und führe MEHRERE verschiedene Suchen durch – nicht nur eine einzige.
 - Variiere Suchbegriffe systematisch: kombiniere Ortsnamen + Gewerk + Signalwort (Spatenstich, Baustart, Baubeginn, Ausschreibung, Vergabe, Gemeinderat, Bebauungsplan, Investition, Erweiterung, Neubau, Sanierung).
 - Öffne vielversprechende Treffer und lies Details heraus.
-- Sammle ALLE konkreten Projekte, auch kleinere oder regionale. Lieber 12 Projekte als 3.
+- Sammle ALLE konkreten Projekte, auch kleinere oder regionale. Ziel sind 15-25 Treffer, wenn die Region sie hergibt. Lieber 20 Projekte als 5.
 
 BEVORZUGTE QUELLEN & SUCHOPERATOREN (nutze gezielt site:-Operatoren!):
 - Gemeinde-/Behördenseiten: site:gv.at (z.B. "Bauprojekt site:noe.gv.at"), site:ris.bka.gv.at (Rechtsinformationssystem, Verordnungen/Flächenwidmungen)
@@ -935,7 +937,7 @@ def suche_projekte(bundesland: str, kategorie_name: str, gewerke_liste: list,
                    suchbegriffe: list, cutoff: str, heute: str, modell: str) -> list:
     """Suchgleis 1/2: gewerk-fokussierte Projekt-/Bausuche in Medien."""
     bl_name     = BL_NAMEN.get(bundesland, bundesland)
-    gewerke_txt = ", ".join(gewerke_liste[:14]) if gewerke_liste else kategorie_name
+    gewerke_txt = ", ".join(gewerke_liste[:18]) if gewerke_liste else kategorie_name
     signale     = ", ".join(suchbegriffe[:10])
 
     prompt = f"""Suche aktuelle Projekte im Bereich "{kategorie_name}" in {bl_name} (Österreich).
@@ -946,7 +948,7 @@ GESUCHTE GEWERKE DES KUNDEN: {gewerke_txt}
 NÜTZLICHE SIGNALWÖRTER: {signale}
 
 FÜHRE MEHRERE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
-- "Spatenstich {bl_name} 2026"
+- "Spatenstich {bl_name} {heute[-4:]}"
 - "Baustart Neubau {bl_name}"
 - "Bauprojekt {bl_name} Investition Millionen"
 - "[größere Stadt in {bl_name}] Neubau Projekt"
@@ -988,7 +990,32 @@ sowie {signale} jeweils + "{bl_name}".
 Für jeden Treffer: Auftraggeber, Gewerk, geschätzte Auftragssumme und Angebotsfrist. Die Frist gehört in die "beschreibung" (z.B. "Angebotsfrist 05.06.2026"); ins Feld "datum" kommt das Veröffentlichungsdatum, NICHT die Frist.
 Diese Treffer sind besonders wertvoll → phase="Ausschreibung" oder "Vergabe",
 relevanz typischerweise 8-10. Antworte als JSON-Array."""
-    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
+    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 3)
+
+
+def suche_amtlich(bundesland: str, suchbegriffe: list,
+                  cutoff: str, heute: str, modell: str) -> list:
+    """Suchgleis 3b: amtliche Quellen – UVP-Verfahren, Landes-Amtsblätter,
+    Kundmachungen, Flächenwidmungs-/Bebauungsplan-Auflagen, Bauverhandlungen.
+    Behörden veröffentlichen Vorhaben oft Wochen bis Monate VOR den Medien."""
+    bl_name = BL_NAMEN.get(bundesland, bundesland)
+    prompt = f"""Suche AMTLICHE VERÖFFENTLICHUNGEN zu Bau-, Energie- und Infrastrukturvorhaben in {bl_name} (Österreich).
+
+ZEITRAUM: Veröffentlichungen/Kundmachungen vom {cutoff} bis {heute}.
+
+DURCHSUCHE GEZIELT BEHÖRDLICHE QUELLEN (mehrere Suchen, nutze site:-Operatoren):
+- UVP-Verfahren der Landesregierung: "UVP Verfahren {bl_name}", "UVP Kundmachung {bl_name}", "UVP Genehmigung {bl_name}" (neue/laufende Verfahren = Großprojekte wie Gewerbeparks, Kraftwerke, Windparks, Straßen, Seilbahnen, Einkaufszentren)
+- Landes-Amtsblatt / Verordnungs- und Kundmachungsseiten von {bl_name} sowie der Bezirkshauptmannschaften
+- site:ris.bka.gv.at Verordnungen zu Flächenwidmung/Bebauungsplan in {bl_name}
+- "Flächenwidmungsplan Änderung öffentliche Auflage {bl_name}" / "Bebauungsplan Auflage {bl_name}" (Auflagen sind Frühindikatoren für konkrete Bauabsichten)
+- "Bauverhandlung Kundmachung {bl_name}" / "Amtstafel Bauverhandlung {bl_name}"
+- "Baubewilligung erteilt {bl_name}" / "Betriebsanlagengenehmigung {bl_name}"
+- Wasserrechts-/Naturschutzverfahren mit Bauprojektbezug in {bl_name}
+
+Für jeden Treffer: WAS wird errichtet/geändert, WO genau, WER ist Projektwerber.
+Setze phase="Planung" oder "Ausschreibung"; relevanz nach Konkretheit (UVP-Einreichung, erteilte Bewilligung oder öffentliche Auflage = 6-9).
+Antworte als JSON-Array."""
+    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 2)
 
 
 def suche_kommunal(bundesland: str, bezirke_orte: dict, suchbegriffe: list,
@@ -1012,8 +1039,8 @@ BEZIRKE & BEISPIELORTE (decke möglichst viele ab):
 
 FÜHRE VIELE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
 - "Gemeinderat beschließt [Ort] Bau"
-- "[Ort] Spatenstich Gemeinde 2026"
-- "[Bezirk] Gemeinde Bauprojekt 2026"
+- "[Ort] Spatenstich Gemeinde {heute[-4:]}"
+- "[Bezirk] Gemeinde Bauprojekt {heute[-4:]}"
 - "Stadtrat [Stadt] Neubau Beschluss"
 - "[Ort] Kindergarten Neubau" / "[Ort] Schule Erweiterung" / "[Ort] Feuerwehrhaus"
 - "[Ort] Bauhof Neubau" / "[Ort] Amtsgebäude" / "[Ort] Gemeindezentrum"
@@ -1024,7 +1051,7 @@ Gemeinde-Websites (.gv.at), tips.at, Landespresse {bl_name}.
 
 Kommunale Projekte sind oft kleiner – nimm sie TROTZDEM auf (relevanz 4-7).
 Ziel: möglichst viele konkrete kommunale Vorhaben. Antworte als JSON-Array."""
-    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 1)
+    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 3)
 
 
 def suche_wien(suchbegriffe: list, cutoff: str, heute: str, modell: str) -> list:
@@ -1056,7 +1083,7 @@ DURCHSUCHE DIE 23 BEZIRKE (decke moeglichst viele ab):
 {bezirke_txt}
 
 FUEHRE VIELE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
-- "Wien [Bezirk] Neubau Projekt 2026" / "Wien [Bezirk] Bauprojekt"
+- "Wien [Bezirk] Neubau Projekt {heute[-4:]}" / "Wien [Bezirk] Bauprojekt"
 - "Wien Flaechenwidmung Plandokument [Bezirk]" / "oeffentliche Auflage Bebauungsplan Wien"
 - "Wien Stadtentwicklung Vorhaben [Bezirk]" / "Stadterweiterung Wien"
 - "Wiener Wohnen Neubau" / "Wohnbau Wien Spatenstich"
@@ -1066,7 +1093,7 @@ FUEHRE VIELE VERSCHIEDENE WEB-SUCHEN DURCH, z.B.:
 
 Sammle ALLE konkreten Treffer (auch einzelne Bezirksprojekte). Setze bundesland="W".
 Antworte als JSON-Array."""
-    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 2)
+    return _websearch_aufruf(prompt, modell, max_searches=WEB_SEARCH_MAX_USES + 3)
 
 
 # -----------------------------------------------------------------------------
@@ -1946,7 +1973,7 @@ def verarbeite_auftrag(auftrag: dict) -> None:
         modell_kurz = "Sonnet" if modell == MODELL_SONNET else ("Haiku" if modell == MODELL_HAIKU else modell)
 
         # Suchgleise pro Bundesland zusammenstellen
-        anzahl_gleise_pro_bl = len(gewerke_gruppen) + 2  # +Vergabe +Kommunal
+        anzahl_gleise_pro_bl = len(gewerke_gruppen) + 3  # +Vergabe +Amtlich +Kommunal
         print(f"\n  🔧 Konfiguration:")
         print(f"     Modell:         {modell_kurz}")
         print(f"     Bundesländer:   {len(bundeslaender)} → {bundeslaender}")
@@ -2043,19 +2070,34 @@ def verarbeite_auftrag(auftrag: dict) -> None:
             erfolge_key = {(o["gemeinde"], o["bundesland"]): o for o in roh_inhalte}
             _markiere_crawl_versuche(crawl_gemeinden, erfolge_key)
 
+            # KI-Analyse der gecrawlten Inhalte PARALLEL (I/O-gebunden: jeder
+            # Aufruf wartet nur auf die Haiku-Antwort). Bei 160 Gemeinden sinkt
+            # die Analysezeit so von ~20-25 Min auf ~4 Min. Das SPEICHERN bleibt
+            # sequenziell im Hauptthread (Mehrquellen-/Dedup-Logik braucht das).
+            from concurrent.futures import ThreadPoolExecutor, as_completed
             crawl_neu = 0
-            for obj in roh_inhalte:
-                if zeit_aufgebraucht():
-                    print("     ⏱️  Zeitbudget erreicht – Crawling-Analyse gestoppt.")
-                    break
-                roh = analysiere_gecrawlten_inhalt(obj, gewerke_txt_crawl, cutoff_str, heute_str)
-                gesamt_gefunden += len(roh)
-                neu = _verarbeite_treffer(roh, obj["bundesland"], 3, gesehen,
-                                          neue_projekte, auftrag,
-                                          cutoff_dt=cutoff_dt, heute_dt=heute_dt)
-                crawl_neu += neu
-                if roh:
-                    print(f"     ✅ {obj['gemeinde']}: {len(roh)} gefunden, {neu} neu")
+            with ThreadPoolExecutor(max_workers=6) as ki_pool:
+                futs = {ki_pool.submit(analysiere_gecrawlten_inhalt, obj,
+                                       gewerke_txt_crawl, cutoff_str, heute_str): obj
+                        for obj in roh_inhalte}
+                for fut in as_completed(futs):
+                    if zeit_aufgebraucht():
+                        for f in futs:
+                            f.cancel()  # storniert alles noch nicht Gestartete
+                        print("     ⏱️  Zeitbudget erreicht – Crawling-Analyse gestoppt.")
+                        break
+                    obj = futs[fut]
+                    try:
+                        roh = fut.result()
+                    except Exception:
+                        roh = []
+                    gesamt_gefunden += len(roh)
+                    neu = _verarbeite_treffer(roh, obj["bundesland"], 3, gesehen,
+                                              neue_projekte, auftrag,
+                                              cutoff_dt=cutoff_dt, heute_dt=heute_dt)
+                    crawl_neu += neu
+                    if roh:
+                        print(f"     ✅ {obj['gemeinde']}: {len(roh)} gefunden, {neu} neu")
             print(f"     CRAWLING-ERGEBNIS: {crawl_neu} neue Projekte aus Gemeinde-Websites")
 
 
@@ -2086,7 +2128,7 @@ def verarbeite_auftrag(auftrag: dict) -> None:
                     cutoff=cutoff_str, heute=heute_str, modell=modell,
                 )
                 gesamt_gefunden += len(roh)
-                neu = _verarbeite_treffer(roh, bl_filter, 4, gesehen, neue_projekte, auftrag, cutoff_dt=cutoff_dt, heute_dt=heute_dt)
+                neu = _verarbeite_treffer(roh, bl_filter, 3, gesehen, neue_projekte, auftrag, cutoff_dt=cutoff_dt, heute_dt=heute_dt)
                 print(f"     → {len(roh)} gefunden, {neu} neu gespeichert")
 
             # ── Gleis 3: Vergabeportale ──
@@ -2098,7 +2140,21 @@ def verarbeite_auftrag(auftrag: dict) -> None:
                     cutoff=cutoff_str, heute=heute_str, modell=modell,
                 )
                 gesamt_gefunden += len(roh)
-                neu = _verarbeite_treffer(roh, bl_filter, 4, gesehen, neue_projekte, auftrag, cutoff_dt=cutoff_dt, heute_dt=heute_dt)
+                neu = _verarbeite_treffer(roh, bl_filter, 3, gesehen, neue_projekte, auftrag, cutoff_dt=cutoff_dt, heute_dt=heute_dt)
+                print(f"     → {len(roh)} gefunden, {neu} neu gespeichert")
+
+            # ── Gleis 3b: Amtliche Quellen (UVP, Amtsblätter, Auflagen) ──
+            # Behörden melden Vorhaben oft Wochen vor der Presse. Wien ist
+            # ausgenommen – dort deckt das Wien-Spezialgleis diese Quellen ab.
+            if not zeit_aufgebraucht() and bl != "W":
+                print(f"\n  📜 [{bl}] Amtliche Quellen (UVP, Amtsblätter, Auflagen)")
+                time.sleep(1.5)
+                roh = suche_amtlich(
+                    bundesland=bl, suchbegriffe=suchbegriffe,
+                    cutoff=cutoff_str, heute=heute_str, modell=modell,
+                )
+                gesamt_gefunden += len(roh)
+                neu = _verarbeite_treffer(roh, bl_filter, 3, gesehen, neue_projekte, auftrag, cutoff_dt=cutoff_dt, heute_dt=heute_dt)
                 print(f"     → {len(roh)} gefunden, {neu} neu gespeichert")
 
             # ── Gleis 4: Kommunal / Gemeinderats- & Stadtratsbeschlüsse ──
