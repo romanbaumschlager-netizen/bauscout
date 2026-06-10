@@ -353,6 +353,16 @@
     text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;
   }
   .preise-box p{font-size:15px;color:var(--text);line-height:1.8;}
+  .preis-ab{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+  .preis-ab-zahl{font-size:18px;font-weight:800;color:var(--blau);}
+  .preis-ab-sub{font-size:14px;color:var(--text-mid);font-weight:500;}
+  .preis-zeile{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0;border-bottom:1px solid var(--rand);font-size:14.5px;}
+  .preis-zeile:last-of-type{border-bottom:none;}
+  .preis-zeile.sub{padding-left:14px;}
+  .pz-ast{color:var(--text-dim);margin-right:7px;font-weight:400;}
+  .pz-label{color:var(--text);}
+  .pz-wert{color:var(--text);font-weight:600;white-space:nowrap;text-align:right;}
+  .preis-hinweis{font-size:13px;color:var(--text-mid);line-height:1.7;margin-top:14px;}
   .preise-tip{
     background:var(--blau-hell);border:1px solid rgba(37,99,235,0.2);
     border-radius:10px;padding:16px 20px;margin-top:20px;
@@ -683,7 +693,6 @@
     <div class="hero-content fade-in">
       <div class="hero-eyebrow"><span class="pulse"></span> KI-Projektsuche für Bauunternehmer, Handwerker & Planer</div>
       <h1>Projekte entdecken,<br><em>bevor es die anderen tun.</em></h1>
-      <div class="hero-tagline">Projekte automatisch finden lassen.</div>
       <p class="hero-p">Ein KI-Agent, der Zeitungen, Gemeinderatsprotokolle, Vergabeportale und vieles mehr durchsucht – maßgeschneidert auf Ihre Gewerke, direkt in Ihr Postfach.</p>
       <div class="hero-advantage">
         <div class="hero-advantage-label">Ihr Vorteil</div>
@@ -707,7 +716,7 @@
     </div>
     <div class="hero-card fade-in" style="transition-delay:0.15s;">
       <div class="hero-card-title">Scout konfigurieren</div>
-      <div class="hero-card-sub">In 5 Schritten zum Ergebnis</div>
+      <div class="hero-card-sub">So einfach geht's</div>
       <div class="scout-steps">
         <div class="scout-step aktiv"><div class="step-nr">1</div><div class="step-info"><div class="step-name">Kontaktdaten</div><div class="step-desc">Name &amp; E-Mail eingeben</div></div></div>
         <div class="scout-step"><div class="step-nr">2</div><div class="step-info"><div class="step-name">Gewerke / Branchen</div><div class="step-desc">Was soll gesucht werden?</div></div></div>
@@ -767,13 +776,13 @@
 <section>
   <div class="section fade-in">
     <div class="section-eyebrow">Features</div>
-    <h2 class="section-title">Alles was Sie brauchen</h2>
-    <p class="section-sub">Kein Abo-Zwang. Kein Datenchaos. Nur das was Sie wirklich brauchen.</p>
+    <h2 class="section-title">Alles, was Sie brauchen</h2>
+    <p class="section-sub">Kein Abo-Zwang. Kein Datenchaos. Nur das, was Sie wirklich brauchen.</p>
     <div class="features-grid">
-      <div class="feature-karte highlight fade-in"><div class="feature-icon">🗺️</div><div class="feature-title">Interaktive Kartenansicht</div><div class="feature-text">Alle gefundenen Projekte auf einer Österreich-Karte. Teilweise mit exakter Position, sofern dies in der Quelle genau angegeben ist. Ein Klick auf einen Punkt – und Sie sehen alle Details, die Quelle und den Originallink zum Artikel.</div></div>
+      <div class="feature-karte highlight fade-in"><div class="feature-icon">🗺️</div><div class="feature-title">Interaktive Kartenansicht</div><div class="feature-text">Alle gefundenen Projekte auf einer Österreich-Karte – mit exakter Position, wann immer die Quelle sie hergibt. Ein Klick auf einen Punkt – und Sie sehen alle Details, die Quelle und den Originallink zum Artikel.</div></div>
       <div class="feature-karte fade-in" style="transition-delay:0.1s;"><div class="feature-icon">📥</div><div class="feature-title">Excel-Export</div><div class="feature-text">Ein Klick – und alle Projekte landen strukturiert in einer Excel-Datei. Perfekt für die eigene Nachbearbeitung, CRM oder Weitergabe im Team.</div></div>
-      <div class="feature-karte fade-in" style="transition-delay:0.1s;"><div class="feature-icon">🔁</div><div class="feature-title">Wiederkehrende Kunden</div><div class="feature-text">Bereits gefundene Projekte bleiben bestehen und werden nicht doppelt angezeigt. Projekte die Sie ignorieren, bleiben dauerhaft ausgeblendet.</div></div>
-      <div class="feature-karte highlight fade-in" style="transition-delay:0.2s;"><div class="feature-icon">🤖</div><div class="feature-title">Teilen Sie der KI Ihre Wünsche mit</div><div class="feature-text">Erklären Sie dem KI-Assistenten in eigenen Worten, was Sie suchen – er passt die Suche auf Ihre Bedürfnisse an.</div></div>
+      <div class="feature-karte fade-in" style="transition-delay:0.1s;"><div class="feature-icon">🔁</div><div class="feature-title">Ihr Dashboard wächst mit</div><div class="feature-text">Bereits gefundene Projekte bleiben bestehen und werden nicht doppelt angezeigt. Projekte, die Sie ignorieren, bleiben dauerhaft ausgeblendet.</div></div>
+      <div class="feature-karte highlight fade-in" style="transition-delay:0.2s;"><div class="feature-icon">🤖</div><div class="feature-title">KI-Verfeinerung per Chat</div><div class="feature-text">Erklären Sie dem KI-Assistenten in eigenen Worten, was Sie suchen – er passt die Suche auf Ihre Bedürfnisse an.</div></div>
     </div>
   </div>
 </section>
@@ -783,12 +792,18 @@
   <div class="section fade-in">
     <div class="section-eyebrow">Preise</div>
     <h2 class="section-title">Transparent. Dynamisch. Fair.</h2>
-    <p class="section-sub">Kein Abo, keine Pakete, keine versteckten Kosten. Sie zahlen nur für das, was Sie wirklich brauchen.</p>
+    <p class="section-sub">Kein Abo, keine Pakete, keine versteckten Kosten. Sie zahlen genau den Umfang, den Sie festlegen.</p>
     <div class="preise-box">
       <div class="preise-box-label">Wie der Preis entsteht</div>
-      <p>Der Preis richtet sich je nach Umfang Ihrer Suche – nach der Anzahl der Bundesländer, Gewerke und dem gewählten Zeitraum.</p>
+      <div class="preis-ab"><span class="preis-ab-zahl">ab 20 €</span><span class="preis-ab-sub">pro Scout-Lauf · Einmalzahlung</span></div>
+      <div class="preis-zeile"><span class="pz-label">Gewerke / Branchen</span><span class="pz-wert">7,00 € je Kategorie</span></div>
+      <div class="preis-zeile"><span class="pz-label">Erstes Bundesland</span><span class="pz-wert">8,00 €</span></div>
+      <div class="preis-zeile sub"><span class="pz-label"><span class="pz-ast">├</span>Jedes weitere Bundesland</span><span class="pz-wert">0,50 € günstiger</span></div>
+      <div class="preis-zeile sub"><span class="pz-label"><span class="pz-ast">└</span>Ganz Österreich</span><span class="pz-wert">50,00 € pauschal</span></div>
+      <div class="preis-zeile"><span class="pz-label">Suchzeitraum (mind. 10 Tage)</span><span class="pz-wert">0,50 € je Tag</span></div>
+      <div class="preis-hinweis">Der Mindestzeitraum von 10 Tagen ist bewusst gewählt: Kürzere Zeiträume liefern erfahrungsgemäß zu wenige verwertbare Treffer – Gemeinderatsprotokolle etwa erscheinen oft nur alle paar Monate.</div>
     </div>
-    <div class="preise-tip">💡 <strong>Tipp:</strong> Den genauen Preis sehen Sie nach der Konfiguration – noch bevor Sie zahlen. Keine Überraschungen.</div>
+    <div class="preise-tip">💡 <strong>Tipp:</strong> Ihr genauer Preis wird live beim Konfigurieren berechnet – Sie sehen ihn, noch bevor Sie zahlen. Keine Überraschungen.</div>
   </div>
 </section>
 
@@ -814,7 +829,7 @@
 <section class="cta-section">
   <div class="cta-inner fade-in">
     <div class="cta-eyebrow">Jetzt starten</div>
-    <h2>Bereit schneller zu sein?</h2>
+    <h2>Bereit, schneller zu sein?</h2>
     <p>Starten Sie jetzt Ihren ersten Scout-Lauf. Kein Abo, kein Risiko – nur Ergebnisse.</p>
     <a href="#scout-starten" class="btn-cta">Scout jetzt starten →</a>
     <div class="cta-sub">Ergebnisse meist noch am selben Tag – ganz automatisch per E-Mail</div>
@@ -825,7 +840,7 @@
 <div class="formular-wrap" id="scout-starten">
   <div class="formular-section">
     <div class="formular-title">Scout konfigurieren</div>
-    <div class="formular-sub">Fülle die 5 Schritte aus – der Rest passiert automatisch.</div>
+    <div class="formular-sub">Füllen Sie die 5 Schritte aus – der Rest passiert automatisch.</div>
 
     <!-- SCHRITT 1 -->
     <div class="schritt aktiv" id="s1">
@@ -870,7 +885,7 @@
         <div class="schritt-status" id="s2-status">ausstehend</div>
       </div>
       <div class="schritt-inhalt">
-        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;">Wählen Sie alle Bereiche für die der Scout nach Projekten suchen soll.</p>
+        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;">Wählen Sie alle Bereiche, für die der Scout nach Projekten suchen soll.</p>
         <div style="background:var(--hell);border:1px solid var(--rand);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-mid);line-height:1.7;">💶 <strong style="color:var(--text);">Preis pro Gewerke-Kategorie: € 7,00</strong> · Jede Kategorie enthält mehrere verwandte Gewerke und wird einmalig berechnet.</div>
         <div class="gewerke-kategorien" id="gewerke-container"></div>
         <div>
