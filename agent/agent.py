@@ -198,6 +198,75 @@ def _bundesland_aus_ort(ort: str) -> str:
         return tabelle[erstes_wort]
     return ""
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ORTS-KANONISIERUNG für die Mehrquellen-Erkennung
+# Die Zusammenführung "gleiches Bauvorhaben, zweite Quelle" vergleicht Projekte
+# NUR innerhalb desselben Orts (exakter Datenbank-Match). Schreiben zwei
+# Quellen denselben Ort unterschiedlich ("Micheldorf" vs. "Micheldorf in
+# Oberösterreich", "Gutau (Bezirk Freistadt)" vs. "Gutau"), wird dasselbe
+# Projekt sonst doppelt angelegt statt als Zusatzquelle angehängt. Darum wird
+# jeder KI-Ortsname hier auf den OFFIZIELLEN Gemeindenamen der Datenbank
+# vereinheitlicht. Unbekannte Orte (z.B. "Oberösterreich (landesweit)")
+# bleiben – bereinigt – erhalten.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_GEMEINDE_NAMEN_BL: dict = {}   # bl -> {normalisierter_name: offizieller Name}
+
+
+def _norm_ortsschluessel(name: str) -> str:
+    s = (name or "").lower().strip()
+    # "Sankt"/"St" am Anfang auf "st. " vereinheitlichen
+    if s.startswith("sankt "):
+        s = "st. " + s[6:]
+    elif s.startswith("st ") :
+        s = "st. " + s[3:]
+    return s
+
+
+def _get_gemeinde_namen(bl: str) -> dict:
+    if bl in _GEMEINDE_NAMEN_BL:
+        return _GEMEINDE_NAMEN_BL[bl]
+    m = {}
+    try:
+        for g in get_gemeinden_fuer_bundeslaender([bl]):
+            n = (g.get("name") or "").strip()
+            if n:
+                m[_norm_ortsschluessel(n)] = n
+    except Exception:
+        pass
+    _GEMEINDE_NAMEN_BL[bl] = m
+    return m
+
+
+def _kanonischer_ort(ort_roh: str, bundesland: str) -> str:
+    """
+    Mappt einen von der KI gelieferten Ortsnamen auf den offiziellen
+    Gemeindenamen: Klammer-/Komma-Zusätze und Mehrfachorte ("Pupping / Karling")
+    werden entfernt, dann wird gegen die Gemeinde-Datenbank des Bundeslands
+    abgeglichen – exakt oder als EINDEUTIGER Namensanfang ("Micheldorf" ->
+    "Micheldorf in Oberösterreich"). Mehrdeutige Anfänge (z.B. "Rainbach":
+    im Mühlkreis UND im Innkreis) bleiben unverändert, damit nie falsch
+    zugeordnet wird.
+    """
+    o = (ort_roh or "").strip()
+    if not o:
+        return ""
+    o = o.split("(")[0].split("/")[0].split(",")[0].strip()
+    if not o or not bundesland:
+        return o
+    namen = _get_gemeinde_namen(bundesland)
+    if not namen:
+        return o
+    key = _norm_ortsschluessel(o)
+    if key in namen:
+        return namen[key]
+    praefix_treffer = [voll for k, voll in namen.items() if k.startswith(key + " ")]
+    if len(praefix_treffer) == 1:
+        return praefix_treffer[0]
+    return o
+
+
 _JAHR_REGEX = re.compile(r"\b(20\d{2})\b")
 
 def _jahr_verdaechtig(text: str, cutoff_jahr: int, heute_jahr: int) -> bool:
@@ -768,6 +837,7 @@ ARBEITSWEISE (WICHTIG):
 - Nutze das web_search-Tool INTENSIV und führe MEHRERE verschiedene Suchen durch – nicht nur eine einzige.
 - Variiere Suchbegriffe systematisch: kombiniere Ortsnamen + Gewerk + Signalwort (Spatenstich, Baustart, Baubeginn, Ausschreibung, Vergabe, Gemeinderat, Bebauungsplan, Investition, Erweiterung, Neubau, Sanierung).
 - Öffne vielversprechende Treffer und lies Details heraus.
+- QUELLENDISZIPLIN: Das Feld artikel_url muss EXAKT die Seite sein, aus der du die Projektdetails entnommen hast. Eine URL, die nur zur selben Website gehört, aber etwas anderes beschreibt (Startseite, News-Übersicht, anderer Artikel), ist FALSCH. Kennst du die exakte Projekt-URL nicht sicher, lass artikel_url leer.
 - Sammle ALLE konkreten Projekte, auch kleinere oder regionale. Ziel sind 15-25 Treffer, wenn die Region sie hergibt. Lieber 20 Projekte als 5.
 
 BEVORZUGTE QUELLEN & SUCHOPERATOREN (nutze gezielt site:-Operatoren!):
@@ -803,7 +873,7 @@ AUSGABE: AUSSCHLIESSLICH ein JSON-Array. Kein Text davor/danach, kein Markdown, 
     "phase": "Planung/Ausschreibung/Vergabe/Bau/Fertigstellung",
     "relevanz": 7,
     "datum": "YYYY-MM-DD des VERÖFFENTLICHUNGS-/Berichtsdatums (NICHT die Angebotsfrist!), sonst leer",
-    "artikel_url": "vollständige https-URL der Quelle",
+    "artikel_url": "vollständige https-URL GENAU der Seite, die DIESES Projekt beschreibt – niemals Startseite/Übersicht/anderer Artikel; im Zweifel leer",
     "quelle_name": "z.B. meinbezirk.at, OÖN, ankoe.at"
   }
 ]
@@ -855,6 +925,151 @@ def _parse_json_array(text: str) -> list:
     return objekte
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LINK-VERIFIKATION für Websuche-Treffer
+# Hintergrund: Bei web_search-Treffern stammt die artikel_url vom Suchmodell.
+# In Einzelfällen ordnet es eine real existierende, aber inhaltlich FALSCHE
+# Seite zu (z.B. Vereins-News statt Bauprojekt-Artikel). Diese Prüfung lädt
+# jede gemeldete URL einmal pro Lauf und prüft, ob der Seiteninhalt zum
+# Projekt passt. Unpassende sowie tote (404/410) Links werden ENTFERNT – das
+# Projekt selbst bleibt erhalten und erscheint im Dashboard mit grauem
+# Herkunftshinweis statt Link.
+# BEWUSST VORSICHTIG: Seiten, die sich nicht beurteilen lassen (Bot-Block 403,
+# Timeout, JavaScript-Apps mit fast leerem HTML, große/gescannte PDFs),
+# behalten ihren Link – lieber ein nicht prüfbarer echter Link als ein
+# fälschlich entfernter. Crawling-/Regionalmedien-Treffer durchlaufen die
+# Prüfung NICHT: deren URLs setzt der Agent selbst aus bereits geladenen
+# Seiten, sie sind also konstruktionsbedingt korrekt.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_LINK_CHECK_WORKERS = 8       # parallele Downloads bei der Prüfung
+_LINK_CHECK_TIMEOUT = 8       # Sekunden je Verbindungs-/Leseschritt
+_LINK_CHECK_MAX_BYTES = 3_000_000   # mehr wird nicht geladen (Schutz vor Riesendateien)
+_LINK_CACHE: dict = {}        # url -> ("ok"|"tot"|"unpruefbar", normalisierter_text)
+
+_LINK_CHECK_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/124.0.0.0 Safari/537.36")
+
+
+def _norm_match_text(s: str) -> str:
+    """Vergleichs-Normalisierung: Kleinschreibung, ae/oe/ue/ss, nur [0-9a-z ]."""
+    s = (s or "").lower()
+    s = (s.replace("ä", "ae").replace("ö", "oe")
+          .replace("ü", "ue").replace("ß", "ss"))
+    return re.sub(r"[^0-9a-z ]", " ", s)
+
+
+def _lade_seitentext(url: str) -> tuple:
+    """
+    Lädt eine URL (max. _LINK_CHECK_MAX_BYTES) und gibt zurück:
+      ("ok", norm_text)   – Inhalt geladen und als Text extrahiert
+      ("tot", "")         – Seite existiert nicht mehr (404/410)
+      ("unpruefbar", "")  – nicht beurteilbar (Block/Timeout/JS-Shell/Scan-PDF)
+    Ergebnis wird pro Lauf gecacht (gleiche URL nur einmal geladen).
+    """
+    if url in _LINK_CACHE:
+        return _LINK_CACHE[url]
+    ergebnis = ("unpruefbar", "")
+    try:
+        resp = requests.get(
+            url, timeout=(5, _LINK_CHECK_TIMEOUT), stream=True,
+            allow_redirects=True, headers={"User-Agent": _LINK_CHECK_UA},
+        )
+        if resp.status_code in (404, 410):
+            ergebnis = ("tot", "")
+        elif resp.status_code == 200:
+            inhalt = b""
+            abgeschnitten = False
+            for chunk in resp.iter_content(chunk_size=65536):
+                inhalt += chunk
+                if len(inhalt) > _LINK_CHECK_MAX_BYTES:
+                    abgeschnitten = True
+                    break
+            ct = (resp.headers.get("content-type") or "").lower()
+            ist_pdf = "pdf" in ct or url.lower().split("?")[0].endswith(".pdf")
+            if ist_pdf:
+                # Abgeschnittene PDFs sind nicht lesbar -> nicht beurteilen.
+                txt = "" if abgeschnitten else _pdf_text(inhalt)
+                if txt and len(txt) >= 300:
+                    ergebnis = ("ok", _norm_match_text(txt))
+            else:
+                try:
+                    html = inhalt.decode("utf-8")
+                except UnicodeDecodeError:
+                    html = inhalt.decode("latin-1", errors="replace")
+                try:
+                    from bs4 import BeautifulSoup
+                    txt = BeautifulSoup(html, "html.parser").get_text(" ")
+                except Exception:
+                    txt = html
+                if txt and len(txt.strip()) >= 300:
+                    ergebnis = ("ok", _norm_match_text(txt))
+                # sonst: fast leeres HTML (JS-App) -> unpruefbar, Link behalten
+        # andere Statuscodes (403/401/429/5xx): Seite existiert vermutlich,
+        # blockt nur unseren Server -> unpruefbar, Link behalten
+        resp.close()
+    except Exception:
+        # Timeout/Netzfehler -> im Zweifel behalten (kein falsches Entfernen)
+        ergebnis = ("unpruefbar", "")
+    _LINK_CACHE[url] = ergebnis
+    return ergebnis
+
+
+def _link_passt_zum_projekt(projekt: dict, norm_text: str) -> bool:
+    """
+    Inhaltliche Passung: Die unterscheidenden Wörter des Projekttitels (ohne
+    Füllwörter und Ortsname, via _titel_tokens) müssen auf der Seite vorkommen –
+    mindestens 2 (bzw. alle, wenn der Titel weniger hergibt). Beispiel: Für
+    "Neubau Feuerwehrhaus Alkoven (10-torig, inkl. KAT-Lager)" sind das
+    "feuerwehrhaus", "torig", "lager" – ein Vereinsbericht über eine
+    Flurreinigungsaktion enthält höchstens eines davon und fällt durch,
+    der echte Projektartikel enthält sie und besteht.
+    """
+    titel = str(projekt.get("titel") or "")
+    ort   = str(projekt.get("ort") or "")
+    tokens = [_norm_match_text(t).strip() for t in _titel_tokens(titel, ort)]
+    tokens = [t for t in tokens if t]
+    if not tokens:
+        # Kein unterscheidendes Titelwort -> auf Ortsnamen zurückfallen
+        o = _norm_match_text(ort.split("(")[0].split("/")[0].split(",")[0]).strip()
+        return (o in norm_text) if o else True
+    treffer = sum(1 for t in tokens if t in norm_text)
+    return treffer >= min(2, len(tokens))
+
+
+def _pruefe_quell_links(projekte: list) -> list:
+    """
+    Verifiziert die artikel_url aller Websuche-Treffer parallel. Links, die tot
+    sind oder deren Seiteninhalt nicht zum Projekt passt, werden geleert – die
+    Projekte selbst bleiben erhalten (Dashboard zeigt dann den Herkunftshinweis).
+    """
+    kandidaten = [p for p in projekte
+                  if isinstance(p, dict)
+                  and str(p.get("artikel_url") or "").strip().startswith("http")]
+    if not kandidaten:
+        return projekte
+    from concurrent.futures import ThreadPoolExecutor
+    urls = list({str(p["artikel_url"]).strip() for p in kandidaten})
+    with ThreadPoolExecutor(max_workers=_LINK_CHECK_WORKERS) as ex:
+        list(ex.map(_lade_seitentext, urls))  # füllt den Cache parallel
+    weg_tot = weg_falsch = 0
+    for p in kandidaten:
+        url = str(p["artikel_url"]).strip()
+        status, norm_text = _LINK_CACHE.get(url, ("unpruefbar", ""))
+        if status == "tot":
+            p["artikel_url"] = ""
+            weg_tot += 1
+        elif status == "ok" and not _link_passt_zum_projekt(p, norm_text):
+            p["artikel_url"] = ""
+            weg_falsch += 1
+    if weg_tot or weg_falsch:
+        print(f"    🔗 Link-Prüfung: {len(urls)} URLs geprüft, "
+              f"{weg_falsch} inhaltlich unpassende und {weg_tot} tote Links entfernt")
+    return projekte
+
+
 def _websearch_aufruf(prompt: str, modell: str,
                       max_searches: int = WEB_SEARCH_MAX_USES) -> list:
     """
@@ -893,7 +1108,10 @@ def _websearch_aufruf(prompt: str, modell: str,
             if getattr(b, "type", None) == "text" and getattr(b, "text", "")
         ).strip()
         projekte = _parse_json_array(text)
-        return projekte if isinstance(projekte, list) else []
+        if not isinstance(projekte, list):
+            return []
+        # Von der Websuche gemeldete Links inhaltlich verifizieren (s. oben).
+        return _pruefe_quell_links(projekte)
     except Exception as ex:
         print(f"    ❌ web_search Fehler: {str(ex)[:140]}")
         return []
@@ -1183,7 +1401,7 @@ def validiere_und_normalisiere_projekt(projekt: dict, bundesland_erwartet: str,
     return {
         "titel":       titel[:200],
         "beschreibung": beschreibung,
-        "ort":         str(projekt.get("ort") or "").strip(),
+        "ort":         _kanonischer_ort(ort_roh, bl or bundesland_erwartet),
         "bezirk":      str(projekt.get("bezirk") or "").strip(),
         "bundesland":  bl or bundesland_erwartet,
         "kategorie":   str(projekt.get("kategorie") or "Sonstiges").strip(),
