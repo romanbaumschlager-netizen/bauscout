@@ -646,26 +646,19 @@ function istEchteUrl(u) {
   return typeof u === 'string' && /^https?:\/\//i.test(u.trim());
 }
 
-// Fallback-Quelle: Wenn zu einem Projekt (noch) keine echte Quell-URL gespeichert
-// ist, bauen wir einen gezielten Web-Suchlink aus Titel + Ort. So hat der Kunde
-// immer einen Absprungpunkt zur Originalmeldung statt eines leeren Felds.
-function sucheUrlFuer(p) {
-  const begriffe = [p && p.titel, p && p.ort].filter(Boolean).join(' ').trim();
-  if (!begriffe) return '';
-  return 'https://www.google.com/search?q=' + encodeURIComponent(begriffe);
-}
-
 function renderQuellen(p, opts) {
   opts = opts || {};
   let liste = Array.isArray(p.quellen) ? p.quellen.filter(q => q && istEchteUrl(q.url)) : [];
   if (!liste.length && istEchteUrl(p.artikel_url)) liste = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
   if (!liste.length) {
-    // Keine echte Quell-URL gespeichert -> gezielte Web-Suche als Absprungpunkt.
-    const such = sucheUrlFuer(p);
-    if (!such) return '';
-    const a = `<a href="${escHtml(such)}" target="_blank" class="btn-link btn-quelle" title="Originalmeldung per Websuche finden">🔍 Quelle suchen</a>`;
-    if (opts.inline) return a;
-    return `<div class="projekt-quellen"><span class="quellen-label">Quelle:</span> ${a}</div>`;
+    // Keine echte Quell-URL gespeichert -> Herkunft nur als dezenten Hinweis zeigen
+    // (KEIN Link, KEINE Suchmaschine). Echte, klickbare Links liefert ein neuer
+    // Suchlauf mit der aktuellen agent.py.
+    const herkunft = (p.quelle && String(p.quelle).trim()) ? String(p.quelle).trim() : '';
+    if (!herkunft) return '';
+    const txt = `<span style="font-size:11px;color:var(--text-dim);font-style:italic;" title="Aus öffentlicher Quelle – für diesen Altbestand ist kein Direktlink gespeichert">${escHtml(herkunft)}</span>`;
+    if (opts.inline) return txt;
+    return `<div class="projekt-quellen"><span class="quellen-label">Quelle:</span> ${txt}</div>`;
   }
   const amtlich = u => /gv\.at|ausschreibung|ankoe|vergabe/i.test(u || '');
   liste = liste.slice().sort((a, b) => (amtlich(a.url) ? 0 : 1) - (amtlich(b.url) ? 0 : 1));
@@ -683,9 +676,9 @@ function quellenMapHtml(p) {
   let q = Array.isArray(p.quellen) ? p.quellen.filter(x => x && istEchteUrl(x.url)) : [];
   if (!q.length && istEchteUrl(p.artikel_url)) q = [{ url: p.artikel_url, quelle_name: p.quelle || 'Quelle' }];
   if (!q.length) {
-    const such = sucheUrlFuer(p);
-    if (!such) return '';
-    return `<a href="${escHtml(such)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">🔍 Quelle suchen</a>`;
+    const herkunft = (p.quelle && String(p.quelle).trim()) ? String(p.quelle).trim() : '';
+    if (!herkunft) return '';
+    return `<span style="color:#888;font-size:11px;font-style:italic;">${escHtml(herkunft)}</span>`;
   }
   const erste = q[0];
   const link = `<a href="${escHtml(erste.url)}" target="_blank" style="color:#2563eb;font-size:12px;font-weight:600;text-decoration:none;">→ ${escHtml(erste.quelle_name || 'Quelle')}</a>`;
