@@ -56,7 +56,7 @@ ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 #   - Wenige Bundesländer (≤3): Sonnet (höchste Qualität, Zeit reicht locker)
 #   - Viele Bundesländer (≥4):  Haiku  (schnell genug für das Zeitbudget)
 # Beide Strings sind erprobt. Zum Erzwingen einfach MODELL_FIX setzen.
-MODELL_SONNET = "claude-sonnet-4-6"
+MODELL_SONNET = "claude-sonnet-5"
 MODELL_HAIKU  = "claude-haiku-4-5-20251001"
 MODELL_FIX    = MODELL_SONNET  # Immer Sonnet – beste Qualität, Kosten vertretbar
 
