@@ -360,32 +360,60 @@ SUPABASE_HEADERS = {
 # SUPABASE HILFSFUNKTIONEN
 # =============================================================================
 
-def sb_get(tabelle: str, params: dict = None) -> list:
+SB_RETRY_VERSUCHE = 3      # Gesamtzahl Versuche pro Request
+SB_TIMEOUT = 20            # Sekunden pro Versuch (vorher 10 - zu knapp für Cold-Starts)
+SB_RETRY_PAUSE = 5         # Sekunden Basis-Wartezeit, steigt pro Versuch (5s, 10s, ...)
+
+def _sb_request(methode: str, tabelle: str, headers: dict,
+                 params: dict = None, json_daten: dict = None):
+    """
+    Zentraler Supabase-REST-Request mit automatischem Retry bei Timeout/
+    Verbindungsfehlern. Verhindert, dass ein einzelner kurzer Netzwerk-
+    Aussetzer (z.B. Supabase Cold-Start) den kompletten Agent-Lauf mit
+    Exit Code 1 abstürzen lässt (Vorfall 17.08.2026: ReadTimeoutError
+    beim Laden der offenen Aufträge, timeout=10 ohne Retry).
+    """
     url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
-    resp = requests.get(url, headers=SUPABASE_HEADERS, params=params, timeout=10)
-    resp.raise_for_status()
+    letzter_fehler = None
+    for versuch in range(1, SB_RETRY_VERSUCHE + 1):
+        try:
+            resp = requests.request(
+                methode, url, headers=headers, params=params,
+                json=json_daten, timeout=SB_TIMEOUT,
+            )
+            resp.raise_for_status()
+            return resp
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            letzter_fehler = e
+            if versuch < SB_RETRY_VERSUCHE:
+                wartezeit = versuch * SB_RETRY_PAUSE
+                print(f"⚠️  Supabase-Timeout bei '{tabelle}' (Versuch {versuch}/{SB_RETRY_VERSUCHE}), "
+                      f"erneuter Versuch in {wartezeit}s...")
+                time.sleep(wartezeit)
+            else:
+                print(f"❌ Supabase-Request '{tabelle}' endgültig fehlgeschlagen "
+                      f"nach {SB_RETRY_VERSUCHE} Versuchen")
+    raise letzter_fehler
+
+def sb_get(tabelle: str, params: dict = None) -> list:
+    resp = _sb_request("GET", tabelle, SUPABASE_HEADERS, params=params)
     return resp.json()
 
 def sb_patch(tabelle: str, filter_params: dict, daten: dict) -> None:
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
     headers = {**SUPABASE_HEADERS, "Prefer": "return=minimal"}
-    resp = requests.patch(url, headers=headers, params=filter_params, json=daten, timeout=10)
-    resp.raise_for_status()
+    _sb_request("PATCH", tabelle, headers, params=filter_params, json_daten=daten)
 
 def sb_insert(tabelle: str, daten: dict) -> dict | None:
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
-    resp = requests.post(url, headers=SUPABASE_HEADERS, json=daten, timeout=10)
+    resp = _sb_request("POST", tabelle, SUPABASE_HEADERS, json_daten=daten)
     if resp.status_code in (200, 201):
         result = resp.json()
         return result[0] if isinstance(result, list) and result else result
     return None
 
 def sb_upsert(tabelle: str, daten: dict, on_conflict: str) -> None:
-    url = f"{SUPABASE_URL}/rest/v1/{tabelle}"
     headers = {**SUPABASE_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"}
     params = {"on_conflict": on_conflict}
-    resp = requests.post(url, headers=headers, params=params, json=daten, timeout=10)
-    resp.raise_for_status()
+    _sb_request("POST", tabelle, headers, params=params, json_daten=daten)
 
 # =============================================================================
 # SCHRITT 1: OFFENE AUFTRÄGE LADEN
